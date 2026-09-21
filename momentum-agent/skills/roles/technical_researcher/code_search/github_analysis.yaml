@@ -1,0 +1,74 @@
+name: "GitHub Repository Discovery & Analysis"
+role: "Technical Researcher"
+capability: "code_search"
+
+context:
+  purpose: "Find high-quality open-source repositories matching specific tech stacks and extract insights."
+  strategy: |
+    Use GitHub's advanced search filters (`language:`, `stars:`).
+    Evaluate the repository's health by checking recent commits and open issues.
+    Extract key architectural patterns from README and source code.
+
+platform_knowledge:
+  ui_patterns:
+    - "Search bar is available globally at the top"
+    - "Filters for Language and Sort are on the left sidebar after searching"
+    - "Repository landing pages contain an 'About' section on the right, and 'Code' in the center"
+  common_elements:
+    search_input: "Search or jump to..."
+    language_filter: "Languages"
+    sort_dropdown: "Sort"
+    code_tab: "Code"
+    issues_tab: "Issues"
+    pull_requests_tab: "Pull requests"
+  interaction_patterns:
+    - "Type complex query in search → Select 'Repositories' → Sort by 'Most stars'"
+    - "Open Repo → Inspect 'Last commit' timestamp → Open README.md"
+
+decision_logic:
+  - name: "repository_evaluation"
+    rules:
+      - "Prioritize repos with > 100 stars and commits within the last 6 months"
+      - "Skip archived or deprecated repositories"
+      - "Ensure the primary language matches the user's requested stack"
+  - name: "extraction_depth"
+    rules:
+      - "If user asks for 'how it works', read the architecture section of README"
+      - "If user asks for 'code example', open the `/examples` or `/src` directories"
+
+actions:
+  - type: "type_semantic"
+    anchor: "Search or jump to..."
+    value: "{target_query} language:{target_lang}"
+  - type: "press_key"
+    key: "Enter"
+  - type: "click_semantic"
+    anchor: "Repositories"
+  - type: "click_semantic"
+    anchor: "Sort"
+  - type: "click_semantic"
+    anchor: "Most stars"
+  - type: "extract_list"
+    anchor: "repo-list"
+    fields:
+      - "Repo Name"
+      - "Description"
+      - "Stars"
+      - "Last Updated"
+
+expected_outcomes:
+  - "A curated list of active, relevant repositories."
+  - "Extracted architecture summaries or code snippets."
+
+failure_cases:
+  - case: "No repositories match the exact query"
+    action: "Remove specific 'language:' filters or broaden the search terms"
+  - case: "Rate limit hit for unauthenticated search"
+    action: "Pause and alert user to provide a GitHub PAT or login."
+
+recovery_strategies:
+  - "If search yields junk, pivot to searching 'topics:' instead of raw text."
+  - "If GitHub is down, pivot to searching StackOverflow for similar topics."
+
+learning_hooks:
+  - "Remember which developers or organizations frequently publish high-quality code in this domain."

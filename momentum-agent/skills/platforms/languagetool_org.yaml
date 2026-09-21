@@ -1,0 +1,474 @@
+platform: languagetool.org
+interactibles:
+  primary_navigation:
+    - tag: a
+      name: LanguageTool
+      href: /
+    - tag: a
+      name: Grammar Checker
+      href: /
+    - tag: a
+      name: Paraphrasing Tool
+      href: /paraphrasing-tool
+    - tag: a
+      name: Premium
+      href: /premium
+    - tag: a
+      name: For Business
+      href: /business
+    - tag: button
+      name: More
+      href: 'none'
+    - tag: a
+      name: Sign up
+      href: /register
+    - tag: a
+      name: Log in
+      href: /user-login
+  main_actions:
+    - tag: a
+      name: Add to Chrome
+      href: https://chromewebstore.google.com/detail/ai-grammar-checker-paraph/oldceeleldhonbafppcapldpdifcinji?utm_source=lt-homepage&utm_medium=referral
+    - tag: a
+      name: Grammar Checker
+      href: /
+    - tag: a
+      name: Paraphrasing Tool
+      href: /paraphrasing-tool
+    - tag: a
+      name: Discover Premium
+      href: /premium
+    - tag: a
+      name: LT for Business
+      href: /business
+  service_integrations:
+    - tag: a
+      name: Browser Add-ons
+      href: /services#browsers
+    - tag: a
+      name: Chrome
+      href: https://chromewebstore.google.com/detail/ai-grammar-checker-paraph/oldceeleldhonbafppcapldpdifcinji?utm_source=lt-homepage&utm_medium=referral
+    - tag: a
+      name: Edge
+      href: https://microsoftedge.microsoft.com/addons/detail/hfjadhjooeceemgojogkhlppanjkbobc
+    - tag: a
+      name: Firefox
+      href: https://addons.mozilla.org/firefox/addon/languagetool/
+    - tag: a
+      name: Safari
+      href: https://apps.apple.com/app/id1534275760
+    - tag: a
+      name: Opera
+      href: https://addons.opera.com/extensions/details/grammar-and-spell-checker-languagetool/
+    - tag: a
+      name: E-Mail Add-ons
+      href: /services#mail_clients
+    - tag: a
+      name: Gmail
+      href: /google-mail
+    - tag: a
+      name: Apple Mail
+      href: /apple-mail
+    - tag: a
+      name: Thunderbird
+      href: /thunderbird
+    - tag: a
+      name: Office Plugins
+      href: /services#text_editors
+    - tag: a
+      name: Google Docs
+      href: /google-docs
+    - tag: a
+      name: Word
+      href: /word
+    - tag: a
+      name: Apple Pages
+      href: /mac-desktop
+    - tag: a
+      name: LibreOffice
+      href: /libre-office
+    - tag: a
+      name: Apps
+      href: /services#operating_systems
+    - tag: a
+      name: macOS
+      href: /mac-desktop
+    - tag: a
+      name: Windows
+      href: /windows-desktop
+    - tag: a
+      name: Google Docs Add-on
+      href: https://chromewebstore.google.com/detail/ai-grammar-checker-paraph/oldceeleldhonbafppcapldpdifcinji?utm_source=lt-homepage&utm_medium=referral
+    - tag: a
+      name: macOS App for Microsoft Word
+      href: /mac-desktop
+    - tag: a
+      name: Use it in LibreOffice
+      href: /libre-office
+    - tag: a
+      name: Microsoft Edge
+      href: https://microsoftedge.microsoft.com/addons/detail/hfjadhjooeceemgojogkhlppanjkbobc
+    - tag: a
+      name: Mozilla Firefox
+      href: https://addons.mozilla.org/firefox/addon/languagetool/
+    - tag: a
+      name: Microsoft Word
+      href: /word
+  business_and_developer_resources:
+    - tag: a
+      name: For Businesses
+      href: /business
+    - tag: a
+      name: Proofreading API
+      href: /proofreading-api
+    - tag: a
+      name: LanguageTool for Businesses
+      href: /business
+    - tag: a
+      name: LanguageTool for Non-Profits & Students
+      href: /students
+    - tag: a
+      name: LanguageTool for Professional Writers
+      href: /professionals
+    - tag: a
+      name: Open-Source Development
+      href: /dev
+    - tag: a
+      name: Source Code
+      href: https://github.com/languagetool-org/languagetool
+  content_and_support:
+    - tag: a
+      name: Blog
+      href: https://languagetool.org/insights/
+    - tag: a
+      name: Careers
+      href: https://languagetooler.workwise.io/
+    - tag: a
+      name: Help
+      href: https://help.languagetool.org
+    - tag: a
+      name: Privacy
+      href: /legal/privacy
+    - tag: a
+      name: Terms & Conditions
+      href: /legal/terms
+    - tag: a
+      name: Imprint
+      href: /legal/
+    - tag: a
+      name: Read more
+      href: https://languagetool.org/insights/post/product-mac-app/
+    - tag: a
+      name: Learn more
+      href: /premium
+    - tag: a
+      name: Help Center
+      href: https://help.languagetool.org
+    - tag: a
+      name: About Us
+      href: /about
+    - tag: a
+      name: Media Assets
+      href: /media-assets
+    - tag: a
+      name: Copyright, Community Guidelines, DSA & other Legal Resources
+      href: /legal/copyright-community-guidelines-dsa-other
+  language_selection:
+    - tag: select
+      name: Languages recommended for you:
+      href: 'none'
+    - tag: select
+      name: English
+      href: 'none'
+  text_processing_tools:
+    - tag: button
+      name: Insert Example Text
+      href: 'none'
+    - tag: button
+      name: Check Word Document
+      href: 'none'
+    - tag: button
+      name: Correct
+      href: 'none'
+    - tag: button
+      name: Paraphrase
+      href: 'none'
+    - tag: input
+      name: 'on'
+      href: 'none'
+    - tag: a
+      name: Paraphrase Text
+      href: /paraphrasing-tool
+    - tag: a
+      name: Punctuation Checker
+      href: /commas
+    - tag: a
+      name: Correct Grammar in Word Documents
+      href: /?source=upload
+  language_specific_checkers:
+    - tag: a
+      name: English
+      href: /spellchecking-english
+    - tag: a
+      name: German
+      href: /spellchecking-german
+    - tag: a
+      name: Portuguese
+      href: /spellchecking-portuguese
+    - tag: a
+      name: Spanish
+      href: /spellchecking-spanish
+    - tag: a
+      name: French
+      href: /spellchecking-french
+    - tag: a
+      name: Dutch
+      href: /spellchecking-dutch
+    - tag: a
+      name: Free Spell Checker
+      href: /spellchecking-english
+    - tag: a
+      name: German Grammar Checker
+      href: /spellchecking-german
+    - tag: a
+      name: Spanish Grammar Checker
+      href: /spellchecking-spanish
+    - tag: a
+      name: French Grammar Checker
+      href: /spellchecking-french
+    - tag: a
+      name: Portuguese Grammar Checker
+      href: /spellchecking-portuguese
+    - tag: a
+      name: Dutch Grammar Checker
+      href: /spellchecking-dutch
+    - tag: a
+      name: Catalan Grammar Checker
+      href: /spellchecking-catalan
+  social_media:
+    - tag: a
+      name: X
+      href: https://x.com/languagetool
+    - tag: a
+      name: Facebook
+      href: https://www.facebook.com/LanguageTool
+    - tag: a
+      name: Instagram
+      href: https://www.instagram.com/languagetool/
+    - tag: a
+      name: TikTok
+      href: https://www.tiktok.com/@languagetool
+    - tag: a
+      name: LinkedIn
+      href: https://www.linkedin.com/company/languagetool
+  footer_branding:
+    - tag: a
+      name: LanguageTool
+      href: /
+intents:
+
+- name: Check and Correct Text
+    strategy:
+      - Identify the primary text input area for content to be checked.
+      - Locate and activate the 'Correct' or 'Check' function.
+      - Optionally, select a specific language if the default is not desired.
+    reference_patterns:
+      - The user inputs text into the primary text area, then initiates the 'Correct' function.
+      - A user might select a specific language from the language dropdown before applying the 'Correct' action.
+      - Uploading a document for checking involves utilizing the 'Check Word Document' button.
+    decision_logic:
+      - IF text is present in the input area AND 'Correct' button is visible, THEN proceed with correction.
+      - IF a specific language is selected, THEN ensure the correction is applied with that language.
+      - IF a document upload is initiated, THEN use the 'Check Word Document' functionality.
+    actions:
+      - Fill text into the main text area.
+      - Click the 'Correct' or 'Check' button.
+      - (Optional) Click the language dropdown and select a specific language.
+      - (Optional) Click the 'Check Word Document' button and upload a file.
+    verification:
+      - Observe if suggestions or corrections appear in the text area.
+      - Confirm that the status indicates the text has been checked.
+    recovery:
+      - If no corrections appear, re-click the 'Correct' button.
+      - If an error occurs, clear the text and re-enter, then try again.
+  - name: Paraphrase Content
+    strategy:
+      - Identify the text input area for content to be paraphrased.
+      - Locate and activate the 'Paraphrase' function.
+      - Alternatively, navigate to the dedicated paraphrasing tool page.
+    reference_patterns:
+      - The user provides text and then engages the 'Paraphrase' button to generate alternative phrasing.
+      - Accessing the dedicated 'Paraphrasing Tool' page allows for focused text rephrasing.
+    decision_logic:
+      - IF text is present in the input area AND 'Paraphrase' button is visible, THEN proceed with paraphrasing.
+      - IF the user navigates to the 'Paraphrasing Tool' page, THEN use the input and paraphrase functions there.
+    actions:
+      - Fill text into the main text area or paraphrasing tool input.
+      - Click the 'Paraphrase' button.
+      - (Alternative) Navigate to the 'Paraphrasing Tool' page.
+    verification:
+      - Observe if alternative phrasing or paraphrased text is generated.
+      - Confirm that the output is different from the original input.
+    recovery:
+      - If no paraphrased text appears, re-click the 'Paraphrase' button.
+      - If an error occurs, try re-entering the text and paraphrasing again.
+  - name: Explore Premium Features
+    strategy:
+      - Locate links or buttons related to 'Premium' or 'Upgrade'.
+      - Navigate to the premium features section to view benefits.
+      - Identify options to learn more about upgrading.
+    reference_patterns:
+      - Navigating to the 'Premium' section or clicking 'Discover Premium' reveals subscription benefits.
+      - A user might click 'Unlock all Premium Features' to learn more about upgrading.
+    decision_logic:
+      - IF 'Premium' or 'Discover Premium' link is visible, THEN click to explore.
+      - IF 'Unlock all Premium Features' button is visible, THEN click to learn more.
+    actions:
+      - Click on 'Premium' or 'Discover Premium' link.
+      - Click on 'Unlock all Premium Features' button.
+    verification:
+      - Confirm that the page displays information about premium features and benefits.
+      - Verify that pricing or subscription options are presented.
+    recovery:
+      - If the page does not load correctly, try clicking the link again.
+      - If no premium information is found, try searching for "premium" on the site.
+  - name: Integrate LanguageTool with other Applications
+    strategy:
+      - Locate sections or links related to 'Add-ons', 'Plugins', or 'Integrations'.
+      - Identify specific platform links for installation.
+      - Navigate to the relevant integration page.
+    reference_patterns:
+      - The user explores 'Browser Add-ons' or 'Office Plugins' to find compatible integrations.
+      - Direct links for specific platforms like 'Add to Chrome' or 'macOS App for Microsoft Word' facilitate installation.
+    decision_logic:
+      - IF 'Browser Add-ons' or 'Office Plugins' links are visible, THEN explore them.
+      - IF direct platform links like 'Add to Chrome' are visible, THEN click to initiate installation.
+    actions:
+      - Click on 'Browser Add-ons' or 'Office Plugins'.
+      - Click on specific platform links like 'Add to Chrome' or 'macOS App for Microsoft Word'.
+    verification:
+      - Confirm that the page displays a list of available integrations.
+      - Verify that clicking a direct link leads to an installation prompt or store page.
+    recovery:
+      - If the integration page is not found, try navigating back and selecting a different integration link.
+      - If a direct link fails, try searching for the add-on/plugin manually in the respective store.
+  - name: Manage User Account
+    strategy:
+      - Locate 'Sign up' for new account creation.
+      - Locate 'Log in' for existing user access.
+      - Navigate to the respective account management pages.
+    reference_patterns:
+      - New users will utilize the 'Sign up' option to create an account.
+      - Existing users access their profile via the 'Log in' button.
+    decision_logic:
+      - IF the user is new, THEN click 'Sign up'.
+      - IF the user is existing, THEN click 'Log in'.
+    actions:
+      - Click the 'Sign up' button.
+      - Click the 'Log in' button.
+    verification:
+      - For 'Sign up', verify that the registration form is displayed.
+      - For 'Log in', verify that the login form is displayed or the user is redirected to their dashboard.
+    recovery:
+      - If the form does not load, try clicking the button again.
+      - If login/signup fails, check for error messages and re-enter credentials/information.
+  - name: Access Support and Information
+    strategy:
+      - Locate links related to 'Help', 'Support', or 'About Us'.
+      - Navigate to the relevant information pages.
+      - Identify links for legal terms or company information.
+    reference_patterns:
+      - Seeking assistance involves navigating to 'Help' or the 'Help Center'.
+      - Information about the company or legal terms is found through 'About Us' or 'Terms & Conditions'.
+    decision_logic:
+      - IF 'Help' or 'Help Center' is visible, THEN click to find support.
+      - IF 'About Us' or 'Terms & Conditions' is visible, THEN click to find company information.
+    actions:
+      - Click on 'Help' or 'Help Center'.
+      - Click on 'About Us' or 'Terms & Conditions'.
+    verification:
+      - Confirm that the page displays FAQs, contact information, or articles.
+      - Verify that the page contains company details or legal documents.
+    recovery:
+      - If the page does not load, try clicking the link again.
+      - If the desired information is not found, try using the site's search function.
+  - name: Understand Business Solutions
+    strategy:
+      - Locate links or sections dedicated to 'Business' or 'Enterprise' solutions.
+      - Identify options for developers, such as an 'API'.
+      - Navigate to the respective business or developer information pages.
+    reference_patterns:
+      - Businesses investigate offerings by clicking 'For Business' or 'LT for Business'.
+      - Developers might explore the 'Proofreading API' for integration into their own systems.
+    decision_logic:
+      - IF 'For Business' or 'LT for Business' is visible, THEN click to explore business offerings.
+      - IF 'Proofreading API' is visible, THEN click to explore developer resources.
+    actions:
+      - Click on 'For Business' or 'LT for Business'.
+      - Click on 'Proofreading API'.
+    verification:
+      - Confirm that the page displays information about business plans, features, or case studies.
+      - Verify that the API documentation or details are presented.
+    recovery:
+      - If the page does not load, try clicking the link again.
+      - If the desired information is not found, try searching for "business" or "API" on the site.
+  - name: Change Language Settings
+    strategy:
+      - Locate the language selection element, typically a dropdown.
+      - Interact with the element to choose a preferred language.
+      - Alternatively, navigate to specific language-focused pages.
+    reference_patterns:
+      - The user interacts with the language 'select' element to choose a preferred checking language.
+      - Specific language spell-checking pages, like 'English' or 'German', can be directly accessed.
+    decision_logic:
+      - IF a language 'select' element is visible, THEN interact with it to change the language.
+      - IF specific language pages (e.g., 'English', 'German') are accessible, THEN navigate directly.
+    actions:
+      - Click the language 'select' element and choose a language from the dropdown.
+      - Navigate to a specific language spell-checking page.
+    verification:
+      - Observe if the interface language changes or if the checking language is updated.
+      - Confirm that the selected language is reflected in the application.
+    recovery:
+      - If the language does not change, try re-selecting it from the dropdown.
+      - If a specific language page fails to load, try navigating to the main page and using the dropdown.
+  - name: Engage with Community and Social Media
+    strategy:
+      - Locate social media icons or links (e.g., 'X', 'Facebook').
+      - Identify links to the platform's 'Blog'.
+      - Navigate to the respective social media profiles or blog.
+    reference_patterns:
+      - Users can connect with the platform through various social media links such as 'X' or 'Facebook'.
+      - Exploring the 'Blog' provides insights and updates from the LanguageTool team.
+    decision_logic:
+      - IF social media links (e.g., 'X', 'Facebook') are visible, THEN click to connect.
+      - IF 'Blog' link is visible, THEN click to read updates.
+    actions:
+      - Click on social media icons/links (e.g., 'X', 'Facebook').
+      - Click on the 'Blog' link.
+    verification:
+      - Confirm that the social media profile page opens in a new tab/window.
+      - Verify that the blog page loads and displays articles.
+    recovery:
+      - If a social media link is broken, try searching for the platform's name on that social media site.
+      - If the blog page does not load, try clicking the link again.
+  - name: Explore Open-Source and Developer Resources
+    strategy:
+      - Locate links related to 'Open-Source' or 'Source Code'.
+      - Identify the 'Proofreading API' for programmatic access.
+      - Navigate to the relevant open-source or API documentation pages.
+    reference_patterns:
+      - Developers interested in the underlying technology will seek out 'Open-Source Development' or 'Source Code'.
+      - The 'Proofreading API' provides a programmatic interface for advanced usage.
+    decision_logic:
+      - IF 'Open-Source Development' or 'Source Code' is visible, THEN click to explore.
+      - IF 'Proofreading API' is visible, THEN click to access API documentation.
+    actions:
+      - Click on 'Open-Source Development' or 'Source Code'.
+      - Click on 'Proofreading API'.
+    verification:
+      - Confirm that the page displays information about open-source projects or links to repositories.
+      - Verify that the API documentation, endpoints, and usage examples are presented.
+    recovery:
+      - If the page does not load, try clicking the link again.
+      - If the desired information is not found, try searching for "open source" or "API" on the site.

@@ -1,0 +1,81 @@
+name: "Apollo B2B Lead Scraping"
+role: "Growth Hacker"
+capability: "lead_generation"
+
+context:
+  purpose: "Find and scrape high-quality B2B leads, verifying decision makers via Apollo."
+  strategy: |
+    Use Apollo's left-hand search filters to drill down.
+    Prioritize verified emails and direct dials.
+    Extract the list into a structured CSV format natively logic.
+
+platform_knowledge:
+  ui_patterns:
+    - "Search bar is at the top center"
+    - "Filters panel is a collapsable sidebar on the left"
+    - "Lead results are rendered in an infinite-scroll data table"
+    - "The 'Access Email' button is rendered inside the table row"
+  common_elements:
+    search_input: "Search for People or Companies"
+    job_titles_filter: "Job Titles"
+    location_filter: "Location"
+    save_button: "Save"
+    email_button: "Access Email"
+    export_button: "Export"
+  interaction_patterns:
+    - "Click Job Titles filter → Type title → Press Enter"
+    - "Scroll table → Check boxes on the left → Click Export"
+
+decision_logic:
+  - name: "who_to_target"
+    rules:
+      - "Only target VP, Director, or C-Level executives if company size > 500"
+      - "Target Founders if company size < 50"
+      - "Strictly filter for 'Verified Email Status'"
+  - name: "credit_conservation"
+    rules:
+      - "Do not spend Apollo credits on non-verified or 'Catch-all' emails"
+      - "If 'Access Email' costs a credit, verify the title matches exact persona first"
+
+actions:
+  - type: "click_semantic"
+    anchor: "Filters"
+  - type: "click_semantic"
+    anchor: "Job Titles"
+  - type: "type_semantic"
+    anchor: "Enter Job Titles"
+    value: "{target_query}"
+  - type: "click_semantic"
+    anchor: "Email Status"
+  - type: "click_semantic"
+    anchor: "Verified"
+  - type: "wait"
+    duration: 3000
+    reason: "Wait for Apollo React table to hydrate data layer"
+  - type: "extract_table"
+    anchor: "Results"
+    fields:
+      - "Name"
+      - "Title"
+      - "Company"
+      - "Email"
+
+expected_outcomes:
+  - "A hydrated HTML data table full of targeted leads."
+  - "Credits successfully spent to unmask emails."
+
+failure_cases:
+  - case: "No leads found"
+    action: "Broaden job title filters (e.g., from 'VP of Outbound' to 'VP Sales')"
+  - case: "Out of Credits"
+    action: "Terminate sequence and alert user 'Out of Apollo Credits'"
+  - case: "CAPTCHA Triggered"
+    action: "Identify Slider puzzle or DataDome, pivot to Visual Solving Engine"
+
+recovery_strategies:
+  - "If elements refuse to click due to overlay, invoke javascript native DOM bypass click."
+  - "If logged out, immediately pause and trigger 'Login Mode'."
+
+learning_hooks:
+  - "Track which filters yield the most verified emails."
+  - "Remember pagination limits before rate limiting kicks in."

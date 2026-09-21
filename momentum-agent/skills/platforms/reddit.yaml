@@ -1,0 +1,100 @@
+platform: "reddit.com"
+system_behavior: "Reddit is a heavily text-based hierarchical forum. It uses nested comment trees (upvotes/downvotes). The top search bar is global, whereas subreddits have their own scoped search bars. The UI can be dense with infinite scroll feeds and inline media expanders."
+
+intents:
+
+- name: "scrape_unbiased_product_reviews"
+    trigger_roles: ["Decision Optimizer", "Researcher", "Competitor Analyst"]
+    strategy:
+      - "Identify the product and its competitor for comparison."
+      - "Locate relevant discussions on Reddit to gather user opinions."
+      - "Filter and extract key sentiments regarding product strengths and weaknesses."
+    reference_patterns:
+      - "Locate the primary global search bar at the absolute top of the screen."
+      - "Type the name of the product vs its competitor (e.g., 'Notion vs Obsidian') and hit Enter."
+      - "Look at the search results page. Find the 'Communities' or 'Posts' tabs and ensure you are looking at 'Posts'."
+      - "Find the exact 'Sort By' dropdown button. Click it and select 'Top', then set the time filter dropdown to 'This Year' to avoid stale data."
+      - "Click the title of the top-voted thread. Scroll down past the original post text until you reach the comment section."
+      - "Look specifically for the highest upvoted comments. Extract the exact words they use regarding product flaws or highly praised features."
+    decision_logic:
+      - "If search results show 'Communities' tab, prioritize 'Posts' tab."
+      - "If 'Sort By' dropdown is not immediately visible, search for common sorting UI elements."
+      - "If no top-voted thread is found, select the next highest-voted relevant thread."
+    actions:
+      - "Click on the global search bar."
+      - "Type product comparison query."
+      - "Click 'Enter' or search button."
+      - "Click 'Posts' tab."
+      - "Click 'Sort By' dropdown."
+      - "Select 'Top'."
+      - "Click time filter dropdown."
+      - "Select 'This Year'."
+      - "Click on the title of the top-voted thread."
+      - "Scroll down to the comment section."
+      - "Extract text from highly upvoted comments."
+    verification:
+      - "Confirm that extracted comments contain product-specific feedback."
+      - "Verify that the comments are from the highest upvoted sections."
+    recovery:
+      - "If no relevant posts are found, try a broader search term for the product."
+      - "If sorting fails, attempt to sort by 'Hot' or 'New' as an alternative."
+
+  - name: "discover_niche_pain_points"
+    trigger_roles: ["Entrepreneur", "Growth Hacker", "Copywriter"]
+    strategy:
+      - "Identify a specific niche and its corresponding subreddit."
+      - "Filter content to find highly engaged discussions about problems."
+      - "Extract core frustrations and common pain points expressed by users."
+    reference_patterns:
+      - "Find a highly specific subreddit related to the niche by typing 'r/target_niche' in the search bar (e.g., 'r/SaaS' or 'r/webdev')."
+      - "Once inside the subreddit, locate the 'Sort By' button cluster (usually near the top of the feed) and click 'Top', then select 'This Month'."
+      - "Scroll the feed and scan the titles. Specifically look for thread titles containing questions, complaints, or words like 'angry', 'hate', 'how to', or 'help'."
+      - "Click on these friction-heavy threads and extract the core frustrations users are discussing to construct a pain-point database for product building."
+    decision_logic:
+      - "If the specified subreddit does not exist, try a more general niche subreddit."
+      - "If 'Sort By' options are different, prioritize sorting by 'Top' or 'Hot'."
+      - "If no obvious pain point keywords are in titles, look for threads with high comment counts."
+    actions:
+      - "Click on the search bar."
+      - "Type 'r/target_niche'."
+      - "Click 'Enter' or search button."
+      - "Click 'Sort By' button."
+      - "Select 'Top'."
+      - "Select 'This Month'."
+      - "Scroll feed and identify relevant thread titles."
+      - "Click on identified friction-heavy threads."
+      - "Extract core frustrations from thread content and comments."
+    verification:
+      - "Confirm that extracted points are indeed user frustrations or problems."
+      - "Verify that the extracted points are relevant to the target niche."
+    recovery:
+      - "If initial subreddit search fails, try alternative or broader subreddit names."
+      - "If no pain points are found in 'Top' posts, try sorting by 'New' or 'Controversial'."
+
+  - name: "trend_verification"
+    trigger_roles: ["Fact Checker", "Trend Spotter"]
+    strategy:
+      - "Monitor the main Reddit feed for rapidly escalating topics."
+      - "Quantify the virality of a topic based on upvote count and time."
+      - "Assess the general sentiment within the discussion to understand public perception."
+    reference_patterns:
+      - "Navigate to reddit.com and scroll the default front page (r/all or Popular), looking for repeated news items, viral events, or exploding topics."
+      - "Look at the small numerical upvote counters next to the posts. Anything exceeding 30k upvotes in under 12 hours is a validated viral trend."
+      - "Click into the thread and read the top two nested comment chains to determine if the general sentiment is skeptical (debunking) or purely supportive."
+    decision_logic:
+      - "If the default front page is not 'r/all' or 'Popular', navigate to one of them."
+      - "If upvote count is high but time is ambiguous, prioritize posts with recent activity."
+      - "If top comments are mixed, analyze the overall tone of the first few nested chains."
+    actions:
+      - "Navigate to reddit.com."
+      - "Scroll the default front page."
+      - "Identify posts with high upvote counts and recent timestamps."
+      - "Click on the identified trending thread."
+      - "Read the top two nested comment chains."
+      - "Determine the general sentiment (skeptical/supportive)."
+    verification:
+      - "Confirm that the upvote count and time criteria for virality are met."
+      - "Verify that the sentiment assessment accurately reflects the top comments."
+    recovery:
+      - "If no clear viral trends are immediately visible, continue scrolling or refresh the page."
+      - "If sentiment is unclear from top comments, expand to read more comment chains."

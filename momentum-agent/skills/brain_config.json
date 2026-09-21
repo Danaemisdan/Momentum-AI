@@ -1,0 +1,174 @@
+{
+  "brain": {
+    "strategy": {
+      "selection": [
+        "fast_execution",
+        "deep_research",
+        "broad_exploration"
+      ],
+      "rules": [
+        "if simple task -> fast",
+        "if complex -> deep",
+        "if unknown -> explore first"
+      ]
+    },
+    "edge_cases": {
+      "navigation": ["page not loading", "404 error", "redirect loop"],
+      "interaction": ["button not found", "element changed", "click failed"],
+      "content": ["irrelevant info", "empty page", "paywall"],
+      "system": ["rate limit", "captcha", "timeout"],
+      "responses": [
+        "retry with variation",
+        "scroll more",
+        "search alternative query",
+        "switch platform",
+        "restart flow",
+        "reduce task complexity"
+      ]
+    },
+    "modes": {
+      "OBSERVE": {
+        "behavior": [
+          "consume content in chunks",
+          "skip low-value sections",
+          "prioritize high-signal info",
+          "extract insights continuously"
+        ],
+        "decision_logic": [
+          "if boring -> skip",
+          "if useful -> continue",
+          "if highly useful -> save"
+        ],
+        "actions": [
+          "scroll",
+          "watch",
+          "pause",
+          "jump to section",
+          "read comments"
+        ]
+      },
+      "DISCOVER": {
+        "intent_mapping": [
+          "if intent == 'general_info' -> search_engine",
+          "if intent == 'visual' -> image_search",
+          "if intent == 'news' -> news_tab",
+          "if intent == 'video' -> video_platform",
+          "if intent == 'product' -> ecommerce",
+          "if intent == 'code' -> github_stackoverflow"
+        ],
+        "query_generation": [
+          "start with minimal query",
+          "include core keywords only",
+          "avoid long sentences",
+          "include year if relevant",
+          "include location if needed",
+          "avoid stopwords"
+        ],
+        "query_refinement": [
+          "if results irrelevant -> add qualifiers",
+          "if too broad -> narrow with constraints",
+          "if too narrow -> remove constraints",
+          "if no results -> rephrase intent",
+          "max_attempts = 5"
+        ]
+      },
+      "EVALUATE": {
+        "serp_scanning": [
+          "scan top 5 results first",
+          "ignore ads unless necessary",
+          "prefer organic results"
+        ],
+        "trust_scoring": [
+          "+3 if domain_known",
+          "+2 if domain_suffix in ['.gov', '.edu']",
+          "+2 if title matches query",
+          "+2 if snippet relevant",
+          "-3 if clickbait patterns",
+          "-2 if excessive ads"
+        ],
+        "click_decision": [
+          "select highest score result",
+          "if score < threshold -> refine query",
+          "avoid unknown/random domains unless no option"
+        ]
+      },
+      "NAVIGATE": {
+        "page_understanding": [
+          "wait for full load",
+          "detect layout type (article, product, forum, app)",
+          "identify main content area"
+        ],
+        "interaction": [
+          "scroll incrementally",
+          "prioritize headings (h1, h2, h3)",
+          "ignore navbars/footers",
+          "close popups if blocking"
+        ],
+        "ui_adaptation": [
+          "if infinite_scroll -> continue until relevant info found",
+          "if pagination -> check next page if needed",
+          "if tabs -> explore relevant tabs",
+          "if dropdowns -> expand if useful"
+        ]
+      },
+      "EXTRACT": {
+        "content_extraction": [
+          "extract only relevant sections",
+          "ignore ads/sponsored blocks",
+          "prioritize structured data (tables, lists)"
+        ],
+        "validation": [
+          "cross-check with at least 2 sources",
+          "if conflicting info -> mark uncertainty",
+          "prefer recent data when time-sensitive"
+        ]
+      },
+      "RECOVER": {
+        "failure_detection": [
+          "if 404 -> trigger recovery",
+          "if empty content -> trigger recovery",
+          "if irrelevant -> trigger recovery",
+          "if blocked -> trigger recovery"
+        ],
+        "recovery_strategies": [
+          "go_back()",
+          "refine_query()",
+          "switch_source()",
+          "change_platform()",
+          "restart_flow()"
+        ],
+        "retry_logic": [
+          "max_retries_per_task = 3",
+          "avoid repeating same query",
+          "log failed paths"
+        ]
+      },
+      "TERMINATE": {
+        "completion_check": [
+          "if answer_confidence > threshold -> stop",
+          "if user_intent satisfied -> stop",
+          "if retries exhausted -> stop with best effort"
+        ]
+      }
+    },
+    "meta_rules": {
+      "behavior": [
+        "never trust first result blindly",
+        "always verify before concluding",
+        "prefer multiple sources",
+        "avoid unnecessary actions",
+        "minimize steps"
+      ],
+      "exploration": [
+        "explore breadth before depth",
+        "switch strategy if stuck",
+        "avoid loops"
+      ],
+      "safety": [
+        "avoid forced automation of restricted systems",
+        "do not bypass protections blindly",
+        "fallback instead of forcing"
+      ]
+    }
+  }
+}

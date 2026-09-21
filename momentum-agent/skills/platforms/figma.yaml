@@ -1,0 +1,83 @@
+platform: "figma.com"
+system_behavior: "Figma is a highly visual, complex spatial canvas. The main interface consists of a left-hand layer tree, a central infinite canvas, and a right-hand properties panel (Design, Prototype, Inspect) containing detailed hex values, padding sliders, and font settings."
+
+intents:
+
+- name: "extract_css_tokens"
+    trigger_roles: ["Frontend Developer", "UI Designer", "Rapid Prototyper"]
+    strategy:
+      - "Understand the goal is to extract specific CSS properties from a selected Figma element."
+      - "Identify the correct panel and mode to access CSS information."
+      - "Locate and parse the relevant CSS properties from the displayed code."
+    reference_patterns:
+      - "Open the target Figma design file link. Ensure you are looking at the right-hand panel."
+      - "Look for the 'Dev Mode' toggle switch at the top right (it usually looks like a small angled bracket `</>` icon) and switch it on."
+      - "Click directly on any visual element on the canvas (e.g., a button or a card). It will highlight with blue bounds."
+      - "Look at the right-hand panel again. It will now prominently display the exact CSS code box."
+    decision_logic:
+      - "IF 'Dev Mode' is not active, THEN activate 'Dev Mode'."
+      - "IF an element is not selected, THEN select a target element on the canvas."
+      - "IF CSS code box is visible, THEN proceed to extract tokens."
+    actions:
+      - "Click 'Dev Mode' toggle."
+      - "Click target visual element on canvas."
+      - "Read text content of CSS code box."
+    verification:
+      - "Confirm that the CSS code box is visible and populated with code."
+      - "Check for the presence of Hex color codes, border-radius, font-family, and margin/padding rules."
+    recovery:
+      - "IF 'Dev Mode' is not found, THEN search for alternative ways to access developer information."
+      - "IF no CSS code appears, THEN try selecting a different element or re-toggling 'Dev Mode'."
+
+  - name: "analyze_component_hierarchy"
+    trigger_roles: ["UX Architect", "System Thinker"]
+    strategy:
+      - "Understand the goal is to map the structural organization of components within the design."
+      - "Navigate the Layers panel to reveal nested component structures."
+      - "Distinguish between Auto-Layouts and regular groups to infer architectural implications."
+    reference_patterns:
+      - "Look specifically at the left-hand sidebar which contains the 'Layers' and 'Assets' panels. Ensure you are on 'Layers'."
+      - "Click the small dropdown arrows next to the frame names to expand the nested group structures."
+      - "Identify whether the designer used explicit Auto-Layouts (denoted by a three-bar icon) or regular groups. This dictates how the frontend architecture must be coded via Flexbox or CSS Grid."
+      - "Extract the names of the top-level master components in the tree to build an internal mental map of the design system."
+    decision_logic:
+      - "IF 'Layers' panel is not active, THEN switch to 'Layers' panel."
+      - "IF a frame has a dropdown arrow, THEN click to expand its contents."
+      - "IF an element has a three-bar icon, THEN classify it as an Auto-Layout."
+    actions:
+      - "Click 'Layers' tab in left sidebar."
+      - "Click dropdown arrows next to frame names."
+      - "Read names of top-level master components."
+    verification:
+      - "Confirm that nested layers are visible and expanded."
+      - "Verify the presence of Auto-Layout icons for relevant components."
+    recovery:
+      - "IF 'Layers' panel is not visible, THEN check for collapsed sidebars."
+      - "IF dropdowns don't expand, THEN try double-clicking or refreshing the view."
+
+  - name: "export_asset_media"
+    trigger_roles: ["Frontend Developer", "Content Creator"]
+    strategy:
+      - "Understand the goal is to download a specific visual asset from the design."
+      - "Locate the target asset on the canvas and initiate the export process."
+      - "Configure the export settings (format, scale) and trigger the download."
+    reference_patterns:
+      - "Click firmly on the exact SVG icon or image asset you want to export on the central canvas."
+      - "Look at the bottom of the right-hand Design panel for a collapsible section labeled 'Export'. Click the plus icon to add an export setting."
+      - "Click the format dropdown (which says PNG by default) and select 'SVG' for vectors or '1x PNG' for standard images."
+      - "Click the final 'Export [Layer Name]' button right below the format selection to download the raw graphic payload."
+    decision_logic:
+      - "IF an asset is not selected, THEN select the target asset on the canvas."
+      - "IF 'Export' section is not expanded, THEN expand the 'Export' section."
+      - "IF desired format is not selected, THEN select the appropriate format (SVG or PNG)."
+    actions:
+      - "Click target SVG icon or image asset on canvas."
+      - "Click '+' icon in 'Export' section."
+      - "Click format dropdown and select 'SVG' or '1x PNG'."
+      - "Click 'Export [Layer Name]' button."
+    verification:
+      - "Confirm that a download prompt or file download has initiated."
+      - "Check the downloaded file's format and content."
+    recovery:
+      - "IF 'Export' section is not visible, THEN ensure the correct panel is active (Design panel)."
+      - "IF export fails, THEN try selecting the asset again or restarting the export process."

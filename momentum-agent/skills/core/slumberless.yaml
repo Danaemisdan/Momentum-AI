@@ -1,0 +1,17 @@
+platform: generic_information
+intents:
+- name: background_read
+  trigger_roles:
+  - Read
+  - Learn
+  - Digest
+  - Summarize
+  strategy:
+  - Used during the Slumberless OS idle state.
+  - Scroll through the document slowly to trigger lazy-loaded text.
+  - Extract chunks of text and compress into embeddings for SQLite ROM.
+  actions:
+  - 'Scroll: down'
+  - 'Scroll: down'
+  - 'Scroll: down'
+  - 'Extract: full_page_content'
