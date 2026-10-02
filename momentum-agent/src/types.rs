@@ -56,6 +56,8 @@ pub struct UIElement {
     pub is_clickable: bool,
     pub is_input_like: bool,
     pub frame_id: Option<String>, // Which frame this belongs to
+    pub semantic_intent: Option<String>, // Heuristic mapping (e.g. 'Navigate', 'Search')
+    pub spatial_zone: Option<String>, // Dynamic geometric clustering zone (e.g. 'Left Sidebar')
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,6 +73,10 @@ pub enum Action {
     Talk { speech: String },        // Chat persona output
     Ask { question: String },       // Chat asking user
     Perceive { #[serde(default)] selector: Option<String> }, // Foveated localized vision
+    StartReflex { micro_goal: String }, // Triggers the Tiny LLM continuous spinal cord loop
+    SpawnService { name: String, objective: String, headless: bool },
+    KillService { name: String },
+    ListServices,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -84,6 +90,10 @@ pub enum ToolName {
     Ask,
     Achievement,
     Perceive,
+    StartReflex,
+    SpawnService,
+    KillService,
+    ListServices,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -154,6 +164,10 @@ pub enum ClientMessage {
     UserInput {
         history: Vec<ChatMessage>,
         message: String,
+    },
+    InterimInput {
+        history: Vec<ChatMessage>,
+        text: String,
     },
     Control {
         command: ControlCommand,

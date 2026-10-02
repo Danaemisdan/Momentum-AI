@@ -129,7 +129,7 @@ async def lifespan(app: FastAPI):
             segments, info = app_state["whisper"].transcribe(
                 audio_np, 
                 beam_size=1,
-                initial_prompt="[laughs] [coughs] [sneezes] [crying] [angry]",
+                initial_prompt="[laughs] [coughs] [sneezes] [crying] [angry] WhatsApp, Slack, Spotify, Chrome, Desktop, Momentum HUD.",
                 condition_on_previous_text=False,
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500)
@@ -142,8 +142,20 @@ async def lifespan(app: FastAPI):
             if text:
                 # Filter out notorious Whisper hallucinations on silence
                 clean_lower = re.sub(r'[^a-z]', '', text.lower())
-                hallucinations = {"thankyou", "you", "mmhmm", "mm", "hmm", "okay", "yeah", "thatsthat", "god", "thatsit", "shh", "thisiscrazy", "oh", "ew", "hahaha", "ha", "huh", "wow", "what"}
-                if clean_lower in hallucinations:
+                hallucinations = {
+                    "thankyou", "you", "mmhmm", "mm", "hmm", "okay", "yeah", "thatsthat", 
+                    "god", "thatsit", "shh", "thisiscrazy", "oh", "ew", "hahaha", "ha", 
+                    "huh", "wow", "what", "thanks", "byebye", "bye", "yourewelcome", 
+                    "welcome", "hello", "hi", "test", "testing", "imsorry", "sorry", 
+                    "yep", "yes", "no", "nah", "uh", "um", "ah", "i", "a", "so", 
+                    "right", "sure", "well", "and", "but", "or", "to", "the"
+                }
+                
+                # Filter out pure filler sounds (e.g. "Hmm.", "Hmm. Hmm.", "Uh-huh.")
+                if re.fullmatch(r'(hmm|hm|mm|uh|ah|ha|huh)+', clean_lower):
+                    return
+                    
+                if clean_lower in hallucinations or len(clean_lower) < 2:
                     return
 
                 # Text-based Acoustic Echo Cancellation (AEC)

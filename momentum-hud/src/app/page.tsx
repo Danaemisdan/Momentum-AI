@@ -3,11 +3,13 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { useSpeechRecognition } from "@/lib/useSpeechRecognition";
 
 export default function Home() {
   const [status, setStatus] = useState({ agent: false, audio: false, vision: false });
   const [showSplash, setShowSplash] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
+  const isVisibleRef = useRef(false);
   const [currentDialogue, setCurrentDialogue] = useState("");
   const currentDialogueRef = useRef("");
   
@@ -27,6 +29,7 @@ export default function Home() {
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
       inactivityTimerRef.current = setTimeout(() => {
           setIsVisible(false);
+          isVisibleRef.current = false;
           setTimeout(() => invoke("hide_window_now"), 800);
       }, 10000); // 10 second inactivity timeout
   }, []);
@@ -193,6 +196,7 @@ export default function Home() {
       // Wake Word Activation
       if (!isVisible && (lower.includes("momentum") || lower.includes("hey momentum"))) {
           setIsVisible(true);
+          isVisibleRef.current = true;
           invoke("show_window_now");
           
           if (ttsWsRef.current?.readyState === WebSocket.OPEN) {
@@ -219,14 +223,31 @@ export default function Home() {
           chatHistoryRef.current.push({ role: "user", text: finalTranscript });
           if (agentWsRef.current?.readyState === WebSocket.OPEN) {
               agentWsRef.current.send(JSON.stringify({
+                  kind: "user_input",
                   history: chatHistoryRef.current,
                   message: finalTranscript
+              }));
+          }
+      } else {
+          // Stream interim words for zero-latency TTFT (Continuous KV Prefilling)
+          if (agentWsRef.current?.readyState === WebSocket.OPEN) {
+              agentWsRef.current.send(JSON.stringify({
+                  kind: "interim_input",
+                  history: chatHistoryRef.current,
+                  text: transcript
               }));
           }
       }
   }, []);
 
-  // Connect to Python Backend STT (Persistent with Reconnect)
+  // Use native Web Speech API for zero-latency STT streaming when HUD is visible
+  const { startListening } = useSpeechRecognition(handleSpeech);
+  
+  useEffect(() => {
+      startListening();
+  }, [startListening]);
+
+  // Connect to Python Backend STT for background Wake-Word detection when HUD is hidden
   useEffect(() => {
       let ws: WebSocket | null = null;
       let isMounted = true;
@@ -236,7 +257,10 @@ export default function Home() {
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                handleSpeech(data.transcript, data.isFinal);
+                // Only use Python STT when the HUD is hidden, to avoid duplicating Web Speech API
+                if (!isVisibleRef.current) {
+                    handleSpeech(data.transcript, data.isFinal);
+                }
             } catch(e) {}
         };
         ws.onclose = () => {
@@ -285,6 +309,7 @@ export default function Home() {
             invoke("hide_window_now");
           }, 800);
         }
+        isVisibleRef.current = next;
         return next;
       });
     });

@@ -268,6 +268,8 @@ impl ActionExecutor {
                     target_text: Some(vision_output),
                 })
             }
+            Action::StartReflex { .. } => unreachable!("StartReflex is intercepted in main.rs"),
+            Action::SpawnService { .. } | Action::KillService { .. } | Action::ListServices => unreachable!("Service tools are intercepted in main.rs"),
         }
     }
 }

@@ -7,6 +7,9 @@ mod server;
 mod skills;
 mod scraper;
 mod vision_stream;
+mod reflex;
+mod intent;
+mod services;
 
 use crate::browser::MomentumBrowser;
 use crate::brain::MomentumBrain;
@@ -138,7 +141,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let browser_mu = Arc::new(Mutex::new(MomentumBrowser::init()));
     let brain = Arc::new(MomentumBrain::init(&model_path)?);
     let _executor = ActionExecutor::new();
-    let tx_agent_clone = tx_agent.clone();
     
     // Init Vision Stream Optic Nerve (Shared Memory)
     // We must keep the stream instance alive so the memory map doesn't get dropped!
@@ -169,6 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 5. Main Loop: Reactive & Autonomous
     let active_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>> = Arc::new(Mutex::new(None));
     let ask_notifier: Arc<Mutex<Option<tokio::sync::mpsc::Sender<String>>>> = Arc::new(Mutex::new(None));
+    let service_manager = Arc::new(Mutex::new(crate::services::ServiceManager::new()));
 
     println!("✨ Momentum is ready! (Chrome only launches for web tasks)");
 
@@ -182,10 +185,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                 let (history, message) = match input {
                     ClientMessage::Control { command: ControlCommand::Stop, .. } => {
-                        if cancel_active_task(&active_task, &ask_notifier, &tx_agent_clone).await {
+                        if cancel_active_task(&active_task, &ask_notifier, &tx_agent).await {
                             println!("🛑 Active agent task cancelled by user.");
                         }
                         continue;
+                    }
+                    ClientMessage::InterimInput { history, text } => {
+                        let clean_history: Vec<&crate::types::ChatMessage> = history.iter().filter(|msg| !msg.text.trim().is_empty()).collect();
+                        let mut history_str = String::new();
+                        let keep_count = 6;
+                        let skip = if clean_history.len() > keep_count { clean_history.len() - keep_count } else { 0 };
+                        for msg in clean_history.iter().skip(skip) {
+                            history_str.push_str(&format!("<|start_header_id|>{role}<|end_header_id|>\n{text}<|eot_id|>\n", role=msg.role, text=msg.text));
+                        }
+                        
+                        let brain_prefill = brain.clone();
+                        let text_clone = text.clone();
+                        tokio::spawn(async move {
+                            // Skip needs_vision=true for interim to avoid 300ms latency penalty
+                            let prefill_prompt = brain_prefill.build_chat_prompt(&text_clone, &history_str, false).await;
+                            if let Err(e) = brain_prefill.prefill_context(&prefill_prompt).await {
+                                eprintln!("⚠️ Prefill error: {}", e);
+                            }
+                        });
+                        continue; // Do not proceed to intent classification or generation
                     }
                     ClientMessage::UserInput { history, message } => (history, message),
                 };
@@ -206,7 +229,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 }).collect();
 
                 let mut history_str = String::new();
-                let keep_count = 20;
+                let keep_count = 6; // Reduced from 20 to speed up TTFT for faster replies
                 let skip = if clean_history.len() > keep_count { clean_history.len() - keep_count } else { 0 };
                 // Don't inject omitted warnings into the history prompt, it confuses the model
                 for msg in clean_history.iter().skip(skip) {
@@ -214,13 +237,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 }
 
                 // --- INTENT CLASSIFICATION ---
-                // Force Chat mode to disable all agentic / browser automation capabilities for now.
-                let agent_mode = AgentMode::Chat;
+                let agent_mode = match MomentumBrain::heuristic_mode(&message) {
+                    Some(m) => m,
+                    None => brain.classify_mode(&message).await.unwrap_or(AgentMode::Chat)
+                };
 
                 match agent_mode {
                     AgentMode::Chat => {
                         println!("🤖 Personality Mode (Chat)");
-                        let tx_chat_resp = tx_agent_clone.clone();
+                        let tx_chat_resp = tx_agent.clone();
                         let brain_chat = brain.clone();
                         let msg_lower = message.to_lowercase();
                         let b_mu_chat = browser_mu.clone();
@@ -238,57 +263,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             
                             msg_with_vision = format!("[System Note: The user's currently focused application is '{}']\n{}", active_app, msg_with_vision);
                             
-                            // If the user seems to be asking about the screen/sight, run vision asynchronously!
-                            if msg_lower.contains("screen") || msg_lower.contains("see") || msg_lower.contains("look") {
-                                println!("👁️ Chat implies visual context. Spawning background Vision Engine task...");
-                                
-                                let b_mu_bg = b_mu_chat.clone();
-                                let brain_bg = brain_chat.clone();
-                                let tx_bg = tx_chat_resp.clone();
-                                let history_bg = history_str.clone();
-                                let msg_bg = message.clone();
-                                
-                                tokio::spawn(async move {
-                                    let vision_res = crate::perception::perceive_vision(None).await;
-                                    let mut b_guard = b_mu_bg.lock().await;
-                                    let ui_context = if let Some(page) = b_guard.page.as_ref() {
-                                        let ui_list = crate::perception::perceive(page).await.unwrap_or_default();
-                                        let url = page.url().await.unwrap_or_default().unwrap_or_default();
-                                        let mut raw_summary = format!("URL: {}\nUI ELEMENTS:\n", url);
-                                        for el in ui_list.iter().take(40) {
-                                            raw_summary.push_str(&format!("- [{}] {}\n", el.role, el.text));
-                                        }
-                                        raw_summary
-                                    } else {
-                                        "No browser window open.".into()
-                                    };
-                                    
-                                    let follow_up_prompt = format!("[SYSTEM NOTE: The physical vision engine (Llava) just finished processing the screen for the user's previous request ('{}'). It sees: {}\n\nDOM tree sees: {}\n\nGive a quick follow up response providing this new visual information to the user.]", msg_bg, vision_res, ui_context);
-                                    
-                                    if let Ok(mut speech) = brain_bg.decide_chat(&follow_up_prompt, &history_bg, tx_bg.clone()).await {
-                                        // Strip IGNORE if present
-                                        if let Some(start_idx) = speech.find("[ACTION: IGNORE]") {
-                                            let mut clean = speech[..start_idx].to_string();
-                                            clean.push_str(&speech[start_idx + 16..]);
-                                            speech = clean.trim().to_string();
-                                        }
-                                        if !speech.is_empty() {
-                                            let _ = tx_bg.send(crate::types::WsResponse {
-                                                msg_type: "action".into(),
-                                                speech: Some(speech),
-                                                t: None,
-                                                action: None,
-                                                thought: None,
-                                                agent_mode: None,
-                                                macro_state: None,
-                                                tool_name: None,
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-
-                            match brain_chat.decide_chat(&msg_with_vision, &history_str, tx_chat_resp.clone()).await {
+                            let needs_vision = msg_lower.contains("screen") || msg_lower.contains("see") || msg_lower.contains("look");
+                            match brain_chat.decide_chat(&msg_with_vision, &history_str, needs_vision, tx_chat_resp.clone()).await {
                                 Ok(mut speech) => {
                                     // Extract and run [ACTION: OPEN_APP(...)]
                                     if let Some(start_idx) = speech.find("[ACTION: OPEN_APP(") {
@@ -306,17 +282,79 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                         }
                                     }
 
+                                    let mut action_obj = Action::Talk { speech: speech.clone() };
+                                    
+                                    // Extract and run [ACTION: START_REFLEX(...)]
+                                    if let Some(start_idx) = speech.find("[ACTION: START_REFLEX(") {
+                                        if let Some(end_idx) = speech[start_idx..].find(")]") {
+                                            let micro_goal = speech[start_idx + 22..start_idx + end_idx].to_string();
+                                            println!("⚡ Spinal Cord Triggered: {}", micro_goal);
+                                            action_obj = Action::StartReflex { micro_goal: micro_goal.clone() };
+                                            
+                                            let reflex_brain = brain_chat.clone();
+                                            tokio::spawn(async move {
+                                                crate::reflex::start_spinal_cord(micro_goal, reflex_brain).await;
+                                            });
+                                            // Strip it from speech
+                                            let mut clean = speech[..start_idx].to_string();
+                                            clean.push_str(&speech[start_idx + end_idx + 2..]);
+                                            speech = clean.trim().to_string();
+                                        }
+                                    }
+
                                     println!("🗣️ Momentum: {}", speech);
                                     let _ = tx_chat_resp.send(WsResponse {
                                         msg_type: "action".into(),
                                         t: None,
                                         speech: Some(speech.clone()),
-                                        action: Some(Action::Talk { speech }),
+                                        action: Some(action_obj),
                                         thought: None,
                                         agent_mode: Some(AgentMode::Chat),
                                         macro_state: None,
                                         tool_name: None,
                                     });
+
+                                    // Run the vision engine sequentially if requested, avoiding GPU memory contention
+                                    if needs_vision {
+                                        println!("👁️ Chat implies visual context. Fetching background Vision Engine task...");
+                                        let vision_res = crate::perception::perceive_vision(None).await;
+                                        
+                                        let mut b_guard = b_mu_chat.lock().await;
+                                        let ui_context = if let Some(page) = b_guard.page.as_ref() {
+                                            let ui_list = crate::perception::perceive(page).await.unwrap_or_default();
+                                            let url = page.url().await.unwrap_or_default().unwrap_or_default();
+                                            let mut raw_summary = format!("URL: {}\nUI ELEMENTS:\n", url);
+                                            for el in ui_list.iter().take(40) {
+                                                raw_summary.push_str(&format!("- [{}] {}\n", el.role, el.text));
+                                            }
+                                            raw_summary
+                                        } else {
+                                            "No browser window open.".into()
+                                        };
+                                        
+                                        let follow_up_prompt = format!("[SYSTEM NOTE: The physical vision engine (Llava) just finished processing the screen for the user's previous request ('{}'). It sees: {}\n\nDOM tree sees: {}\n\nGive a quick follow up response providing this new visual information to the user.]", message, vision_res, ui_context);
+                                        
+                                        if let Ok(mut follow_up_speech) = brain_chat.decide_chat(&follow_up_prompt, &history_str, false, tx_chat_resp.clone()).await {
+                                            // Strip IGNORE if present
+                                            if let Some(start_idx) = follow_up_speech.find("[ACTION: IGNORE]") {
+                                                let mut clean = follow_up_speech[..start_idx].to_string();
+                                                clean.push_str(&follow_up_speech[start_idx + 16..]);
+                                                follow_up_speech = clean.trim().to_string();
+                                            }
+                                            if !follow_up_speech.is_empty() {
+                                                let _ = tx_chat_resp.send(crate::types::WsResponse {
+                                                    msg_type: "action".into(),
+                                                    speech: Some(follow_up_speech),
+                                                    t: None,
+                                                    action: None,
+                                                    thought: None,
+                                                    agent_mode: Some(AgentMode::Chat),
+                                                    macro_state: None,
+                                                    tool_name: None,
+                                                });
+                                            }
+                                        }
+                                    }
                                 }
                                 Err(e) => { println!("! Chat brain failed: {}", e); }
                             }
@@ -327,7 +365,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         let goal = message.clone();
                         let b_mu_agent = browser_mu.clone();
                         let brain_agent = brain.clone();
-                        let tx_agent_loop = tx_agent_clone.clone();
+                        let tx_agent_loop = tx_agent.clone();
+                        let tx_agent_clone = tx_agent.clone(); // For use deeper in the loop
+                        let service_manager_agent = service_manager.clone();
                         let mut executor_agent = ActionExecutor::new();
                         let ask_notifier_agent = ask_notifier.clone();
                         let history_str_agent = history_str.clone();
@@ -710,6 +750,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                             last_action_res = format!("User answered: {}", reply);
                                             macro_state = MacroState::ActOnSurface;
                                         }
+                                    }
+                                    Action::StartReflex { micro_goal } => {
+                                        println!("🧠 DELEGATING TO SPINAL CORD: {}", micro_goal);
+                                        let reflex_brain = brain_agent.clone();
+                                        tokio::spawn(async move {
+                                            crate::reflex::start_spinal_cord(micro_goal, reflex_brain).await;
+                                        });
+                                        
+                                        // Give the reflex thread a moment to start
+                                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                                        
+                                        // End the OODA loop since the spinal cord took over
+                                        last_action_res = "Spinal cord is executing.".into();
+                                        macro_state = MacroState::Done;
+                                        break;
+                                    }
+                                    Action::SpawnService { name, objective, headless } => {
+                                        println!("🧠 SPAWNING SERVICE: {} -> {}", name, objective);
+                                        let b_clone = brain_agent.clone();
+                                        let browser_clone = b_mu_agent.clone();
+                                        let tx_clone = tx_agent_clone.clone();
+                                        let handle = tokio::spawn(async move {
+                                            crate::services::run_service(b_clone, browser_clone, tx_clone, objective, headless).await;
+                                        });
+                                        service_manager_agent.lock().await.spawn_service(name, handle).await;
+                                        last_action_res = "Background service successfully spawned.".into();
+                                        macro_state = MacroState::Done;
+                                        break;
+                                    }
+                                    Action::KillService { name } => {
+                                        let killed = service_manager_agent.lock().await.kill_service(&name).await;
+                                        if killed {
+                                            last_action_res = format!("Service '{}' terminated.", name);
+                                        } else {
+                                            last_action_res = format!("Service '{}' not found.", name);
+                                        }
+                                        macro_state = MacroState::Done;
+                                        break;
+                                    }
+                                    Action::ListServices => {
+                                        let services = service_manager_agent.lock().await.list_services().await;
+                                        last_action_res = format!("Active Services: {:?}", services);
+                                        macro_state = MacroState::Planning;
                                     }
                                     _ => {
                                         if b.page.is_none() {
