@@ -1,0 +1,81 @@
+name: "Google Flights Itinerary Planning"
+role: "Everyday Assistant"
+capability: "logistics"
+
+context:
+  purpose: "Find the absolute cheapest or fastest flight paths balancing layovers and price."
+  strategy: |
+    Input Origin and Destination airports.
+    Select flexible dates if permitted by user.
+    Filter by direct flights or preferred airlines.
+
+platform_knowledge:
+  ui_patterns:
+    - "To and From inputs are massive fields at the top center"
+    - "Date pickers use a complex dual-calendar modal with price overlays"
+    - "Filters for Non-stop are located right below the search bar after execution"
+    - "The 'Best departing flights' is a distinctly colored section above standard results"
+  common_elements:
+    origin_input: "Where from?"
+    destination_input: "Where to?"
+    departure_date: "Departure date"
+    return_date: "Return date"
+    search_button: "Search"
+    non_stop_filter: "Stops"
+  interaction_patterns:
+    - "Type Airport IDs → Select Dates → Click Search → Click 'Non-stop Only' → Extract Matrix"
+
+decision_logic:
+  - name: "flight_selection"
+    rules:
+      - "Always prioritize 'Best departing flights' over 'Other departing flights'"
+      - "Avoid basic economy if the user requested a carry-on bag"
+      - "Never select layovers under 45 minutes to prevent missed connections"
+  - name: "price_optimization"
+    rules:
+      - "Check the 'Date Grid' if the user allows +/- 2 days flexibility"
+
+actions:
+  - type: "type_semantic"
+    anchor: "Where from?"
+    value: "{origin}"
+  - type: "press_key"
+    key: "Enter"
+  - type: "type_semantic"
+    anchor: "Where to?"
+    value: "{destination}"
+  - type: "press_key"
+    key: "Enter"
+  - type: "type_semantic"
+    anchor: "Departure date"
+    value: "{start_date}"
+  - type: "press_key"
+    key: "Enter"
+  - type: "click_semantic"
+    anchor: "Search"
+  - type: "wait"
+    duration: 5000
+    reason: "Google Flights populates asynchronously with heavy UI spinners"
+  - type: "extract_list"
+    anchor: "flight_results"
+    fields:
+      - "Airline"
+      - "Departure Time"
+      - "Arrival Time"
+      - "Price"
+      - "Duration"
+
+expected_outcomes:
+  - "Extraction of exactly formatted itinerary options."
+
+failure_cases:
+  - case: "No flights available on exact date"
+    action: "Shift date forward by 1 day and re-scan"
+  - case: "Price is unusually high"
+    action: "Warn user before proceeding"
+
+recovery_strategies:
+  - "If inputting airport IDs fails (e.g. LGA vs NYC), type the full city name out instead."
+
+learning_hooks:
+  - "Remember user airline preferences (e.g., Star Alliance vs Oneworld) for future routing."

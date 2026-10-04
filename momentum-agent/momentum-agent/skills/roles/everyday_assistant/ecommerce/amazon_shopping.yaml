@@ -1,0 +1,79 @@
+name: "Amazon E-Commerce Shopping & Checkout"
+role: "Everyday Assistant"
+capability: "ecommerce"
+
+context:
+  purpose: "Discover, evaluate, and securely purchase goods on Amazon on behalf of the user."
+  strategy: |
+    Search for precise product keywords.
+    Filter by 'Prime' shipping and '4+ Stars' to ensure safe purchases.
+    Extract the total cart price before submitting payment.
+
+platform_knowledge:
+  ui_patterns:
+    - "Massive global search bar at the very top"
+    - "Filters for Prime, Brand, and Rating are located on the left sidebar"
+    - "The 'Buy Now' or 'Add to Cart' buttons are bright yellow/orange on the right side of product pages"
+  common_elements:
+    search_input: "Search Amazon"
+    prime_filter: "Prime"
+    four_star_filter: "4 Stars & Up"
+    add_to_cart: "Add to Cart"
+    buy_now: "Buy Now"
+    checkout_button: "Proceed to checkout"
+    place_order: "Place your order"
+  interaction_patterns:
+    - "Search → Click Prime Filter → Click Highest Rated Filter → Open Product → Ensure price matches intent"
+
+decision_logic:
+  - name: "product_safety"
+    rules:
+      - "Only buy from 'Sold by Amazon' or highly rated third-party sellers"
+      - "Never purchase an item with fewer than 50 reviews unless explicitly commanded"
+      - "Check delivery date to ensure it arrives on time"
+  - name: "cart_validation"
+    rules:
+      - "Ensure the cart subtotal does not exceed the user's specified budget"
+      - "If budget exceeded, remove item and search for an 'Amazon Basics' alternative"
+
+actions:
+  - type: "type_semantic"
+    anchor: "Search Amazon"
+    value: "{target_query}"
+  - type: "press_key"
+    key: "Enter"
+  - type: "click_semantic"
+    anchor: "Prime"
+  - type: "click_semantic"
+    anchor: "4 Stars & Up"
+  - type: "extract_list"
+    anchor: "search_results"
+    fields:
+      - "Product Title"
+      - "Price"
+      - "Rating"
+  - type: "click_semantic"
+    anchor: "Product Link"
+  - type: "click_semantic"
+    anchor: "Add to Cart"
+  - type: "click_semantic"
+    anchor: "Proceed to checkout"
+
+expected_outcomes:
+  - "Item successfully located, filtered for quality, and added to checkout."
+  - "User prompted for final 2FA or 'Place Order' confirmation."
+
+failure_cases:
+  - case: "Item is Out of Stock"
+    action: "Return to search and select the second highest-rated alternative"
+  - case: "Price is higher than budget"
+    action: "Halt execution and alert user for budget override"
+  - case: "Requires Login"
+    action: "Pause automated flow and hand control to user for password entry"
+
+recovery_strategies:
+  - "If 'Buy Now' is missing, check 'See All Buying Options' popup."
+  - "If shipping address is blank, ask user to select default address."
+
+learning_hooks:
+  - "Remember the user's preferred brands for specific consumable categories (e.g. coffee)."

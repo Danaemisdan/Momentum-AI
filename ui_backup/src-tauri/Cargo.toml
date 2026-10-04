@@ -1,0 +1,41 @@
+[package]
+name = "momentum-desktop"
+version = "0.1.0"
+description = "Momentum AI — Native Desktop App"
+authors = ["Momentum"]
+license = "UNLICENSED"
+repository = ""
+default-run = "momentum-desktop"
+edition = "2021"
+rust-edition = "2021"
+
+[lib]
+name = "momentum_desktop_lib"
+crate-type = ["rlib"]
+
+[[bin]]
+name = "momentum-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.dev]
+# Reduce artifact sizes to prevent disk space issues
+debug = 0
+opt-level = 0
+split-debuginfo = "unpacked"

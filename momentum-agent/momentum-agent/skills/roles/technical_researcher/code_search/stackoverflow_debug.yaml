@@ -1,0 +1,68 @@
+name: "StackOverflow Debugging & Extraction"
+role: "Technical Researcher"
+capability: "code_search"
+
+context:
+  purpose: "Locate specific programmatic fixes to error logs rather than relying on LLM hallucination."
+  strategy: |
+    Paste full exact error strings into Google with `site:stackoverflow.com`.
+    Evaluate the exact layout of the accepted answer.
+    Extract the code block representing the solution.
+
+platform_knowledge:
+  ui_patterns:
+    - "The question is the massive block at the top"
+    - "Answers are sorted by votes below"
+    - "The 'Accepted Answer' has a bright green checkmark to the left of it"
+    - "Code blocks are nested inside `<pre><code>` tags"
+  common_elements:
+    search_input: "Search..."
+    accepted_answer_icon: "Accepted answer"
+    code_block: "Code block"
+    upvote_counter: "Score"
+  interaction_patterns:
+    - "Open SO Thread → Scroll to Accepted Answer → Read Explanation → Extract Code Block"
+
+decision_logic:
+  - name: "solution_viability"
+    rules:
+      - "Prioritize answers with the Green Checkmark"
+      - "If the accepted answer is heavily downvoted, or is >5 years old, check the second highest answer"
+      - "If an answer begins with 'EDIT:', assume the first half is deprecated"
+  - name: "context_gathering"
+    rules:
+      - "Extract the exact versions (e.g. Node 14 vs 18) mentioned in the answer to ensure compatibility"
+
+actions:
+  - type: "navigate"
+    value: "https://stackoverflow.com/search?q={url_encoded_error}"
+  - type: "extract_list"
+    anchor: "search-results"
+    fields:
+      - "Question Title"
+      - "Votes"
+      - "Has Accepted Answer"
+  - type: "click_semantic"
+    anchor: "Question Title"
+  - type: "scroll_to_element"
+    anchor: "Accepted answer"
+  - type: "extract"
+    fields:
+      - "Explanation Text"
+      - "Code Block"
+
+expected_outcomes:
+  - "A structurally sound snippet of code verified by human developers."
+  - "Explicit explanations for why the error occurred."
+
+failure_cases:
+  - case: "No threads found"
+    action: "Shorten the error string to remove dynamic variables (e.g., timestamps or hex IDs)"
+  - case: "Thread exists but 0 answers"
+    action: "Pivot to searching GitHub Issues instead"
+
+recovery_strategies:
+  - "If SO search engine fails, fallback to standard Google Search."
+
+learning_hooks:
+  - "Log the exact error stack trace locally so the agent remembers the fix permanently."

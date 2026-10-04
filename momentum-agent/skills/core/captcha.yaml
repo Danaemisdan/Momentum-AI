@@ -1,0 +1,17 @@
+platform: generic_captcha
+intents:
+- name: solve_captcha
+  trigger_roles:
+  - Captcha
+  - Verify you are human
+  - I am not a robot
+  - Security check
+  strategy:
+  - Identify the type of captcha (reCAPTCHA, hCaptcha, Cloudflare Turnstile).
+  - For checkbox captchas, compute the center coordinate and click natively.
+  - For visual challenges, pause execution and wait for human intervention or external
+    API solver.
+  actions:
+  - 'Scroll: down'
+  - 'Click: I am human'
+  - 'Extract: captcha_result'

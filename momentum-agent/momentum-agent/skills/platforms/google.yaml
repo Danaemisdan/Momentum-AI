@@ -1,0 +1,118 @@
+platform: "google.com"
+system_behavior: "Google is the baseline OS bridge to the rest of the web. It uses a minimalist interface focused structurally on a central input bar and subsequent vertical text-heavy result pages. It relies heavily on Boolean logic (dorks) for lethal precision."
+
+intents:
+
+- name: "dork_discovery"
+    trigger_roles: ["Google Specialist", "Reverse Engineer", "Security Engineer", "Fact Checker"]
+    strategy:
+      - "Identify the target information or vulnerability to uncover."
+      - "Formulate a precise boolean search query using advanced Google operators."
+      - "Execute the query and analyze results for relevance and quantity."
+    reference_patterns:
+      - "Click inside the main search input box located centrally on the screen."
+      - "Construct a complex boolean query. Instead of typing normally, prefix constraints like 'site:', 'filetype:pdf', or 'intitle:'."
+      - "Type your exact dork query, for example 'site:reddit.com inurl:comments \"exact keyword\"', and click 'Google Search' or hit Enter."
+      - "Review the resulting blue link titles. If there are fewer than 3 results, simplify the dork syntax and click the search bar again to remove hyper-restrictions."
+    decision_logic:
+      - "IF the search results are fewer than 3, THEN simplify the dork syntax."
+      - "IF the dork syntax is simplified, THEN re-execute the search."
+      - "IF relevant results are found, THEN proceed to extract information."
+    actions:
+      - "Click 'Search input field'."
+      - "Type 'dork query'."
+      - "Click 'Google Search button' or press 'Enter'."
+    verification:
+      - "Confirm search results are displayed."
+      - "Check if the number of results is satisfactory."
+    recovery:
+      - "Clear the search bar and re-enter a modified dork query."
+      - "If still no results, try a broader, less specific search."
+
+  - name: "news_cross_referencing"
+    trigger_roles: ["Predictor", "Investor", "Risk Manager", "Trend Spotter"]
+    strategy:
+      - "Search for the target entity to establish context."
+      - "Filter search results specifically for recent news articles."
+      - "Extract key information from the most current news headlines."
+    reference_patterns:
+      - "Perform a standard search for the target company, stock ticker, or geopolitical event."
+      - "Look under the main search bar for the horizontal navigation menu containing tabs like Images, Videos, News. Click the 'News' tab."
+      - "Click the 'Tools' button located on the far right of that same horizontal navigation menu to reveal a secondary dropdown."
+      - "Click the 'Recent' dropdown and select 'Past 24 hours' to ensure data is absolutely fresh."
+      - "Extract the headlines, the publication names (e.g. Bloomberg, Reuters), and the timestamp (e.g. '2 hours ago')."
+    decision_logic:
+      - "IF the 'News' tab is visible, THEN click it."
+      - "IF the 'Tools' button is present, THEN click it to reveal filtering options."
+      - "IF 'Past 24 hours' is an option under 'Recent', THEN select it for freshness."
+    actions:
+      - "Click 'Search input field'."
+      - "Type 'target entity'."
+      - "Click 'Google Search button' or press 'Enter'."
+      - "Click 'News tab'."
+      - "Click 'Tools button'."
+      - "Click 'Recent dropdown'."
+      - "Click 'Past 24 hours option'."
+    verification:
+      - "Verify that only news articles from the past 24 hours are displayed."
+      - "Confirm headlines, publication names, and timestamps are visible."
+    recovery:
+      - "If news filter fails, try 'Past hour' or 'Past week' as alternatives."
+      - "If no news results, broaden the initial search query."
+
+  - name: "ad_competitor_analysis"
+    trigger_roles: ["Marketer", "Growth Hacker", "Copywriter"]
+    strategy:
+      - "Search for high-value commercial keywords to trigger ads."
+      - "Identify and extract details from sponsored ad blocks at the top of the page."
+      - "Check for additional sponsored ads at the bottom of the search results."
+    reference_patterns:
+      - "Type a high-value commercial keyword (e.g., 'best CRM software' or 'buy cloud hosting') into the search bar and execute the search."
+      - "Before reading organic results, isolate the first 3-4 blocks at the absolute top of the page. Look for the small, bolded text that says 'Sponsored' next to the URLs."
+      - "Extract the exact headline copy they are using, the display URL, and the structured callout text (like 'Start Free Trial' or 'Save 50%')."
+      - "Scroll to the absolute bottom of the page to check if bottom-feeder competitor ads are also running, and extract those as well."
+    decision_logic:
+      - "IF 'Sponsored' text is present at the top of the page, THEN extract ad details."
+      - "IF scrolled to the bottom of the page, THEN check for additional 'Sponsored' blocks."
+      - "IF bottom ads are found, THEN extract their details."
+    actions:
+      - "Click 'Search input field'."
+      - "Type 'commercial keyword'."
+      - "Click 'Google Search button' or press 'Enter'."
+      - "Identify and extract text from 'Sponsored ad blocks (top)'."
+      - "Scroll to 'bottom of page'."
+      - "Identify and extract text from 'Sponsored ad blocks (bottom)'."
+    verification:
+      - "Confirm that ad headlines, URLs, and callouts have been extracted."
+      - "Verify that both top and bottom ad sections were checked."
+    recovery:
+      - "If no ads appear, try a different, more competitive commercial keyword."
+      - "If extraction fails, re-identify the 'Sponsored' label and retry."
+
+  - name: "image_reverse_search"
+    trigger_roles: ["Fact Checker", "Visual Storyteller", "Brand Guardian"]
+    strategy:
+      - "Access the Google Images search interface."
+      - "Initiate an image search using either an uploaded file or a URL."
+      - "Analyze visual matches to determine the image's origin or similar content."
+    reference_patterns:
+      - "Navigate to images.google.com or click the 'Images' text link at the top right of the standard Google homepage."
+      - "Click the small camera icon inside the right side of the search bar to active Google Lens / Search by image."
+      - "Click the 'Upload a file' button or paste the image link into the text field provided."
+      - "Examine the 'Visual matches' grid that appears on the right panel to trace the original source of the image or find similar design patterns."
+    decision_logic:
+      - "IF 'images.google.com' is not the current URL, THEN navigate to it."
+      - "IF the 'camera icon' is visible in the search bar, THEN click it."
+      - "IF an image file is available, THEN click 'Upload a file'."
+      - "ELSE IF an image URL is available, THEN paste it into the text field."
+    actions:
+      - "Click 'Images link' or navigate to 'images.google.com'."
+      - "Click 'Camera icon (Search by image)'."
+      - "Click 'Upload a file button' OR 'Paste image link into text field'."
+      - "Click 'Search button' (if applicable after pasting URL)."
+    verification:
+      - "Confirm that 'Visual matches' are displayed on the right panel."
+      - "Verify that the search results are relevant to the input image."
+    recovery:
+      - "If upload fails, try pasting the image URL instead."
+      - "If no matches, try a different image or a higher quality version."

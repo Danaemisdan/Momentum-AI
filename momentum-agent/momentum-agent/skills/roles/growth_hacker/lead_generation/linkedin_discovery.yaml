@@ -1,0 +1,83 @@
+name: "LinkedIn Lead Discovery"
+role: "Growth Hacker"
+capability: "lead_generation"
+
+context:
+  purpose: "Find and identify potential leads based on role, company, or niche"
+  strategy: |
+    Use LinkedIn search filters and profiles.
+    Identify decision makers.
+    Extract relevant details for outreach.
+
+platform_knowledge:
+  ui_patterns:
+    - "Search bar at top"
+    - "Filters panel on left or top"
+    - "Profile cards in list view"
+  common_elements:
+    search_input: "Search"
+    people_tab: "People"
+    filters_button: "All filters"
+    connect_button: "Connect"
+    message_button: "Message"
+  interaction_patterns:
+    - "Search → filter → scan profiles → open relevant ones"
+    - "Profiles contain headline, company, role"
+
+decision_logic:
+  - name: "who_to_target"
+    rules:
+      - "prefer decision makers (CEO, Founder, Manager)"
+      - "match industry relevance"
+      - "avoid irrelevant job titles"
+  - name: "profile_selection"
+    rules:
+      - "open profiles with strong keyword match"
+      - "skip incomplete profiles"
+      - "prioritize mutual connections"
+  - name: "when_to_message"
+    rules:
+      - "if profile matches criteria → message"
+      - "if unclear → skip or save"
+
+actions:
+  - type: "type_semantic"
+    anchor: "Search"
+    value: "{target_query}"
+  - type: "click_semantic"
+    anchor: "People"
+  - type: "click_semantic"
+    anchor: "All filters"
+  - type: "scroll"
+    behavior: "human_like"
+  - type: "click_semantic"
+    anchor: "profile_card"
+  - type: "extract"
+    fields:
+      - "name"
+      - "role"
+      - "company"
+
+expected_outcomes:
+  - "list of relevant leads"
+  - "profiles opened successfully"
+
+failure_cases:
+  - case: "no relevant results"
+    action: "refine query"
+  - case: "too many irrelevant profiles"
+    action: "apply filters"
+  - case: "UI changed"
+    action: "fallback to visual detection"
+  - case: "rate limit or restriction"
+    action: "slow down or switch platform"
+
+recovery_strategies:
+  - "change keywords"
+  - "switch to Google search"
+  - "try alternative platform"
+
+learning_hooks:
+  - "store successful search patterns"
+  - "remember good profiles"
+  - "track failed queries"

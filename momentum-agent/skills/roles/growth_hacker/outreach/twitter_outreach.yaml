@@ -1,0 +1,78 @@
+name: "Twitter Automated Outreach & Engagement"
+role: "Growth Hacker"
+capability: "outreach"
+
+context:
+  purpose: "Engage with high-value prospects in specific niches to drive inbound interest."
+  strategy: |
+    Use Advanced Search to find viral tweets within a target niche.
+    Filter out bots and low-engagement posts.
+    Drop high-insight replies, or send direct DMs if their DMs are open.
+
+platform_knowledge:
+  ui_patterns:
+    - "Search bar is in the top right on desktop"
+    - "Feeds are infinite scrolling columns"
+    - "Reply buttons are at the bottom of every tweet card"
+    - "The 'Post' button sits inside a modal or fixed at the bottom right"
+  common_elements:
+    search_input: "Search"
+    latest_tab: "Latest"
+    top_tab: "Top"
+    reply_button: "Reply"
+    like_button: "Like"
+    dm_button: "Message"
+  interaction_patterns:
+    - "Search → Click Latest → Find tweet without many replies → Click Reply → Type insightful value → Post"
+
+decision_logic:
+  - name: "target_selection"
+    rules:
+      - "Never engage with explicitly political or hostile tweets"
+      - "Prioritize tweets with multiple retweets but fewer than 50 replies"
+      - "Skip 'giveaway' threads"
+  - name: "engagement_depth"
+    rules:
+      - "Do not pitch product directly in a reply. Add free value."
+      - "Only DM if the bio explicitly states 'DMs open' or they requested a DM."
+
+actions:
+  - type: "type_semantic"
+    anchor: "Search"
+    value: "{target_query} min_faves:10"
+  - type: "press_key"
+    key: "Enter"
+  - type: "click_semantic"
+    anchor: "Latest"
+  - type: "scroll"
+    behavior: "human_like"
+  - type: "extract_list"
+    anchor: "tweet_feed"
+    fields:
+      - "Author"
+      - "Tweet Text"
+      - "Likes"
+      - "Replies Count"
+  - type: "click_semantic"
+    anchor: "Reply"
+  - type: "type_semantic"
+    anchor: "Post your reply"
+    value: "{target_insight}"
+  - type: "click_semantic"
+    anchor: "Post"
+
+expected_outcomes:
+  - "Meaningful reply injected natively into target audience feeds."
+  - "Increased profile visibility."
+
+failure_cases:
+  - case: "Rate limit hit (Rate limit exceeded)"
+    action: "Immediately halt operation for 15 minutes to avoid shadowban"
+  - case: "Account locked / Suspicious Activity"
+    action: "Terminate sequence and alert user to solve visual CAPTCHA or Phone Verify"
+
+recovery_strategies:
+  - "If advanced search operators break, fall back to basic text matching and semantic client-side filtering."
+
+learning_hooks:
+  - "Track the engagement data of the replies left to see which formats yield the most profile clicks."

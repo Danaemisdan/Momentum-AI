@@ -1,0 +1,79 @@
+platform: "chatgpt.com"
+system_behavior: "ChatGPT is a persistent conversational chat interface with a large central text input anchor at the bottom, a left-side chat history column, and contextual buttons appearing after generations like Regenerate or Copy."
+
+intents:
+
+- name: "generate_copywriting_variants"
+    trigger_roles: ["Copywriter", "Marketer", "Content Creator"]
+    strategy:
+      - "Understand the user's need for multiple copywriting variations based on specific constraints."
+      - "Formulate a precise and detailed prompt to guide the AI's generation."
+      - "Extract the generated variants efficiently."
+    reference_patterns:
+      - "Locate the massive text input bar fixed at the bottom of the main central screen."
+      - "Type a complex mega-prompt describing exactly what you need, applying strict constraints like 'Generate 10 variants of a Facebook Ad, strictly under 15 words each, utilizing PAS frameworks'."
+      - "Click the upward-facing arrow button attached to the right side of the input bar, or simply hit Enter."
+    decision_logic:
+      - "If the input bar is visible and active, proceed with typing the prompt."
+      - "If the 'Enter' key is pressed, or the send button is clicked, initiate generation."
+      - "If generation is complete, look for the copy icon."
+    actions:
+      - "Type into 'text_input_bar'."
+      - "Click 'send_button' OR 'press_enter_key'."
+      - "Click 'copy_icon'."
+    verification:
+      - "Check if the generated text appears in the main content area."
+      - "Confirm the 'Copy' icon is present and clickable below the output."
+    recovery:
+      - "If no output, re-send the prompt."
+      - "If copy fails, manually select and copy the text."
+
+  - name: "logic_error_debugging"
+    trigger_roles: ["Backend Architect", "Debugger", "Data Engineer"]
+    strategy:
+      - "Identify the core problem: a server error log needs analysis."
+      - "Provide the raw log to the AI for pinpointing the error and suggesting a fix."
+      - "Extract the proposed code patch cleanly."
+    reference_patterns:
+      - "Click inside the main chat input bar at the bottom."
+      - "Paste the raw, unformatted server error logs directly into the text box, prefixing it with 'Find the exact line causing this panic and write the patch'."
+      - "Hit Enter."
+    decision_logic:
+      - "If the input bar is ready, paste the logs."
+      - "If 'Enter' is pressed, trigger the AI analysis."
+      - "If a code block is generated, locate its copy button."
+    actions:
+      - "Type into 'text_input_bar'."
+      - "Click 'send_button' OR 'press_enter_key'."
+      - "Click 'copy_code_button'."
+    verification:
+      - "Verify a dark-themed code block is displayed in the output."
+      - "Ensure the 'Copy code' button is visible on the code block."
+    recovery:
+      - "If no code block, rephrase the prompt for clarity."
+      - "If copy fails, manually select and copy the code."
+
+  - name: "chat_history_retrieval"
+    trigger_roles: ["Organizer", "Reflector"]
+    strategy:
+      - "Locate the historical conversation list."
+      - "Identify the relevant conversation by its title."
+      - "Reload the context of the selected conversation."
+    reference_patterns:
+      - "Look at the far left-hand sidebar which contains a chronological list of past conversations."
+      - "Scroll down and scan the auto-generated titles for keywords matching the topic you need."
+      - "Click the title of the conversation to reload the exact context state into the central window."
+    decision_logic:
+      - "If the sidebar is collapsed, expand it first."
+      - "If a matching title is found, click it."
+      - "If the central window updates, the retrieval is successful."
+    actions:
+      - "Click 'hamburger_menu_icon' (if sidebar collapsed)."
+      - "Scroll 'sidebar_chat_list'."
+      - "Click 'chat_title_element'."
+    verification:
+      - "Check if the central chat window displays the content of the selected conversation."
+      - "Verify the URL or title of the central window reflects the selected chat."
+    recovery:
+      - "If the sidebar is not visible, try clicking the hamburger icon again."
+      - "If the wrong chat loads, go back and select a different title."

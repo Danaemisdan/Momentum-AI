@@ -1,0 +1,65 @@
+platform: "bing.com"
+system_behavior: "Bing is Microsoft's search engine. It accepts headless Chrome without bot blocks. Search bar is at the top center. Results are blue link cards with title, URL, and snippet. News tab, Images tab, and Maps tab are available through the top navigation. Use Bing as the primary search engine for all research tasks."
+
+intents:
+
+  - name: "web_search"
+    trigger_roles: ["Researcher", "Analyst", "Generalist"]
+    strategy:
+      - "Click the search input at the top of the page."
+      - "Type the search query and press Enter."
+      - "Scan the blue link result cards for relevant titles and URLs."
+      - "Click the most relevant result to open it."
+    decision_logic:
+      - "IF on bing.com homepage, THEN click search bar, type query, press Enter."
+      - "IF search results are visible, THEN click the most relevant blue link."
+      - "IF results page shows 'No results', THEN simplify the query and search again."
+      - "IF you see 'Your search couldn't be completed', THEN this is a bot check — navigate to about:blank, wait 3 seconds, then retry."
+    actions:
+      - "Click 'Search input (id=sb_form_q)'."
+      - "Type 'search query'."
+      - "Press Enter or click Search button."
+    verification:
+      - "Confirm that result cards with titles and blue links are visible."
+      - "Verify the title of the first result is relevant to the query."
+    recovery:
+      - "If no results, broaden or rephrase the query."
+      - "If blocked, wait 3 seconds and navigate to https://www.bing.com then retry."
+
+  - name: "news_search"
+    trigger_roles: ["Researcher", "Journalist", "Analyst"]
+    strategy:
+      - "Search for the topic on Bing."
+      - "Click the 'News' tab in the top navigation bar."
+      - "Extract headlines, publication names, and timestamps from news cards."
+    decision_logic:
+      - "IF search results are visible, look for 'News' tab in top nav."
+      - "IF 'News' tab is visible, THEN click it."
+      - "IF news results show, THEN extract the top 5 headlines."
+    actions:
+      - "Click 'Search input'."
+      - "Type 'topic + news'."
+      - "Press Enter."
+      - "Click 'News tab'."
+    verification:
+      - "Confirm news article cards are visible with publication names and dates."
+    recovery:
+      - "If News tab not visible, scroll up to find the navigation bar."
+      - "If no news results, try a different date filter."
+
+  - name: "image_search"
+    trigger_roles: ["Designer", "Visual Storyteller"]
+    strategy:
+      - "Click the Images tab from the Bing homepage or after a search."
+      - "Search for the subject and browse the image grid."
+    decision_logic:
+      - "IF on Bing homepage, click Images tab first."
+      - "IF search results visible, look for Images tab in top nav."
+    actions:
+      - "Click 'Images tab'."
+      - "Type 'image subject' in search bar."
+      - "Press Enter."
+    verification:
+      - "Confirm image grid is visible."
+    recovery:
+      - "If Images tab not visible, type https://www.bing.com/images directly."

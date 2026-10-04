@@ -1,0 +1,388 @@
+platform: robinhood.com
+interactibles:
+  primary_navigation:
+    - name: "Invest"
+      href: "/us/en/invest/"
+    - name: "Predict"
+      href: "/us/en/prediction-markets/"
+    - name: "Strategies"
+      href: "/us/en/strategies/"
+    - name: "Retirement"
+      href: "/us/en/about/retirement/"
+    - name: "Gold"
+      href: "/us/en/gold/"
+    - name: "Crypto"
+      href: "/us/en/about/crypto/"
+    - name: "Chain"
+      href: "/us/en/chain/"
+    - name: "Wallet"
+      href: "/us/en/wallet/"
+    - name: "Connect"
+      href: "/us/en/on-ramp/"
+    - name: "API"
+      href: "https://docs.robinhood.com/crypto/trading"
+    - name: "Legend"
+      href: "/us/en/legend/"
+    - name: "Options"
+      href: "/us/en/about/options/"
+    - name: "Futures"
+      href: "/us/en/about/futures/"
+    - name: "Trading"
+      href: "/us/en/about/trading/"
+    - name: "Custodial"
+      href: "/us/en/custodial/"
+    - name: "Ventures"
+      href: "/us/en/ventures/"
+    - name: "Social"
+      href: "/us/en/social/"
+    - name: "Banking"
+      href: "/us/en/banking/"
+    - name: "Gold Card"
+      href: "/creditcard/"
+    - name: "Platinum Card"
+      href: "/us/en/creditcard/platinum/"
+    - name: "Learn"
+      href: "/learn/"
+    - name: "Snacks"
+      href: "https://sherwood.news/"
+    - name: "About us"
+      href: "/us/en/about-us/"
+    - name: "Blog"
+      href: "https://newsroom.aboutrobinhood.com"
+    - name: "Partner With Us"
+      href: "https://go.robinhood.com/partner"
+    - name: "Affiliates"
+      href: "https://affiliates.robinhood.com"
+    - name: "Press"
+      href: "https://press.robinhood.com"
+    - name: "Careers"
+      href: "https://careers.robinhood.com"
+    - name: "Investor Relations"
+      href: "https://investors.robinhood.com/"
+    - name: "Support"
+      href: "/support/"
+    - name: "ESG"
+      href: "https://esg.robinhood.com/"
+    - name: "Investor Index"
+      href: "https://robinhood.com/us/en/investor-index"
+    - name: "Robinhood Merch"
+      href: "https://shop.robinhood.com"
+  account_management:
+    - name: "Log in"
+      href: "/login/"
+    - name: "Sign up"
+      href: "/signup/"
+    - name: "Sign up to access Robinhood Learn"
+      href: "https://robinhood.com/signup"
+    - name: "Get started"
+      href: "https://applink.robinhood.com/gold_boosted_match_promo?source=email_gem_tax26"
+    - name: "Start investing"
+      href: "https://robinhood.com/us/en/strategies/?utm_term=082025_strategies_hpb_9tus"
+  legal_and_disclosure:
+    - name: "Terms apply"
+      href: "https://robinhood.com/us/en/support/articles/ira-match-faq/"
+    - name: "Learn more"
+      href: "https://robinhood.com/us/en/about/trading/?utm_term=0625_tradingb_9texp"
+    - name: "Fee Schedule"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/RHF%20Fee%20Schedule.pdf"
+    - name: "Crypto Risk Disclosures"
+      href: "none"
+    - name: "Customer Relationship Summaries"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/RHF%20Customer%20Relationship%20Summary.pdf"
+    - name: "FINRA’s BrokerCheck"
+      href: "https://brokercheck.finra.org/"
+    - name: "Terms & Conditions"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/Robinhood%20Terms%20and%20Conditions.pdf"
+    - name: "Disclosures"
+      href: "/us/en/about/legal/"
+    - name: "Robinhood US User Privacy Statement"
+      href: "/us/en/support/articles/privacy-policy/"
+    - name: "Robinhood Markets US Web Visitor Privacy Statement"
+      href: "/us/en/support/articles/rhm-privacy-statement/"
+    - name: "Law Enforcement Requests"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/Law-Enforcement-Request.pdf"
+    - name: "Your Privacy Choices"
+      href: "none"
+    - name: "SIPC"
+      href: "https://www.sipc.org/"
+    - name: "fee schedule"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/RHF%20Fee%20Schedule.pdf"
+    - name: "firm’s brochure"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/RAM_Brochure_and_Brochure_Supplements.pdf"
+    - name: "RHC's licenses"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/RHC%20Licenses%20and%20Disclosures.pdf"
+    - name: "list of our licenses"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/rhy-licenses-and-disclosures.pdf"
+    - name: "Robinhood Cash Card Agreement"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/robinhood-money-prepaid-debit-card-agreement.pdf"
+    - name: "Robinhood Spending Account Agreement"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/robinhood-money-spending-account-agreement.pdf"
+    - name: "Characteristics and Risks of Standardized Options"
+      href: "https://cdn.robinhood.com/assets/robinhood/legal/Characteristics%20and%20Risks%20of%20Standardized%20Options.pdf"
+  social_media:
+    - name: "Robinhood on Twitter"
+      href: "https://twitter.com/RobinhoodApp"
+    - name: "Robinhood on Instagram"
+      href: "https://www.instagram.com/robinhoodapp"
+    - name: "Robinhood on LinkedIn"
+      href: "https://www.linkedin.com/company/robinhood"
+    - name: "Robinhood on TikTok"
+      href: "https://www.tiktok.com/@robinhoodapp"
+    - name: "Robinhood on Youtube"
+      href: "https://www.youtube.com/channel/UCY55VHsy1umgvR35gl5bmUw"
+  utility_buttons:
+    - name: "Robinhood Logo"
+      href: "/"
+    - name: "What We Offer"
+      href: "none"
+    - name: "Crypto"
+      href: "none"
+    - name: "US"
+      href: "none"
+intents:
+
+- name: Explore Investment Products
+    strategy:
+      - Identify primary navigation elements related to investment types.
+      - Look for specific product names or categories.
+      - Access broader service overviews if direct product links are not found.
+    reference_patterns:
+      - The user navigates through the primary navigation elements such as "Invest", "Options", "Futures", and "Crypto" to discover various investment opportunities.
+      - The user might access "Gold" or "Retirement" to understand specific product offerings.
+      - The user could utilize "What We Offer" to reveal a broader range of available services.
+    decision_logic:
+      - IF "Invest", "Options", "Futures", or "Crypto" are present, THEN click the relevant option.
+      - ELSE IF "Gold" or "Retirement" are present, THEN click to explore specific products.
+      - ELSE IF "What We Offer" is present, THEN click to view all offerings.
+    actions:
+      - Click "Invest"
+      - Click "Options"
+      - Click "Futures"
+      - Click "Crypto"
+      - Click "Gold"
+      - Click "Retirement"
+      - Click "What We Offer"
+    verification:
+      - Check if the page title or content reflects the selected investment product.
+      - Verify the URL contains keywords related to the investment product.
+    recovery:
+      - If the page does not load, try clicking the link again.
+      - If the content is incorrect, navigate back and try another investment product link.
+  - name: Learn About Robinhood Services
+    strategy:
+      - Locate educational or informational sections on the platform.
+      - Identify links related to specific features or strategies.
+      - Look for "Learn more" prompts within promotional content.
+    reference_patterns:
+      - The user engages with "Learn" or "Snacks" to gain financial knowledge.
+      - Information about specific features like "Trading" or "Strategies" is accessed via the primary navigation.
+      - The user might click "Learn more" from promotional sections to delve deeper into a particular service.
+    decision_logic:
+      - IF "Learn" or "Snacks" are present, THEN click to access educational content.
+      - ELSE IF "Trading" or "Strategies" are present in navigation, THEN click for feature details.
+      - ELSE IF a "Learn more" button is associated with a service, THEN click it.
+    actions:
+      - Click "Learn"
+      - Click "Snacks"
+      - Click "Trading"
+      - Click "Strategies"
+      - Click "Learn more" (from a promotional section)
+    verification:
+      - Check if the page displays articles, guides, or detailed service descriptions.
+      - Verify the URL indicates an educational or informational section.
+    recovery:
+      - If the page is blank, refresh the page.
+      - If the content is not relevant, navigate back and try a different learning resource.
+  - name: Manage Account and Onboarding
+    strategy:
+      - Identify entry points for new user registration or existing user login.
+      - Locate options to initiate the investment process after account setup.
+    reference_patterns:
+      - The user initiates the process by selecting "Sign up" or "Get started".
+      - Existing users access their accounts via "Log in".
+      - The user might choose "Start investing" to begin their investment journey after initial setup.
+    decision_logic:
+      - IF "Sign up" or "Get started" are present, THEN click to begin registration.
+      - ELSE IF "Log in" is present, THEN click to access an existing account.
+      - ELSE IF "Start investing" is present, THEN click to proceed with investment setup.
+    actions:
+      - Click "Sign up"
+      - Click "Get started"
+      - Click "Log in"
+      - Click "Start investing"
+    verification:
+      - Check if the page redirects to a registration form, login screen, or investment setup wizard.
+      - Verify the URL path corresponds to account management or onboarding.
+    recovery:
+      - If an error occurs during login/signup, re-enter credentials or retry the process.
+      - If the page does not load, try clicking the button again.
+  - name: Understand Legal and Compliance Information
+    strategy:
+      - Locate links typically associated with legal documents and disclosures.
+      - Identify specific document names related to fees or risks.
+      - Look for regulatory body references.
+    reference_patterns:
+      - The user reviews "Terms & Conditions", "Disclosures", and "Privacy Statements" to understand platform policies.
+      - Specific documents like "Fee Schedule" or "Crypto Risk Disclosures" are accessed for detailed information.
+      - The user might consult "FINRA’s BrokerCheck" or "SIPC" for regulatory oversight details.
+    decision_logic:
+      - IF "Terms & Conditions", "Disclosures", or "Privacy Statements" are present, THEN click the relevant link.
+      - ELSE IF "Fee Schedule" or "Crypto Risk Disclosures" are present, THEN click for specific details.
+      - ELSE IF "FINRA’s BrokerCheck" or "SIPC" are present, THEN click for regulatory information.
+    actions:
+      - Click "Terms & Conditions"
+      - Click "Disclosures"
+      - Click "Privacy Statements"
+      - Click "Fee Schedule"
+      - Click "Crypto Risk Disclosures"
+      - Click "FINRA’s BrokerCheck"
+      - Click "SIPC"
+    verification:
+      - Check if a PDF document or a page with legal text is displayed.
+      - Verify the URL contains keywords related to legal or compliance.
+    recovery:
+      - If the document fails to load, try opening it in a new tab.
+      - If the link is broken, search for the document name on the site.
+  - name: Connect with Robinhood Community and Support
+    strategy:
+      - Identify direct links to support resources.
+      - Locate social media icons or links.
+      - Find sections for company news and articles.
+    reference_patterns:
+      - The user seeks assistance by navigating to "Support".
+      - Engagement with Robinhood's social presence is achieved through links to "Twitter", "Instagram", "LinkedIn", "TikTok", and "Youtube".
+      - The user might explore "Blog" or "Newsroom" for company updates and articles.
+    decision_logic:
+      - IF "Support" is present, THEN click to access help resources.
+      - ELSE IF social media icons (e.g., "Twitter", "Instagram") are present, THEN click to visit the respective platform.
+      - ELSE IF "Blog" or "Newsroom" are present, THEN click to read company updates.
+    actions:
+      - Click "Support"
+      - Click "Twitter" icon/link
+      - Click "Instagram" icon/link
+      - Click "LinkedIn" icon/link
+      - Click "TikTok" icon/link
+      - Click "Youtube" icon/link
+      - Click "Blog"
+      - Click "Newsroom"
+    verification:
+      - Check if the support page loads or if the browser opens a new tab to the social media platform.
+      - Verify the URL corresponds to the intended community or support resource.
+    recovery:
+      - If a social media link is broken, try searching for Robinhood on that platform directly.
+      - If the support page is not helpful, look for alternative contact methods.
+  - name: Explore Career and Partnership Opportunities
+    strategy:
+      - Locate links related to employment.
+      - Identify sections for business collaborations.
+      - Find information about the company's background.
+    reference_patterns:
+      - The user investigates "Careers" for employment prospects.
+      - Potential partners access "Partner With Us" or "Affiliates" for collaboration details.
+      - Information about the company's mission is found under "About us".
+    decision_logic:
+      - IF "Careers" is present, THEN click to view job openings.
+      - ELSE IF "Partner With Us" or "Affiliates" are present, THEN click for partnership information.
+      - ELSE IF "About us" is present, THEN click to learn about the company.
+    actions:
+      - Click "Careers"
+      - Click "Partner With Us"
+      - Click "Affiliates"
+      - Click "About us"
+    verification:
+      - Check if the page displays job listings, partnership forms, or company history.
+      - Verify the URL contains keywords related to careers, partnerships, or company info.
+    recovery:
+      - If the careers page is empty, check for a link to an external job portal.
+      - If partnership information is unclear, look for a contact email.
+  - name: Access Advanced Trading and Financial Tools
+    strategy:
+      - Identify links targeting developers or advanced users.
+      - Locate specific product names for premium financial services.
+      - Find features related to cryptocurrency infrastructure.
+    reference_patterns:
+      - Developers or advanced users might access the "API" for programmatic interaction.
+      - Users interested in specific financial products might explore "Gold Card" or "Platinum Card" offerings.
+      - The user could investigate "Wallet" or "Chain" for cryptocurrency-related functionalities.
+    decision_logic:
+      - IF "API" is present, THEN click to access developer documentation.
+      - ELSE IF "Gold Card" or "Platinum Card" are present, THEN click to explore premium offerings.
+      - ELSE IF "Wallet" or "Chain" are present, THEN click for crypto-related features.
+    actions:
+      - Click "API"
+      - Click "Gold Card"
+      - Click "Platinum Card"
+      - Click "Wallet"
+      - Click "Chain"
+    verification:
+      - Check if the page displays technical documentation, card details, or crypto service information.
+      - Verify the URL contains keywords related to advanced tools or specific products.
+    recovery:
+      - If the API documentation is outdated, look for a version selector.
+      - If card details are missing, check for a "learn more" link.
+  - name: Review Corporate and Investor Information
+    strategy:
+      - Locate sections dedicated to financial performance and investor relations.
+      - Identify links related to corporate social responsibility.
+      - Find resources for market insights.
+    reference_patterns:
+      - Investors access "Investor Relations" for financial reports and company performance.
+      - Information regarding social responsibility is found under "ESG".
+      - The "Investor Index" provides insights into market trends and investor behavior.
+    decision_logic:
+      - IF "Investor Relations" is present, THEN click to access financial reports.
+      - ELSE IF "ESG" is present, THEN click to view environmental, social, and governance information.
+      - ELSE IF "Investor Index" is present, THEN click for market insights.
+    actions:
+      - Click "Investor Relations"
+      - Click "ESG"
+      - Click "Investor Index"
+    verification:
+      - Check if the page displays financial statements, sustainability reports, or market data.
+      - Verify the URL contains keywords related to investor or corporate information.
+    recovery:
+      - If a report fails to download, try a different format or year.
+      - If the investor index is not loading, check the network connection.
+  - name: Understand Specific Product Agreements
+    strategy:
+      - Identify links to detailed legal agreements for specific financial products.
+      - Locate documents outlining risks associated with particular trading activities.
+    reference_patterns:
+      - The user reviews "Robinhood Cash Card Agreement" or "Robinhood Spending Account Agreement" for banking product terms.
+      - Detailed risk information for options trading is found in "Characteristics and Risks of Standardized Options".
+    decision_logic:
+      - IF "Robinhood Cash Card Agreement" or "Robinhood Spending Account Agreement" are present, THEN click to review terms.
+      - ELSE IF "Characteristics and Risks of Standardized Options" is present, THEN click for options risk details.
+    actions:
+      - Click "Robinhood Cash Card Agreement"
+      - Click "Robinhood Spending Account Agreement"
+      - Click "Characteristics and Risks of Standardized Options"
+    verification:
+      - Check if a PDF document or a page with the full agreement text is displayed.
+      - Verify the URL contains keywords related to product agreements or risk disclosures.
+    recovery:
+      - If the agreement document is unreadable, look for an alternative viewing option.
+      - If the link is broken, search for the agreement name on the site.
+  - name: Navigate Platform and Identify Offerings
+    strategy:
+      - Locate the primary brand logo for homepage navigation.
+      - Identify a central gateway to all services.
+      - Find indicators for regional settings.
+    reference_patterns:
+      - The user utilizes the "Robinhood Logo" to return to the homepage.
+      - The "What We Offer" button serves as a gateway to a comprehensive list of services.
+      - The "US" button indicates regional settings or content.
+    decision_logic:
+      - IF "Robinhood Logo" is present, THEN click to return to the homepage.
+      - ELSE IF "What We Offer" is present, THEN click to view all services.
+      - ELSE IF "US" (or similar region indicator) is present, THEN click to check regional settings.
+    actions:
+      - Click "Robinhood Logo"
+      - Click "What We Offer"
+      - Click "US"
+    verification:
+      - Check if the page redirects to the homepage, a list of services, or a region selection menu.
+      - Verify the URL reflects the intended navigation action.
+    recovery:
+      - If clicking the logo does not go to the homepage, try refreshing the page.
+      - If "What We Offer" is not comprehensive, look for a sitemap or footer links.

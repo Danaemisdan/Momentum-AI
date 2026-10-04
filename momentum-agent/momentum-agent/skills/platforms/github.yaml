@@ -1,0 +1,112 @@
+platform: "github.com"
+system_behavior: "GitHub navigation involves dense tech-heavy layouts. Always look for top repository tabs like 'Code', 'Issues', or 'Pull Requests'. Use the global top left search bar for wide discovery."
+
+intents:
+
+- name: "find_open_issues"
+    trigger_roles: ["Backend Architect", "Incident Response Commander", "Code Reviewer", "Security Engineer"]
+    strategy:
+      - "Understand the need to locate open issues within a specific repository."
+      - "Formulate a search query to filter for open issues and sort them by recency."
+      - "Extract key information from the top results."
+    reference_patterns:
+      - "Look for the global search bar at the top of the page, type the repository name, and hit Enter."
+      - "Click 'Repositories' on the left sidebar if it brings up too much user noise, and click the exact matching repo name."
+      - "Once on the repo, look for the 'Issues' tab right under the repository title header and click it."
+      - "Find the filter bar and type 'is:open is:issue'. Click the 'Sort' dropdown and select 'Newest'."
+    decision_logic:
+      - "If the repository is not immediately visible, use the global search."
+      - "If the 'Issues' tab is not present, ensure the correct repository page is loaded."
+      - "If the filter bar is not found, attempt to locate a search or filter input field."
+    actions:
+      - "Type repository name into global search bar."
+      - "Click 'Issues' tab."
+      - "Type 'is:open is:issue' into filter bar."
+      - "Click 'Sort' dropdown and select 'Newest'."
+      - "Extract text content of issue titles and issue numbers."
+    verification:
+      - "Confirm that the displayed issues are open and sorted by newest."
+      - "Verify that 5 issue titles and numbers have been extracted."
+    recovery:
+      - "If no issues are found, re-check the filter query for typos."
+      - "If the repository is incorrect, navigate back and re-search."
+
+  - name: "clone_repository"
+    trigger_roles: ["Frontend Developer", "DevOps Automator", "Rapid Prototyper"]
+    strategy:
+      - "Identify the target repository for cloning."
+      - "Locate the 'Code' button to access cloning options."
+      - "Copy the HTTPS cloning URL to the clipboard."
+    reference_patterns:
+      - "Navigate to the target repository URL."
+      - "Look for the bright green button labeled 'Code' usually found near the top right of the file container, and click it to reveal the clone dropdown."
+      - "Look for the 'HTTPS' tab inside the dropdown overlay and click the small copy to clipboard icon right next to the cloning URL."
+    decision_logic:
+      - "If the 'Code' button is not green, check for alternative labels or locations."
+      - "If the 'HTTPS' tab is not selected by default, click it."
+      - "If the copy icon is missing, manually select and copy the URL."
+    actions:
+      - "Click the 'Code' button."
+      - "Click the 'HTTPS' tab within the dropdown."
+      - "Click the copy to clipboard icon next to the cloning URL."
+    verification:
+      - "Confirm that the cloning URL is copied to the clipboard (e.g., by attempting to paste)."
+    recovery:
+      - "If the URL is not copied, re-click the copy icon or manually copy the text."
+      - "If the 'Code' button is not found, refresh the page or check the URL."
+
+  - name: "trace_commit_history"
+    trigger_roles: ["Threat Detection Engineer", "Reverse Engineer", "SRE"]
+    strategy:
+      - "Access the commit history of the repository."
+      - "Identify key information for each commit."
+      - "Scan commit messages for specific keywords indicating potential issues."
+    reference_patterns:
+      - "Ensure you are on the main 'Code' tab for the repository."
+      - "Look for the small clock-like icon labeled 'Commits' on the right side above the file list window and click it."
+      - "Identify the commit author name, the short hash code, and the timestamp. If a bug is suspected, look for the 'Fix' or 'Revert' keywords in the commit message columns."
+    decision_logic:
+      - "If the 'Commits' icon is not visible, ensure the correct repository view is active."
+      - "If keywords like 'Fix' or 'Revert' are found, flag the corresponding commit."
+    actions:
+      - "Click the 'Commits' icon."
+      - "Extract commit author name, short hash code, and timestamp for each commit."
+      - "Scan commit messages for 'Fix' or 'Revert' keywords."
+    verification:
+      - "Confirm that a list of commits with author, hash, and timestamp is displayed."
+      - "Verify that relevant keywords in commit messages are identified."
+    recovery:
+      - "If no commits are displayed, refresh the page or navigate back to the repository root."
+      - "If keywords are missed, refine the search pattern for commit messages."
+
+  - name: "create_pull_request"
+    trigger_roles: ["Backend Architect", "Frontend Developer", "AI Engineer"]
+    strategy:
+      - "Initiate the pull request creation process."
+      - "Specify the base and compare branches."
+      - "Provide a title and description for the pull request."
+      - "Submit the pull request."
+    reference_patterns:
+      - "Click the 'Pull requests' tab under the main repository header."
+      - "Click the green 'New pull request' button."
+      - "Select the base branch you want to merge into from the top-left dropdown, and select your compare branch from the right dropdown."
+      - "Click 'Create pull request', fill out the title text field and the description markdown box, and hit the green 'Create pull request' submission button."
+    decision_logic:
+      - "If the 'Pull requests' tab is not found, ensure the correct repository is loaded."
+      - "If the 'New pull request' button is disabled, check for necessary permissions or existing PRs."
+      - "If the branch dropdowns are not populated, ensure branches exist."
+    actions:
+      - "Click the 'Pull requests' tab."
+      - "Click the 'New pull request' button."
+      - "Select base branch from dropdown."
+      - "Select compare branch from dropdown."
+      - "Click 'Create pull request' (first instance)."
+      - "Fill in title text field."
+      - "Fill in description markdown box."
+      - "Click 'Create pull request' (submission button)."
+    verification:
+      - "Confirm that a new pull request page is displayed with the provided title and description."
+      - "Verify that the pull request is listed in the 'Pull requests' tab."
+    recovery:
+      - "If the pull request fails to create, check for validation errors on the form."
+      - "If the wrong branches are selected, navigate back and re-select."

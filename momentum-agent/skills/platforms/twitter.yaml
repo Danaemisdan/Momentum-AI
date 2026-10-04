@@ -1,0 +1,90 @@
+platform: "twitter.com"
+system_behavior: "Twitter (X) is a real-time microblogging platform with a heavy emphasis on engagement metrics (Views, Likes, Retweets), a central feed, and a left alignment for navigation. It centers around fast interaction velocity."
+
+intents:
+
+- name: "viral_competitor_analysis"
+    trigger_roles: ["Growth Hacker", "Copywriter", "Competitor Analyst"]
+    strategy:
+      - "Identify a competitor's Twitter profile."
+      - "Scan their recent tweets for unusually high engagement."
+      - "Extract the core message of these viral tweets."
+    reference_patterns:
+      - "Look for the universal search bar at the top right of the screen."
+      - "Type in the exact @username of the competitor and hit Enter, then click on the 'People' tab and navigate to their profile."
+      - "Scroll down their main feed, bypassing pinned tweets. Look strictly at the engagement counters at the bottom of each tweet."
+      - "Find tweets where the 'Like' or 'Retweet' count is exponentially higher than their baseline average (e.g., finding a 10k like post on an account that normally gets 500 likes)."
+      - "Extract the exact hook (the first 15 words of the tweet) to understand the viral structure."
+    decision_logic:
+      - "If the 'Like' or 'Retweet' count is > 10x the average, consider it viral."
+      - "If multiple viral tweets are found, prioritize the most recent ones."
+      - "If no viral tweets are found, broaden the search to older posts."
+    actions:
+      - "Click on the search bar."
+      - "Type competitor's @username."
+      - "Click on the 'People' tab."
+      - "Click on the competitor's profile."
+      - "Scroll down the feed."
+      - "Extract tweet text."
+    verification:
+      - "Confirm the extracted hook accurately reflects the viral tweet's content."
+      - "Verify the engagement metrics for the identified viral tweet."
+    recovery:
+      - "If no viral tweets are found, re-evaluate the baseline average for engagement."
+      - "If unable to access profile, try searching for the competitor's full name instead of @username."
+
+  - name: "outfit_dm_outreach"
+    trigger_roles: ["Salesperson", "Hustler", "Influencer Manager"]
+    strategy:
+      - "Locate the target user's direct message functionality."
+      - "Craft a personalized message referencing their recent activity."
+      - "Send the message to initiate contact."
+    reference_patterns:
+      - "Navigate to the target user's profile."
+      - "Look for the envelope icon button located near their profile picture and Follow button. Click it to open the Direct Messages chat modal."
+      - "Use the 'Start a new message' text input box at the bottom."
+      - "Type a highly personalized cold-outreach script. Always inject their first name and reference a specific recent tweet to prove authenticity."
+      - "Click the small paper plane send button on the right edge of the text box."
+    decision_logic:
+      - "If the envelope icon is present, proceed with DM."
+      - "If no recent tweet is suitable for reference, find their most popular tweet."
+      - "If DM is restricted, attempt to find an alternative contact method (e.g., website link in bio)."
+    actions:
+      - "Click on the target user's profile."
+      - "Click on the envelope icon."
+      - "Type message into the 'Start a new message' text input box."
+      - "Click the send button."
+    verification:
+      - "Confirm the message appears in the sent messages section."
+      - "Verify the message content matches the intended script."
+    recovery:
+      - "If DM fails to send, check for character limits or network issues."
+      - "If envelope icon is missing, the user may have DMs disabled; abort outreach."
+
+  - name: "rapid_trend_discovery"
+    trigger_roles: ["Trend Spotter", "Day Trader"]
+    strategy:
+      - "Access the trending topics section of the platform."
+      - "Identify key trending hashtags and their associated volume."
+      - "Analyze the real-time sentiment of a selected trend."
+    reference_patterns:
+      - "Look at the left-side navigation column and find the magnifying glass icon labeled 'Explore'. Click it."
+      - "Look at the 'Trending' tab or scan the right-hand 'What’s happening' column."
+      - "Extract the exact trending hashtags and the number of associated posts underneath them."
+      - "Click the top hashtag and switch from the 'Top' tab to the 'Latest' tab to analyze raw real-time sentiment."
+    decision_logic:
+      - "If 'Explore' is visible, click it to find trends."
+      - "If 'What's happening' is present, prioritize it for quick trend spotting."
+      - "If a trend has a significantly higher post count, prioritize it for deeper analysis."
+    actions:
+      - "Click on the 'Explore' icon."
+      - "Identify trending hashtags."
+      - "Extract hashtag text and post count."
+      - "Click on a selected hashtag."
+      - "Click on the 'Latest' tab."
+    verification:
+      - "Confirm the extracted hashtags are indeed trending topics."
+      - "Verify the 'Latest' tab is active after clicking."
+    recovery:
+      - "If 'Explore' or 'What's happening' is not visible, refresh the page."
+      - "If unable to switch to 'Latest' tab, try clicking the 'Top' tab first then 'Latest' again."

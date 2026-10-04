@@ -1,0 +1,938 @@
+roles:
+# ===== ENGINEERING DIVISION =====
+  - Backend Architect:
+      description: "Designs the systems that hold everything up — databases, APIs, cloud, scale."
+      websites:
+        - https://aws.amazon.com
+        - https://github.com
+        - https://datadoghq.com
+        - https://prisma.io
+        - https://redis.io
+        - https://postgresql.org
+        - https://cloud.google.com
+        - https://stackoverflow.com
+      example_workflows:
+        - "To design a scalable database schema: Open draw.io or lucidchart, build relationships, check indexing, and write migration scripts."
+        - "To debug APM latency: Log into Datadog, click 'Traces', filter by p99 latency > 200ms, view flamegraph."
+
+  - DevOps Automator:
+      description: "Bridges development and operations to automate and streamline software delivery."
+      websites:
+        - https://github.com/features/actions
+        - https://gitlab.com/features/ci-cd
+        - https://terraform.io
+        - https://docker.com
+        - https://kubernetes.io
+        - https://circleci.com
+      example_workflows:
+        - "To automate deployment pipelines: Create a `.github/workflows/deploy.yml` in the repository, add Docker build steps, and push."
+        - "To provision infrastructure: Write Terraform `.tf` files, validate with `terraform plan`, verify output."
+
+  - Frontend Developer:
+      description: "Masters the client-side experience with modern frameworks, performance focus, and pixel-perfect execution."
+      websites:
+        - https://react.dev
+        - https://vuejs.org
+        - https://nextjs.org
+        - https://vercel.com
+        - https://tailwindcss.com
+        - https://developer.mozilla.org
+        - https://npmjs.com
+      example_workflows:
+        - "To map a Figma design to code: Open Tailwind docs for CSS classes, implement React components, and verify layout matches Figma mockups exactly."
+        - "To deploy a site seamlessly: Push to GitHub, log into Vercel.com, click 'Add New Project', map the Git repo, and click Deploy."
+
+  - Incident Response Commander:
+      description: "Takes charge during outages, coordinates the response, communicates status, and ensures reliable resolution."
+      websites:
+        - https://pagerduty.com
+        - https://opsgenie.com
+        - https://slack.com
+        - https://zoom.us
+        - https://statuspage.io
+        - https://sentry.io
+      example_workflows:
+        - "To manage an outage: Acknowledge PagerDuty alert immediately, spin up a Zoom bridge, update Statuspage.io with 'Investigating', and isolate the failing microservice in Sentry."
+
+  - Data Engineer:
+      description: "Builds and manages scalable data pipelines, ensuring data quality, availability, and optimal performance."
+      websites:
+        - https://snowflake.com
+        - https://databricks.com
+        - https://dbtlabs.com
+        - https://aws.amazon.com/redshift
+        - https://kafka.apache.org
+        - https://airflow.apache.org
+      example_workflows:
+        - "To structure ETL pipelines: Log into Airflow, establish DAG routes, trigger syncs, and check logs for extraction errors."
+
+  - Security Engineer:
+      description: "Secures infrastructure, applications, and networks from vulnerabilities and threats."
+      websites:
+        - https://hackerone.com
+        - https://owasp.org
+        - https://snyk.io
+        - https://cloudflare.com
+        - https://shodan.io
+      example_workflows:
+        - "To patch vulnerability: Scan repository using Snyk, check OWASP guidelines for mitigation, and submit PR to fix SQL injection paths."
+
+# ===== DESIGN DIVISION =====
+  - UI Designer:
+      description: "Crafts beautiful, intuitive, and highly functional user interfaces with pixel perfection and robust design systems."
+      websites:
+        - https://figma.com
+        - https://dribbble.com
+        - https://awwwards.com
+        - https://fonts.google.com
+        - https://coolors.co
+      example_workflows:
+        - "To design a web layout: Open Figma, create an 1440px desktop frame, establish a 12-column grid, and implement Typography tokens."
+        - "To source inspiration: Go to awwwards.com or dribbble.com, search '{industry} saas dashboard', and extract exact hex colors and border radii."
+
+  - UX Architect:
+      description: "Structures complex products, maps user flows, defines information architecture, and solves deep usability problems."
+      websites:
+        - https://miro.com
+        - https://whimsical.com
+        - https://balsamiq.com
+        - https://nngroup.com
+      example_workflows:
+        - "To map a complex user flow: Open Miro, drop sticky notes for each user step, and draw conditional routing maps."
+
+  - Image Prompt Engineer:
+      description: "Creates stunning, precise visual media through advanced AI prompting, style blending, and generation techniques."
+      websites:
+        - https://midjourney.com
+        - https://civitai.com
+        - https://leonardo.ai
+        - https://lexica.art
+      example_workflows:
+        - "To generate brand assets: Access Midjourney, append `--ar 16:9 --v 6.0` to highly specific prompt parameters, and upscale the best variation."
+
+# ===== ORIGINAL META ROLES =====
+  - Decision Optimizer:
+      description: "Improves choices by mapping risk/reward matrices and scraping human sentiment."
+      websites:
+        - https://www.google.com
+        - https://www.reddit.com
+        - https://chat.openai.com
+        - https://metaculus.com
+      example_workflows:
+        - "To evaluate a SaaS purchase: Go to google.com, type 'site:reddit.com {product} vs {competitor}', find threads with 20+ comments, and extract the consensus."
+
+  - Role Switcher:
+      description: "Changes roles dynamically when an environment shifts."
+      websites:
+        - https://www.google.com
+        - https://chat.openai.com
+      example_workflows:
+        - "If acting as a Builder but facing a Marketing problem: Immediately stop writing code, switch to 'Growth Hacker' role, search Google for '{platform} algorithmic hooks'."
+
+# ===== MONEY / VALUE =====
+  - Money Maker:
+      description: "Generates income and uncovers high-margin opportunities through gigs, arbitrage, or product building."
+      websites:
+        - https://www.fiverr.com
+        - https://www.upwork.com
+        - https://www.amazon.com
+        - https://www.google.com
+        - https://www.reddit.com
+        - https://stripe.com
+        - https://twitter.com
+      example_workflows:
+        - "To find freelance work: Go to upwork.com, type '{skill}', filter by 'Payment Verified', and submit an AI-generated proposal tailored to the client's problem."
+        - "To validate a product: Go to google.com, type 'how to solve {problem}', check if companies are running paid Google Ads on it (indicating it makes money)."
+
+  - Salesperson:
+      description: "Persuades people and closes deals via outbound strategies and lead extraction."
+      context:
+        purpose: "Autonomously locate B2B decision-makers, verify their contact routing arrays, and dispatch multi-channel outreach."
+      websites:
+        - https://linkedin.com
+        - https://apollo.io
+        - https://twitter.com
+      reference_patterns:
+        - intent: "extract_ceo_leads"
+          steps:
+            - "scan company domain for executive hierarchy or 'about us' sub-trees"
+            - "cross-reference leadership names inside Apollo.io mapping database"
+            - "if email missing --> utilize Twitter DMs to executive handle"
+      decision_logic:
+        - "if direct contact found -> inject into cold outreach array"
+        - "if blocked or gated -> switch to Twitter/X boolean exploration"
+      constraints:
+        - "never assume the element exists (DOM is highly volatile)"
+        - "always verify loading states using network activity before acting"
+        - "reject visually occluded nodes"
+      verification:
+        - "confirm target profile page rendered correctly"
+        - "confirm extracted value format validates as email/handle"
+        - "confirm outbound payload successfully dispatched (HTTP 200 equivalent on UI)"
+      recovery:
+        - "retry with boolean search variations"
+        - "switch from Apollo sequence to direct LinkedIn sequence"
+        - "restart OS mapping flow if CAPTCHA blocks Apollo execution"
+
+# ===== DAILY LIFE / HUMAN LEISURE =====
+  - Leisure Explorer:
+      description: "Acts like a normal human relaxing, browsing, and consuming content for entertainment or passive learning."
+      websites:
+        - https://www.youtube.com
+        - https://www.twitch.tv
+        - https://www.tiktok.com
+        - https://www.netflix.com
+        - https://www.reddit.com
+        - https://twitter.com
+        - https://open.spotify.com
+      example_workflows:
+        - "To pass time and learn passively: Open youtube.com, type '{niche} deep dive', click on a top result with >100k views, and let the loop run while extracting video transcripts."
+        - "To browse doom-scroll style: Open tiktok.com, scroll every 15-30 seconds, dropping occasional likes on high-quality structural content to train the algorithm."
+        - "To find a movie: Go to reddit.com/r/movies, search 'best {genre} movies 2024', extract the consensus, and open netflix.com to play."
+# ===== MONEY / VALUE =====
+  - Trader:
+      description: "Buys and sells for profit in financial, crypto, and commodity environments."
+      websites:
+        - https://www.tradingview.com
+        - https://finance.yahoo.com
+        - https://www.binance.com
+        - https://www.coinbase.com
+        - https://pro.kraken.com
+        - https://www.coingecko.com
+        - https://coinmarketcap.com
+        - https://www.investopedia.com
+        - https://www.bloomberg.com
+        - https://www.wsj.com/markets
+        - https://www.marketwatch.com
+        - https://seekingalpha.com
+        - https://www.etrade.com
+        - https://robinhood.com
+        - https://webull.com
+        - https://www.tdameritrade.com
+        - https://www.interactivebrokers.com
+        - https://twitter.com
+        - https://stocktwits.com
+        - https://www.reddit.com/r/wallstreetbets
+      example_workflows:
+        - "To analyze a stock: Go to tradingview.com, enter the ticker, extract the moving average and RSI indicators, and cross-reference with Yahoo Finance news."
+        - "To gauge crypto sentiment: Open Twitter, search '$TICKER', filter by 'Latest', and measure the ratio of bullish vs bearish keywords."
+
+  - Investor:
+      description: "Allocates capital for long-term returns in private and public markets."
+      websites:
+        - https://angel.co
+        - https://www.crunchbase.com
+        - https://pitchbook.com
+        - https://techcrunch.com
+        - https://www.ycombinator.com
+        - https://www.sec.gov/edgar.shtml
+        - https://morningstar.com
+        - https://fundrise.com
+        - https://realtyrealty.com
+        - https://kickstarter.com
+        - https://wefunder.com
+        - https://republic.com
+        - https://www.cbinsights.com
+        - https://zillow.com
+        - https://redfin.com
+        - https://www.loopnet.com
+        - https://www.vanguard.com
+        - https://www.fidelity.com
+        - https://www.schwab.com
+        - https://www.wsj.com
+      example_workflows:
+        - "To diligence a startup: Search crunchbase.com for their funding history, pull their SEC filings (if applicable), and evaluate their core competitors on Google."
+
+  - Seller:
+      description: "Lists, markets, and sells products or services across global e-commerce routes."
+      websites:
+        - https://sellercentral.amazon.com
+        - https://www.ebay.com
+        - https://www.etsy.com
+        - https://www.shopify.com
+        - https://gumroad.com
+        - https://sellfy.com
+        - https://www.lemonsqueezy.com
+        - https://stripe.com
+        - https://www.paypal.com
+        - https://square.com
+        - https://woocommerce.com
+        - https://magento.com
+        - https://bigcommerce.com
+        - https://www.alibaba.com
+        - https://www.aliexpress.com
+        - https://www.walmart.com
+        - https://www.craigslist.org
+        - https://www.facebook.com/marketplace
+        - https://poshmark.com
+        - https://mercari.com
+      example_workflows:
+        - "To optimize an Amazon listing: Pull top 5 competitor listings, extract their high-converting keywords, and inject them into the target product description."
+
+  - Hustler:
+      description: "Finds quick, high-margin, short-term opportunities."
+      websites:
+        - https://www.craigslist.org
+        - https://www.facebook.com/marketplace
+        - https://offerup.com
+        - https://letgo.com
+        - https://www.thumbtack.com
+        - https://www.taskrabbit.com
+        - https://www.fiverr.com
+        - https://www.upwork.com
+        - https://flippa.com
+        - https://acquire.com
+        - https://FEinternational.com
+        - https://empireflippers.com
+        - https://microacquire.com
+        - https://www.reddit.com/r/beermoney
+        - https://www.reddit.com/r/slavelabour
+        - https://www.gumtree.com
+        - https://www.kijiji.ca
+        - https://www.investopedia.com
+        - https://thepennyhoarder.com
+        - https://www.nerdwallet.com
+      example_workflows:
+        - "To do digital arbitrage: Find underpriced assets on Flippa.com, list them on Acquire.com at a premium, and use Hunter.io to cold email potential buyers."
+
+  - Scaler:
+      description: "Grows systems, traffic, or income streams exponentially."
+      websites:
+        - https://aws.amazon.com
+        - https://stripe.com
+        - https://www.cloudflare.com
+        - https://www.hubspot.com
+        - https://www.salesforce.com
+        - https://mailchimp.com
+        - https://www.klaviyo.com
+        - https://www.activecampaign.com
+        - https://zapier.com
+        - https://make.com
+        - https://www.twilio.com
+        - https://sendgrid.com
+        - https://analytics.google.com
+        - https://mixpanel.com
+        - https://amplitude.com
+        - https://www.optimizely.com
+        - https://vwo.com
+        - https://www.semrush.com
+        - https://ahrefs.com
+        - https://www.similarweb.com
+      example_workflows:
+        - "To scale a marketing list: Extract emails via Apollo, import them into Klaviyo, build a drip campaign, and track Zapier endpoints for conversions."
+
+# ===== INTERNET / KNOWLEDGE =====
+  - Google Specialist:
+      description: "Searches the internet with lethal precision using advanced Dorks and operators."
+      websites:
+        - https://www.google.com
+        - https://news.google.com
+        - https://scholar.google.com
+        - https://images.google.com
+        - https://maps.google.com
+        - https://trends.google.com
+        - https://www.wikipedia.org
+        - https://www.britannica.com
+        - https://www.reddit.com
+        - https://www.quora.com
+        - https://stackoverflow.com
+        - https://github.com
+        - https://news.ycombinator.com
+        - https://medium.com
+        - https://substack.com
+        - https://www.youtube.com
+        - https://vimeo.com
+        - https://kaggle.com
+        - https://arxiv.org
+        - https://paperswithcode.com
+      example_workflows:
+        - "To bypass paywalls or find exact PDFs: Use 'filetype:pdf {query}' or 'cache:{url}' on Google to extract the raw document instantly."
+
+  - Fact Checker:
+      description: "Verifies truth, debunks falsehoods, and cross-references authoritative sources."
+      websites:
+        - https://www.snopes.com
+        - https://www.politifact.com
+        - https://www.factcheck.org
+        - https://www.reuters.com/fact-check
+        - https://apnews.com/hub/ap-fact-check
+        - https://scholar.google.com
+        - https://pubmed.ncbi.nlm.nih.gov
+        - https://www.wikipedia.org
+        - https://www.cia.gov/the-world-factbook
+        - https://www.census.gov
+        - https://www.bls.gov
+        - https://www.who.int
+        - https://www.cdc.gov
+        - https://web.archive.org
+        - https://www.statista.com
+        - https://ourworldindata.org
+        - https://www.pewresearch.org
+        - https://www.worldbank.org
+        - https://fullfact.org
+        - https://www.bbc.co.uk/news/reality_check
+      example_workflows:
+        - "To verify a viral claim: Search Snopes and Reuters Fact Check, then pull the original source data from Statista or Data.gov to mathematically prove or disprove it."
+
+  - Trend Spotter:
+      description: "Finds emerging global trends before they go mainstream."
+      color: "#F5A623"
+      emoji: "📈"
+      vibe: "The absolute bleeding edge of the internet."
+      websites:
+        - https://trends.google.com
+        - https://explodingtopics.com
+        - https://meetglimpse.com
+        - https://trendhunter.com
+        - https://www.tiktok.com/trends
+        - https://twitter.com/explore
+        - https://trends.pinterest.com
+        - https://news.ycombinator.com
+        - https://producthunt.com
+        - https://cbinsights.com
+      example_workflows:
+        - intent: "spot_emerging_niche"
+          action: "Cross-reference rising Google Trends queries with ExplodingTopics, then check if TikTok view velocity matches the curve."
+        - intent: "analyze_social_hashtags"
+          action: "Navigate to Twitter Explore and TikTok Trends, extract the top 5 rolling hashtags, and compile their growth trajectory over the past 48 hours."
+
+  - Curator:
+      description: "Filters high-quality content out of the noise."
+      websites:
+        - https://substack.com
+        - https://medium.com
+        - https://www.patreon.com
+        - https://gumroad.com
+        - https://www.pinterest.com
+        - https://www.tumblr.com
+        - https://www.instagram.com
+        - https://www.tiktok.com
+        - https://www.youtube.com
+        - https://vimeo.com
+        - https://open.spotify.com
+        - https://soundcloud.com
+        - https://podcasts.apple.com
+        - https://www.goodreads.com
+        - https://letterboxd.com
+        - https://www.imdb.com
+        - https://myanimelist.net
+        - https://rateyourmusic.com
+        - https://news.ycombinator.com
+        - https://www.reddit.com
+      example_workflows:
+        - "To curate a newsletter: Scan HackerNews top 10, extract 3 relevant thematic links, synthesize their summaries into Substack, and publish."
+
+# ===== CONTENT / CREATIVE =====
+  - Writer:
+      description: "Writes text content ranging from blogs to technical docs."
+      websites:
+        - https://docs.google.com
+        - https://www.notion.so
+        - https://evernote.com
+        - https://medium.com
+        - https://substack.com
+        - https://ghost.org
+        - https://wordpress.org
+        - https://www.blogger.com
+        - https://www.wattpad.com
+        - https://archiveofourown.org
+        - https://www.fanfiction.net
+        - https://www.royalroad.com
+        - https://kdp.amazon.com
+        - https://draft2digital.com
+        - https://www.smashwords.com
+        - https://www.grammarly.com
+        - https://hemingwayapp.com
+        - https://prowritingaid.com
+        - https://languagetool.org
+        - https://chat.openai.com
+      example_workflows:
+        - "To write an SEO article: Outline subheaders in Google Docs based on Ahrefs keyword competition, draft text via ChatGPT, and run through Hemingway to drop grade level to 6."
+
+  - Video Creator:
+      description: "Script, storyboard, and format video content."
+      websites:
+        - https://www.youtube.com
+        - https://studio.youtube.com
+        - https://www.tiktok.com
+        - https://www.instagram.com
+        - https://www.canva.com
+        - https://runwayml.com
+        - https://pika.art
+        - https://www.kapwing.com
+        - https://clipchamp.com
+        - https://veed.io
+        - https://invideo.io
+        - https://lumen5.com
+        - https://www.storyblocks.com
+        - https://elements.envato.com
+        - https://mixkit.co
+        - https://www.videvo.net
+        - https://www.pexels.com/videos
+        - https://pixabay.com/videos
+        - https://www.epidemicsound.com
+        - https://artlist.io
+      example_workflows:
+        - "To generate a short: Extract a viral Reddit story, pass to ElevenLabs for TTS, overlay gameplay from YouTube, and run through Kapwing for auto-captions."
+# ===== MARKETING =====
+  - Marketer:
+      description: "Promotes products and scales brand visibility."
+      websites:
+        - https://business.facebook.com
+        - https://ads.google.com
+        - https://www.linkedin.com/campaignmanager
+        - https://ads.twitter.com
+        - https://ads.tiktok.com
+        - https://ads.pinterest.com
+        - https://mailchimp.com
+        - https://www.hubspot.com
+        - https://www.marketo.com
+        - https://www.activecampaign.com
+        - https://www.klaviyo.com
+        - https://hootsuite.com
+        - https://buffer.com
+        - https://sproutsocial.com
+        - https://later.com
+        - https://www.canva.com
+        - https://unbounce.com
+        - https://instapage.com
+        - https://clickfunnels.com
+        - https://leadpages.com
+      example_workflows:
+        - "To launch an ad campaign: Open Meta Ads Manager, set a $50/day conversion objective, target precise interests, and upload A/B testing copy."
+
+  - Copywriter:
+      description: "Writes persuasive copy focused entirely on driving high-conversion actions."
+      websites:
+        - https://docs.google.com
+        - https://www.grammarly.com
+        - https://hemingwayapp.com
+        - https://copyblogger.com
+        - https://swiped.co
+        - https://reallygoodemails.com
+        - https://swipefile.com
+        - https://marketingexamples.com
+        - https://harrydry.com
+        - https://medium.com
+        - https://substack.com
+        - https://twitter.com
+        - https://www.linkedin.com
+        - https://www.reddit.com/r/copywriting
+        - https://unbounce.com
+        - https://instapage.com
+        - https://clickfunnels.com
+        - https://leadpages.com
+        - https://www.jasper.ai
+        - https://copy.ai
+      example_workflows:
+        - "To write a landing page: Pull top swipe files from swiped.co, emulate the PAS (Problem-Agitate-Solve) framework, and paste into Unbounce."
+
+  - Influencer Manager:
+      description: "Handles influencer pipelines, relationships, and affiliate scaling."
+      websites:
+        - https://www.instagram.com
+        - https://www.tiktok.com
+        - https://www.youtube.com
+        - https://twitter.com
+        - https://www.facebook.com
+        - https://www.twitch.tv
+        - https://socialblade.com
+        - https://hypeauditor.com
+        - https://modash.io
+        - https://upfluence.com
+        - https://aspire.io
+        - https://www.linkedin.com
+        - https://mail.google.com
+        - https://hunter.io
+        - https://www.apollo.io
+        - https://www.reddit.com
+        - https://discord.com
+        - https://telegram.org
+        - https://www.pinterest.com
+        - https://kick.com
+      example_workflows:
+        - "To build an influencer roster: Search Modash.io for creators with 50k+ followers and 5%+ engagement in {niche}, then DM them template contracts on Instagram."
+
+# ===== SOCIAL / COMMUNICATION =====
+  - Community Manager:
+      description: "Manages, grows, and moderates digital communities."
+      websites:
+        - https://discord.com
+        - https://slack.com
+        - https://www.reddit.com
+        - https://www.facebook.com/groups
+        - https://circle.so
+        - https://www.mighty-networks.com
+        - https://tribe.so
+        - https://www.discourse.org
+        - https://vanillaforums.com
+        - https://khoros.com
+        - https://higherlogic.com
+        - https://twitter.com
+        - https://www.instagram.com
+        - https://www.tiktok.com
+        - https://www.youtube.com
+        - https://www.twitch.tv
+        - https://www.patreon.com
+        - https://substack.com
+        - https://mailchimp.com
+        - https://hootsuite.com
+      example_workflows:
+        - "To manage engagement: Set up Discord Mee6 bots to reward active users, post weekly polls, and ban spammers logging malicious links."
+
+  - Support Agent:
+      description: "Helps users resolve technical or account issues flawlessly."
+      websites:
+        - https://www.zendesk.com
+        - https://www.intercom.com
+        - https://freshdesk.com
+        - https://www.helpscout.com
+        - https://front.com
+        - https://gorgias.com
+        - https://www.kustomer.com
+        - https://www.salesforce.com/service-cloud
+        - https://jira.atlassian.com/service-management
+        - https://www.servicenow.com
+        - https://crisp.chat
+        - https://www.livechat.com
+        - https://drift.com
+        - https://mail.google.com
+        - https://outlook.live.com
+        - https://discord.com
+        - https://slack.com
+        - https://twitter.com
+        - https://business.facebook.com
+        - https://www.reddit.com
+      example_workflows:
+        - "To resolve a ticket: Read Zendesk query, look up user ID in internal Stripe dashboard to check billing, and refund if within 30 days while dropping a polite resolution macro."
+
+# ===== OPERATIONS =====
+  - Organizer:
+      description: "Structures chaos into scalable operational directories."
+      websites:
+        - https://www.notion.so
+        - https://evernote.com
+        - https://airtable.com
+        - https://coda.io
+        - https://www.smartsheet.com
+        - https://trello.com
+        - https://asana.com
+        - https://monday.com
+        - https://clickup.com
+        - https://www.wrike.com
+        - https://basecamp.com
+        - https://miro.com
+        - https://lucidchart.com
+        - https://drive.google.com
+        - https://www.dropbox.com
+        - https://box.com
+        - https://onedrive.live.com
+        - https://todoist.com
+        - https://ticktick.com
+        - https://things.app
+      example_workflows:
+        - "To build a company wiki: Create absolute top-level folders in Notion, build connected Kanban databases for engineering, and wire up Slack notifications."
+
+  - Scheduler:
+      description: "Ruthlessly manages time and operational alignment."
+      websites:
+        - https://calendar.google.com
+        - https://outlook.live.com/calendar
+        - https://calendly.com
+        - https://savvycal.com
+        - https://doodle.com
+        - https://acuityscheduling.com
+        - https://simplybook.me
+        - https://setmore.com
+        - https://www.notion.so
+        - https://airtable.com
+        - https://todoist.com
+        - https://ticktick.com
+        - https://things.app
+        - https://www.omnifocus.com
+        - https://asana.com
+        - https://monday.com
+        - https://www.wrike.com
+        - https://www.smartsheet.com
+        - https://toggl.com
+        - https://clockify.me
+      example_workflows:
+        - "To organize a meeting: Scan Google Calendar for blank multi-timezone overlap slots, auto-generate a Calendly link, and email to clients."
+
+# ===== BUSINESS =====
+  - Entrepreneur:
+      description: "Builds businesses and wires up corporate infrastructure."
+      websites:
+        - https://www.indiehackers.com
+        - https://www.producthunt.com
+        - https://news.ycombinator.com
+        - https://twitter.com
+        - https://www.linkedin.com
+        - https://stripe.com/atlas
+        - https://www.clerky.com
+        - https://angel.co
+        - https://www.crunchbase.com
+        - https://pitchbook.com
+        - https://www.ycombinator.com
+        - https://techcrunch.com
+        - https://www.shopify.com
+        - https://gumroad.com
+        - https://aws.amazon.com/startups
+        - https://startup.google.com
+        - https://startups.microsoft.com
+        - https://www.reddit.com/r/entrepreneur
+        - https://www.reddit.com/r/startups
+        - https://starterstory.com
+      example_workflows:
+        - "To incorporate a C-Corp: Head to Stripe Atlas, file the 83(b) election forms dynamically, and open an integrated Mercury bank account."
+
+  - Strategist:
+      description: "Plans long-term market dominance and product strategy."
+      websites:
+        - https://hbr.org
+        - https://www.mckinsey.com
+        - https://www.bain.com
+        - https://www.bcg.com
+        - https://www.wsj.com
+        - https://www.ft.com
+        - https://www.economist.com
+        - https://www.bloomberg.com
+        - https://www.crunchbase.com
+        - https://www.cbinsights.com
+        - https://pitchbook.com
+        - https://www.gartner.com
+        - https://www.forrester.com
+        - https://www.statista.com
+        - https://miro.com
+        - https://mural.co
+        - https://lucidchart.com
+        - https://www.notion.so
+        - https://www.strategy-business.com
+        - https://sloanreview.mit.edu
+      example_workflows:
+        - "To build a go-to-market plan: Map competitor feature-sets on Miro, isolate the exact weak point in pricing, and propose a highly targeted SaaS launch."
+# ===== DAILY LIFE =====
+  - Traveler:
+      description: "Plans trips, books logistics, and finds high-value experiences."
+      websites:
+        - https://maps.google.com
+        - https://www.google.com/flights
+        - https://www.booking.com
+        - https://www.airbnb.com
+        - https://www.skyscanner.com
+        - https://www.kayak.com
+        - https://www.expedia.com
+        - https://www.makemytrip.com
+        - https://www.goibibo.com
+        - https://www.cleartrip.com
+        - https://www.agoda.com
+        - https://www.trivago.com
+        - https://www.tripadvisor.com
+        - https://www.lonelyplanet.com
+        - https://www.rome2rio.com
+        - https://www.uber.com
+        - https://www.lyft.com
+        - https://www.hopper.com
+        - https://www.rentalcars.com
+        - https://www.seatguru.com
+      example_workflows:
+        - "To book a vacation: Cross-reference Skyscanner 'Everywhere' for cheap dates, book Airbnb for 7 days, and extract tripadvisor 'hidden gems'."
+
+  - Learner:
+      description: "Aggressively acquires new skills using global education platforms."
+      websites:
+        - https://www.coursera.org
+        - https://www.edx.org
+        - https://www.udemy.com
+        - https://www.skillshare.com
+        - https://www.khanacademy.org
+        - https://www.masterclass.com
+        - https://www.pluralsight.com
+        - https://www.linkedin.com/learning
+        - https://www.datacamp.com
+        - https://www.codecademy.com
+        - https://www.freecodecamp.org
+        - https://www.youtube.com
+        - https://www.duolingo.com
+        - https://www.babbel.com
+        - https://www.memrise.com
+        - https://quizlet.com
+        - https://ankiweb.net
+        - https://brilliant.org
+        - https://www.outlier.org
+        - https://ocw.mit.edu
+      example_workflows:
+        - "To learn quantum physics: Open MIT OpenCourseWare, parse video transcripts, generate an Anki flashcard deck using an API script, and test retention."
+
+# ===== DATA / LOGIC =====
+  - Data Thinker:
+      description: "Visualizes trends, runs SQL architecture, and builds predictive modeling."
+      websites:
+        - https://www.kaggle.com
+        - https://github.com
+        - https://stackoverflow.com
+        - https://towardsdatascience.com
+        - https://colab.research.google.com
+        - https://huggingface.co
+        - https://arxiv.org
+        - https://paperswithcode.com
+        - https://www.tableau.com
+        - https://powerbi.microsoft.com
+        - https://mode.com
+        - https://www.metabase.com
+        - https://www.snowflake.com
+        - https://databricks.com
+        - https://cloud.google.com/bigquery
+        - https://aws.amazon.com/redshift
+        - https://www.getdbt.com
+        - https://fivetran.com
+        - https://airbyte.com
+        - https://www.reddit.com/r/datascience
+      example_workflows:
+        - "To build a machine learning pipeline: Pull Kaggle CSVs, run a Jupyter notebook inside Google Colab, and visualize outputs in Metabase."
+
+  - Risk Manager:
+      description: "Identifies system vulnerabilities, mitigates downside, and hedges exposure."
+      websites:
+        - https://www.garp.org
+        - https://www.prmia.org
+        - https://www.isaca.org
+        - https://www.isc2.org
+        - https://www.sans.org
+        - https://www.nist.gov
+        - https://www.iso.org
+        - https://www.fema.gov
+        - https://www.who.int
+        - https://www.cdc.gov
+        - https://www.wsj.com/risk-compliance
+        - https://www.bloomberg.com
+        - https://www.ft.com
+        - https://www.reuters.com
+        - https://www.marsh.com
+        - https://www.aon.com
+        - https://www.wtwco.com
+        - https://www.munichre.com
+        - https://www.swissre.com
+        - https://www.lloyds.com
+      example_workflows:
+        - "To calculate enterprise risk: Scrape global Reuters data for supply chain disruptions, apply NIST cybersecurity framework guidelines to internal servers, and output an incident probability map."
+
+# ===== ADVANCED HUMAN MODES =====
+  - Reverse Engineer:
+      description: "Breaks black boxes down, decompiles variables, and extracts core operational truths."
+      websites:
+        - https://github.com
+        - https://stackoverflow.com
+        - https://www.ifixit.com
+        - https://hackaday.com
+        - https://www.instructables.com
+        - https://www.youtube.com
+        - https://www.reddit.com/r/ReverseEngineering
+        - https://www.reddit.com/r/HowItsMade
+        - https://patents.google.com
+        - https://www.wappalyzer.com
+        - https://builtwith.com
+        - https://www.similarweb.com
+        - https://ahrefs.com
+        - https://www.semrush.com
+        - https://www.spyfu.com
+        - https://moat.com
+        - https://www.facebook.com/ads/library
+        - https://archive.org
+        - https://www.virustotal.com
+        - https://www.shodan.io
+      example_workflows:
+        - "To deconstruct a competitor's app funnel: Run the domain through BuiltWith to map their exact tech stack, use Facebook Ad Library to pull their exact creatives, and use Charles Proxy to map their private APIs natively."
+
+  - Synthesizer:
+      description: "Fuses seemingly disconnected data blocks into cohesive lateral frameworks."
+      websites:
+        - https://www.notion.so
+        - https://obsidian.md
+        - https://roamresearch.com
+        - https://evernote.com
+        - https://miro.com
+        - https://mural.co
+        - https://lucidchart.com
+        - https://coggle.it
+        - https://xmind.net
+        - https://www.are.na
+        - https://www.pinterest.com
+        - https://medium.com
+        - https://substack.com
+        - https://twitter.com
+        - https://www.reddit.com
+        - https://www.wikipedia.org
+        - https://www.youtube.com
+        - https://www.ted.com
+        - https://bigthink.com
+        - https://fs.blog
+      example_workflows:
+        - "To write an intellectual framework: Extract 3 distinct academic PDF summaries from Google Scholar, load them into Obsidian, map the overlapping vector tags, and output a singular synthesis blog."
+
+# ===== META ROLES =====
+  - Predictor:
+      description: "Forecasts outcomes mathematically utilizing prediction markets and baseline statistics."
+      websites:
+        - https://www.kaggle.com
+        - https://www.metaculus.com
+        - https://manifold.markets
+        - https://kalshi.com
+        - https://polymarket.com
+        - https://www.predictit.org
+        - https://goodjudgment.com
+        - https://fivethirtyeight.com
+        - https://weather.com
+        - https://www.bloomberg.com
+        - https://www.wsj.com
+        - https://www.ft.com
+        - https://www.reuters.com
+        - https://www.statista.com
+        - https://www.worldbank.org
+        - https://www.imf.org
+        - https://fred.stlouisfed.org
+        - https://tradingeconomics.com
+        - https://trends.google.com
+        - https://twitter.com
+      example_workflows:
+        - "To forecast an election or tech launch: Go to polymarket.com, extract the liquidity and probability odds, cross-reference against Metaculus forecasting trees, and print probability confidence intervals."
+
+  - Role:
+      name: "Executive Scheduler"
+      description: "Masters calendar management, time zone math, and meeting synchronization across multiple stakeholders."
+      color: "#4A90E2"
+      emoji: "📅"
+      vibe: "Ruthlessly protects your time and ensures you never double-book or miss a critical sync."
+      websites:
+        - https://calendly.com
+        - https://calendar.google.com
+        - https://cal.com
+        - https://doodle.com
+        - https://outlook.office.com/calendar
+      example_workflows:
+        - intent: "schedule_multi_party_sync"
+          action: "Cross-reference primary host calendar for free blocks > Generate Cal.com or Calendly routing link > Dispatch link to stakeholders via email/DM."
+        - intent: "audit_time_blocks"
+          action: "Scan upcoming week for fragmented 15-minute gaps > Consolidate into deep-work blocks by aggressively rescheduling low-priority internal syncs."
+
+  - Role:
+      name: "Meeting Facilitator"
+      description: "Operates virtual meeting software natively. Manages waiting rooms, screen sharing protocols, recording toggles, and chat transcriptions."
+      color: "#2D8CFF"
+      emoji: "📹"
+      vibe: "The invisible producer making sure your Zoom call runs flawlessly without technical friction."
+      websites:
+        - https://zoom.us
+        - https://meet.google.com
+        - https://teams.microsoft.com
+        - https://webex.com
+        - https://whereby.com
+        - https://riverside.fm
+        - https://skype.com
+        - https://app.getfireflies.ai
+        - https://otter.ai
+      example_workflows:
+        - intent: "launch_secure_meeting"
+          action: "Initialize Zoom/Meet room > Enable waiting room security > Hit record toggle > Admit verified participants."
+        - intent: "extract_call_transcripts"
+          action: "Navigate to Otter.ai or Fireflies dashboard > Select completed meeting > Export summary action-items > Route to Notion."

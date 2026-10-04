@@ -1,0 +1,82 @@
+name: "Reddit Sentiment Analysis"
+role: "Competitor Analyst"
+capability: "sentiment_analysis"
+
+context:
+  purpose: "Discover organic user sentiment, complaints, and praises about a specific product or competitor."
+  strategy: |
+    Search relevant subreddits (e.g., r/SaaS, r/Entrepreneur, r/technology).
+    Sort by 'Relevance' or 'Top (This Year)' to filter out noise.
+    Extract deeply upvoted comments to find genuine pain points.
+
+platform_knowledge:
+  ui_patterns:
+    - "Search bar at the top"
+    - "Posts are vertical cards; comments are deeply nested trees below posts"
+    - "Upvote counters are on the left of posts/comments"
+  common_elements:
+    search_input: "Search Reddit"
+    communities_tab: "Communities"
+    comments_tab: "Comments"
+    sort_dropdown: "Sort"
+    time_filter: "Time"
+  interaction_patterns:
+    - "Search keyword → Click 'Posts' → Sort by 'Top' → Click Post → Scroll through top comments"
+    - "Identify multi-paragraph text blocks representing deep user feedback."
+
+decision_logic:
+  - name: "post_selection"
+    rules:
+      - "Ignore explicitly promoted or sponsored posts"
+      - "Prioritize posts with > 20 comments, as it indicates a discussion"
+      - "Focus on posts ending in question marks or containing words like 'review', 'sucks', 'alternative'"
+  - name: "comment_evaluation"
+    rules:
+      - "Extract comments with high upvote ratios"
+      - "Ignore 1-word comments ('lol', 'yeah')"
+      - "Flag comments mentioning competitor names as high-value"
+
+actions:
+  - type: "type_semantic"
+    anchor: "Search Reddit"
+    value: "{target_query} review OR alternative OR sucks"
+  - type: "press_key"
+    key: "Enter"
+  - type: "click_semantic"
+    anchor: "Posts"
+  - type: "click_semantic"
+    anchor: "Sort"
+  - type: "click_semantic"
+    anchor: "Top"
+  - type: "extract_list"
+    anchor: "search-results"
+    fields:
+      - "Title"
+      - "Subreddit"
+      - "Upvotes"
+      - "Comment Count"
+  - type: "click_semantic"
+    anchor: "Post Title"
+  - type: "scroll"
+    behavior: "human_like"
+  - type: "extract_comments"
+    depth: 10
+
+expected_outcomes:
+  - "Unbiased, raw human opinions regarding the specified product/competitor."
+  - "Identification of common pain points not listed in official documentation."
+
+failure_cases:
+  - case: "Reddit search is broken or returning 0 results"
+    action: "Use Google 'site:reddit.com {target_query}' as a fallback"
+  - case: "Subreddit is private or banned"
+    action: "Skip to the next relevant community"
+  - case: "NSFW Warning block"
+    action: "Click 'Yes, I am over 18' if required to proceed, otherwise exit thread"
+
+recovery_strategies:
+  - "If sorting by 'Top' returns outdated posts, pivot to 'Relevance' or 'New'"
+  - "If the UI infinite-scroll breaks, refresh the page and target specific comment IDs"
+
+learning_hooks:
+  - "Map alternative product names frequently mentioned in competitor critique threads."

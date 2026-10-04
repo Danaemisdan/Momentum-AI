@@ -1,0 +1,126 @@
+platform: "linkedin.com"
+system_behavior: "LinkedIn is a highly structured professional network. Navigation relies on the top navbar (Home, Network, Jobs, Messaging) and heavily utilizes modal popups for messaging and connecting."
+
+intents:
+
+- name: "discover_b2b_leads"
+    trigger_roles: ["Salesperson", "Growth Hacker", "Hustler", "Influencer Manager", "client", "clients", "lead", "leads", "prospect"]
+    strategy:
+      - "Identify target job titles and locations for lead generation."
+      - "Utilize LinkedIn's search and filtering capabilities to narrow down prospects."
+      - "Extract relevant contact information from identified profiles."
+    reference_patterns:
+      - "Click the top global search bar, type the exact job title you want like 'CEO' or 'Marketing Director', and hit Enter."
+      - "Below the search bar, click the 'People' filter button to narrow out companies and jobs."
+      - "Click the 'Locations' dropdown button, type the target city, select the checkbox from the dropdown list, and hit the 'Show results' button."
+    decision_logic:
+      - "If search results are too broad, apply additional filters like 'Connections' or 'Industry'."
+      - "If no results appear, broaden the job title or location."
+      - "If a profile is private, skip and move to the next."
+    actions:
+      - "Click: global_search_bar"
+      - "Type: target_job_title"
+      - "Press: Enter"
+      - "Click: people_filter_button"
+      - "Click: locations_dropdown_button"
+      - "Type: target_city"
+      - "Click: location_checkbox"
+      - "Click: show_results_button"
+      - "Scroll: down"
+      - "Extract: person_name, current_title, company_name"
+    verification:
+      - "Check if extracted data matches the search criteria."
+      - "Confirm that multiple leads have been extracted."
+    recovery:
+      - "If no leads are found, re-evaluate search terms and try again."
+      - "If extraction fails, re-scroll and try extracting again."
+
+  - name: "send_cold_connection"
+    trigger_roles: ["Salesperson", "Networker", "Growth Hacker"]
+    strategy:
+      - "Navigate to the target user's profile."
+      - "Initiate a connection request with a personalized message."
+      - "Ensure the message adheres to character limits."
+    reference_patterns:
+      - "Click on the target user's name to open their full profile."
+      - "Look for the primary blue button labeled 'Connect'. If it says 'Follow' instead, click the 'More' dropdown button next to it and select 'Connect' from the menu."
+      - "A modal will pop up asking to add a note. Always click the 'Add a note' button."
+      - "Type your personalized cold outreach message into the text area, strictly keeping it under 300 characters."
+      - "Click the 'Send' button on the bottom right of the modal."
+    decision_logic:
+      - "If 'Connect' button is not visible, check for 'More' dropdown."
+      - "If 'Add a note' button is missing, proceed without a note (less ideal)."
+      - "If message exceeds 300 characters, truncate or rephrase."
+    actions:
+      - "Click: target_user_name"
+      - "Click: connect_button OR more_dropdown_button THEN connect_from_menu"
+      - "Click: add_note_button"
+      - "Type: personalized_message"
+      - "Click: send_button"
+    verification:
+      - "Confirm that the connection request modal disappears."
+      - "Check for a 'Pending' status on the user's profile (if visible)."
+    recovery:
+      - "If modal doesn't disappear, re-click 'Send' button."
+      - "If an error message appears, re-evaluate message content and try again."
+
+  - name: "scrape_company_employees"
+    trigger_roles: ["Reverse Engineer", "Competitor Analyst", "Data Thinker"]
+    strategy:
+      - "Locate the target company's LinkedIn page."
+      - "Access the 'People' tab to view employees."
+      - "Filter employees by specific keywords to extract relevant profiles."
+    reference_patterns:
+      - "Type the competitor's company name in the top global search bar and hit Enter. Click on the company logo to visit their official page."
+      - "Look for the 'People' tab on the company's sub-navigation bar (next to Home, About, Posts) and click it."
+      - "Use the specific 'Search employees by title, keyword or school' input field located under the geographic breakdown charts."
+      - "Type highly specialized keywords like 'Machine Learning' or 'VP' to filter the grid of employees below, and extract the resulting employee profiles."
+    decision_logic:
+      - "If company page is not found, refine company name search."
+      - "If 'People' tab is missing, check for alternative employee listing links."
+      - "If keyword search yields no results, broaden the keywords."
+    actions:
+      - "Type: global_search_bar, competitor_company_name"
+      - "Press: Enter"
+      - "Click: company_logo"
+      - "Click: people_tab"
+      - "Type: employee_search_input, specialized_keywords"
+      - "Extract: employee_profiles"
+    verification:
+      - "Confirm that employee profiles matching keywords are displayed."
+      - "Check if extracted data includes names, titles, and other relevant info."
+    recovery:
+      - "If no employees are found, try different keywords or remove filters."
+      - "If extraction fails, re-scroll and try extracting again."
+
+  - name: "apply_to_job"
+    trigger_roles: ["Money Maker", "Hustler", "Self Improver"]
+    strategy:
+      - "Navigate to the LinkedIn Jobs section."
+      - "Search for target roles and locations."
+      - "Utilize 'Easy Apply' filter to streamline the application process."
+      - "Complete and submit the application."
+    reference_patterns:
+      - "Click the suitcase icon labeled 'Jobs' in the top main navigation bar."
+      - "Type the target role in the 'Search jobs' input box and target city in the 'Location' input box."
+      - "Click the 'Easy Apply' toggle button above the job listings to filter out complex external ATS sites."
+      - "Click a job listing, click the blue 'Easy Apply' button, and follow the modal prompts by clicking 'Next' until you reach the 'Submit application' button."
+    decision_logic:
+      - "If no jobs are found, broaden search criteria (role, location)."
+      - "If 'Easy Apply' is not available for a job, skip it."
+      - "If application requires external site, do not proceed (unless specified)."
+    actions:
+      - "Click: jobs_icon"
+      - "Type: search_jobs_input, target_role"
+      - "Type: location_input, target_city"
+      - "Click: easy_apply_toggle_button"
+      - "Click: job_listing"
+      - "Click: easy_apply_button"
+      - "Click: next_button (repeatedly until submit)"
+      - "Click: submit_application_button"
+    verification:
+      - "Confirm that a 'Application Submitted' or similar message appears."
+      - "Check for a confirmation email (if applicable)."
+    recovery:
+      - "If application fails, re-attempt the 'Easy Apply' process."
+      - "If an error occurs, review application details and try again."

@@ -1,0 +1,2585 @@
+platform: www.ycombinator.com
+interactibles:
+  primary_navigation:
+    - name: About
+      href: /about
+    - name: Companies
+      href: /companies
+    - name: Library
+      href: /library
+    - name: Partners
+      href: /partners
+    - name: Resources
+      href: /library
+    - name: Startup Jobs
+      href: /jobs
+    - name: Log in
+      href: https://account.ycombinator.com/?continue=https://www.ycombinator.com/
+    - name: Apply
+      href: /apply
+  featured_companies:
+    - name: OpenAI
+      href: none
+    - name: Airbnb
+      href: none
+    - name: Stripe
+      href: none
+    - name: Coinbase
+      href: none
+    - name: DoorDash
+      href: none
+    - name: Scale AI
+      href: none
+    - name: Dropbox
+      href: none
+    - name: Reddit
+      href: none
+    - name: Instacart
+      href: none
+    - name: GitLab
+      href: none
+    - name: Kalshi
+      href: none
+    - name: Replit
+      href: none
+    - name: Twitch
+      href: none
+    - name: $1.3 Trillion
+      href: none
+    - name: All companies
+      href: /companies
+  featured_people:
+    - name: Garry Tan
+      href: /people/garry-tan
+    - name: Harj Taggar
+      href: /people/harj-taggar
+    - name: Jared Friedman
+      href: /people/jared-friedman
+    - name: Aaron Epstein
+      href: /people/aaron-epstein
+    - name: Diana Hu
+      href: /people/diana-hu
+    - name: Gustaf Alströmer
+      href: /people/gustaf-alstromer
+    - name: Nicolas Dessaigne
+      href: /people/nicolas-dessaigne
+    - name: Tom Blomfield
+      href: /people/tom-blomfield
+    - name: Brad Flora
+      href: /people/brad-flora
+    - name: Pete Koomen
+      href: /people/pete-koomen
+    - name: Ankit Gupta
+      href: /people/ankit-gupta
+    - name: Tyler Bosmeny
+      href: /people/tyler-bosmeny
+    - name: David Lieb
+      href: /people/david-lieb
+    - name: Andrew Miklas
+      href: /people/andrew-miklas
+    - name: Jon Xu
+      href: /people/jon-xu
+  featured_content:
+    - name: Andrej Karpathy: Software Is Changing (Again)
+      href: https://www.ycombinator.com/library/MW-andrej-karpathy-software-is-changing-again
+    - name: How To Build The Future: Sam Altman
+      href: https://www.ycombinator.com/library/Lp-how-to-build-the-future-sam-altman
+    - name: YC Partners Answer Your Questions
+      href: https://www.ycombinator.com/library/N2-yc-partners-answer-your-questions-office-hours
+    - name: LIGHTCONE PODCAST
+      href: https://www.ycombinator.com/library/N0-unpopular-ideas-that-became-billion-dollar-businesses
+  news_and_updates:
+    - name: Announcing the YC AI Stack›
+      href: https://www.ycombinator.com/blog/the-yc-ai-student-starter-pack
+    - name: Emergent Raises $70M Series B at $300M Valuation›
+      href: https://techcrunch.com/2026/01/20/indian-vibe-coding-startup-emergent-raises-70m-at-300m-valuation-from-softbank-khosla-ventures/
+    - name: Govdash Raises $30M Series B›
+      href: https://www.govdash.com/blog/govdash-raises-30m-in-new-funding
+    - name: Fleetzero Raises $43M Series A for Battery-Powered Cargo Ships›
+      href: https://www.wsj.com/business/energy-oil/talk-about-range-anxietycould-giant-cargo-ships-run-on-batteries-7d258427
+    - name: Deepgram Raises $130M Series C›
+      href: https://deepgram.com/learn/scott-announcement-deepgram-raises-series-c
+  paul_graham_essays:
+    - name: Default Alive or Default Dead›
+      href: https://www.paulgraham.com/aord.html
+    - name: Do Things that Don’t Scale›
+      href: https://www.paulgraham.com/ds.html
+    - name: Be Relentlessly Resourceful›
+      href: https://www.paulgraham.com/relres.html
+    - name: How to Get Startup Ideas›
+      href: http://www.paulgraham.com/startupideas.html
+    - name: Startup = Growth›
+      href: http://www.paulgraham.com/growth.html
+  footer_navigation_programs:
+    - name: YC Program
+      href: /about
+    - name: Startup School
+      href: https://startupschool.org
+    - name: Work at a Startup
+      href: /jobs
+    - name: Co-Founder Matching
+      href: /cofounder-matching
+    - name: Startup Directory
+      href: /companies
+    - name: Startup Library
+      href: /library
+    - name: Investors
+      href: /investors
+    - name: Demo Day
+      href: /demoday
+    - name: Safe
+      href: /documents
+    - name: Hacker News
+      href: https://news.ycombinator.com/
+    - name: Launch YC
+      href: /launches
+    - name: YC Deals
+      href: https://deals.ycombinator.com
+    - name: YC Blog
+      href: /blog
+  footer_navigation_company:
+    - name: Contact
+      href: /contact
+    - name: Press
+      href: /press
+    - name: People
+      href: /people
+    - name: Careers
+      href: /software
+    - name: Privacy Policy
+      href: /legal#privacy
+    - name: Notice at Collection
+      href: /legal#notice-at-collection
+    - name: Security
+      href: /security
+    - name: Terms of Use
+      href: /legal#tou
+  social_media_links:
+    - name: Twitter
+      href: https://twitter.com/ycombinator
+    - name: Facebook
+      href: https://www.facebook.com/YCombinator/
+    - name: Instagram
+      href: https://www.instagram.com/ycombinator
+    - name: LinkedIn
+      href: https://www.linkedin.com/school/y-combinator/
+    - name: Youtube
+      href: https://www.youtube.com/c/ycombinator
+intents:
+
+- name: Explore YC Programs and Offerings
+    strategy:
+      - Identify sections related to YC's core business and educational initiatives.
+      - Look for explicit links or buttons advertising programs or application processes.
+      - Prioritize primary navigation for broad overview, then footer for specific details.
+    reference_patterns:
+      - The user navigates through the primary navigation links such as 'About' or 'Partners' to understand YC's core activities.
+      - The user accesses the 'YC Program' or 'Startup School' links in the footer to delve into specific educational or accelerator offerings.
+      - The user might explore the 'Apply' button to initiate the application process for a YC program.
+    decision_logic:
+      - IF "About" or "Partners" links are present in primary navigation, THEN explore for general information.
+      - IF "YC Program" or "Startup School" links are in the footer, THEN prioritize for detailed program info.
+      - IF an "Apply" button is visible, THEN consider it for application-related queries.
+    actions:
+      - Click 'About'
+      - Click 'YC Program'
+      - Click 'Apply'
+    verification:
+      - Check if the URL contains keywords like "program", "about", or "apply".
+      - Verify the presence of program descriptions or application forms.
+    recovery:
+      - If initial click fails, try alternative links like "Startup School".
+      - If no relevant links found, broaden search to general "Programs" or "Offerings" sections.
+  - name: Discover YC-backed Companies
+    strategy:
+      - Locate sections dedicated to showcasing YC alumni or portfolio companies.
+      - Prioritize direct links to company directories or featured lists.
+      - Utilize search functionalities if available for specific company lookup.
+    reference_patterns:
+      - The user reviews the list of 'featured_companies' to see prominent YC alumni.
+      - The user selects 'Companies' from the primary navigation or 'All companies' to browse the full directory of startups.
+      - The user might use the 'Startup Directory' link in the footer to find specific companies.
+    decision_logic:
+      - IF "Companies" link is in primary navigation, THEN navigate there for full directory.
+      - IF "featured_companies" section is visible, THEN browse for prominent examples.
+      - IF "Startup Directory" link is in the footer, THEN use it for a curated list.
+    actions:
+      - Click 'Companies'
+      - Scroll to 'featured_companies'
+      - Click 'Startup Directory'
+    verification:
+      - Check if the page displays a list of company names or logos.
+      - Verify the URL contains "companies" or "directory".
+    recovery:
+      - If "Companies" link is missing, try "All companies" or "Portfolio".
+      - If no direct links, search for "companies" or "startups" on the page.
+  - name: Learn from YC Resources
+    strategy:
+      - Identify sections providing educational content, articles, or guides.
+      - Prioritize dedicated "Library" or "Resources" links.
+      - Look for prominent content blocks like "featured_content" or specific author sections.
+    reference_patterns:
+      - The user accesses the 'Library' or 'Resources' links in the primary navigation to find articles and videos.
+      - The user explores 'featured_content' like podcasts or specific articles to gain insights.
+      - The user delves into 'paul_graham_essays' for foundational startup advice.
+      - The user utilizes the 'Startup Library' link in the footer for a curated collection of resources.
+    decision_logic:
+      - IF "Library" or "Resources" links are in primary navigation, THEN explore for general content.
+      - IF "featured_content" or "paul_graham_essays" sections are present, THEN prioritize for specific insights.
+      - IF "Startup Library" link is in the footer, THEN use it for curated resources.
+    actions:
+      - Click 'Library'
+      - Scroll to 'featured_content'
+      - Click 'paul_graham_essays'
+    verification:
+      - Check if the page displays articles, videos, or a list of resources.
+      - Verify the URL contains "library", "resources", or "essays".
+    recovery:
+      - If "Library" is not found, try "Blog" or "Insights".
+      - If specific content sections are missing, search for "resources" on the page.
+  - name: Find Job Opportunities at Startups
+    strategy:
+      - Locate sections dedicated to career opportunities within the YC ecosystem.
+      - Prioritize direct links to job boards or "Work at a Startup" pages.
+      - Look for calls to action related to employment.
+    reference_patterns:
+      - The user clicks on 'Startup Jobs' in the primary navigation to view available positions.
+      - The user accesses the 'Work at a Startup' link in the footer to explore career opportunities within the YC ecosystem.
+    decision_logic:
+      - IF "Startup Jobs" link is in primary navigation, THEN navigate there for job listings.
+      - IF "Work at a Startup" link is in the footer, THEN use it for career exploration.
+    actions:
+      - Click 'Startup Jobs'
+      - Click 'Work at a Startup'
+    verification:
+      - Check if the page displays job postings or a job search interface.
+      - Verify the URL contains "jobs" or "careers".
+    recovery:
+      - If "Startup Jobs" is missing, try "Careers" or "Hiring".
+      - If no direct links, search for "jobs" or "careers" on the page.
+  - name: Connect with the YC Community
+    strategy:
+      - Identify links to social media platforms or community forums.
+      - Look for features facilitating connections, like co-founder matching.
+      - Prioritize well-known community hubs.
+    reference_patterns:
+      - The user engages with 'social_media_links' to follow YC on various platforms.
+      - The user might look for 'Co-Founder Matching' to find potential collaborators.
+      - The user could visit 'Hacker News' for community discussions.
+    decision_logic:
+      - IF "social_media_links" are present, THEN click to follow YC.
+      - IF "Co-Founder Matching" is available, THEN explore for collaboration.
+      - IF "Hacker News" link is present, THEN navigate to the community forum.
+    actions:
+      - Click 'social_media_links' (e.g., Twitter icon)
+      - Click 'Co-Founder Matching'
+      - Click 'Hacker News'
+    verification:
+      - Check if a new tab opens to a social media platform or forum.
+      - Verify the presence of community-related content or profiles.
+    recovery:
+      - If direct links are missing, search for "community" or "forum".
+      - If social media links are not explicit, look for common social media icons.
+  - name: Access Investor Information
+    strategy:
+      - Locate sections specifically targeting investors or providing financial insights.
+      - Prioritize links related to funding, demo days, or investor relations.
+      - Look for content showcasing startup progress or investment opportunities.
+    reference_patterns:
+      - The user navigates to the 'Investors' link in the footer to find information relevant to funding.
+      - The user might explore 'Demo Day' to see presentations from graduating batches.
+    decision_logic:
+      - IF "Investors" link is in the footer, THEN navigate there for investor-specific content.
+      - IF "Demo Day" link is present, THEN explore for startup presentations.
+    actions:
+      - Click 'Investors'
+      - Click 'Demo Day'
+    verification:
+      - Check if the page displays information for investors or details about Demo Day.
+      - Verify the URL contains "investors" or "demo-day".
+    recovery:
+      - If "Investors" link is missing, search for "funding" or "invest".
+      - If "Demo Day" is not found, look for "batches" or "graduates".
+  - name: Stay Updated on YC News
+    strategy:
+      - Identify sections dedicated to news, announcements, or official updates.
+      - Prioritize links to blogs or dedicated news feeds.
+      - Look for recent articles or press releases.
+    reference_patterns:
+      - The user reviews the 'news_and_updates' section for recent announcements and funding rounds.
+      - The user accesses the 'YC Blog' for official updates and articles.
+    decision_logic:
+      - IF "news_and_updates" section is visible, THEN browse for recent information.
+      - IF "YC Blog" link is present, THEN navigate there for official articles.
+    actions:
+      - Scroll to 'news_and_updates'
+      - Click 'YC Blog'
+    verification:
+      - Check if the page displays a list of news articles with dates.
+      - Verify the URL contains "news" or "blog".
+    recovery:
+      - If "news_and_updates" is missing, search for "updates" or "announcements".
+      - If "YC Blog" is not found, look for "articles" or "press".
+  - name: Understand Legal and Privacy Policies
+    strategy:
+      - Locate links to legal documents, typically found in the footer.
+      - Prioritize explicit links for "Privacy Policy", "Terms of Use", etc.
+      - Ensure all relevant policy documents are accessible.
+    reference_patterns:
+      - The user clicks on 'Privacy Policy', 'Notice at Collection', 'Security', or 'Terms of Use' in the footer to review legal documentation.
+    decision_logic:
+      - IF "Privacy Policy" link is in the footer, THEN click to review.
+      - IF "Terms of Use" link is in the footer, THEN click to review.
+      - IF "Notice at Collection" or "Security" links are present, THEN click to review.
+    actions:
+      - Click 'Privacy Policy'
+      - Click 'Terms of Use'
+      - Click 'Security'
+    verification:
+      - Check if the page displays the full text of the legal document.
+      - Verify the URL contains keywords like "privacy", "terms", or "security".
+    recovery:
+      - If a specific policy link is missing, search for "legal" or "policy" in the footer.
+      - If no footer links, check for a "Legal" or "Compliance" section in the "About" page.
+  - name: Identify Key People at YC
+    strategy:
+      - Locate sections introducing YC team members, partners, or alumni.
+      - Prioritize direct links to "People" or "Team" pages.
+      - Look for featured profiles or directories of individuals.
+    reference_patterns:
+      - The user browses the 'featured_people' section to learn about YC partners and alumni.
+      - The user accesses the 'People' link in the footer to view a broader list of individuals associated with YC.
+    decision_logic:
+      - IF "featured_people" section is visible, THEN browse for prominent individuals.
+      - IF "People" link is in the footer, THEN navigate there for a broader list.
+    actions:
+      - Scroll to 'featured_people'
+      - Click 'People'
+    verification:
+      - Check if the page displays names, titles, and profiles of individuals.
+      - Verify the URL contains "people" or "team".
+    recovery:
+      - If "featured_people" is missing, search for "team" or "partners".
+      - If "People" link is not found, check the "About" section for team information.
+  - name: Log In to a YC Account
+    strategy:
+      - Locate the login entry point, typically a prominent button in the header.
+      - Prioritize direct "Log in" or "Sign in" buttons.
+      - Ensure the login form is accessible.
+    reference_patterns:
+      - The user clicks the 'Log in' button in the primary navigation to access their personal YC account.
+    decision_logic:
+      - IF "Log in" button is present in the primary navigation, THEN click to access account.
+    actions:
+      - Click 'Log in'
+    verification:
+      - Check if a login form or a redirect to a login page appears.
+      - Verify the URL contains "login" or "signin".
+    recovery:
+      - If "Log in" button is missing, try "Sign in" or "My Account".
+      - If no explicit button, look for a small icon representing user access.
+
+  - name: "propose_regulatory_compliance_framework_for_new_startup_category"
+    trigger_roles:
+      - "Regulatory Foresight & Policy Synthesis Engine"
+    strategy:
+      - Identify emerging startup categories or technologies discussed on YC forums/news that lack clear regulatory guidance.
+      - Synthesize potential regulatory risks and propose a proactive compliance framework.
+      - Submit the framework for review and discussion within the YC ecosystem.
+    reference_patterns:
+      - High volume of forum posts discussing "regulatory uncertainty" or "legal challenges" for a specific tech.
+      - Mentions of new technologies (e.g., decentralized AI, bio-engineered food) in YC news or startup applications.
+      - Absence of existing YC guidance documents or blog posts on compliance for a novel sector.
+    decision_logic:
+      - IF a new tech category is identified AND regulatory ambiguity is high THEN initiate framework synthesis.
+      - IF existing YC resources are insufficient for the identified category THEN prioritize framework development.
+      - IF a framework draft is complete THEN prepare for submission to YC partners/legal team.
+    actions:
+      - Navigate to YC forum search and query for "regulatory uncertainty [emerging tech]".
+      - Access YC internal knowledge base (simulated) for existing compliance documents.
+      - Draft a new policy proposal document using YC's internal document editor (simulated).
+      - Submit the document via YC's partner communication portal (simulated).
+    verification:
+      - Confirmation message indicating successful submission of the policy proposal.
+      - Notification of review by YC legal or partner team.
+      - Appearance of the proposed framework in a pending review queue.
+    recovery:
+      - IF submission fails due to format error THEN reformat document and retry.
+      - IF portal is unresponsive THEN log error and attempt submission again after 5 minutes.
+      - IF proposal is rejected due to scope THEN refine scope based on feedback and resubmit.
+  - name: "audit_startup_cryptographic_implementations_for_quantum_vulnerability"
+    trigger_roles:
+      - "Algorithmic Cryptographic Resilience & Quantum-Safe Transition Architect"
+    strategy:
+      - Scan YC startup profiles and public repositories for cryptographic libraries and protocols in use.
+      - Assess identified cryptographic implementations against known quantum attack vectors and post-quantum cryptography (PQC) standards.
+      - Generate a prioritized report of quantum vulnerability risks and recommend PQC transition strategies for high-risk startups.
+    reference_patterns:
+      - Startup descriptions mentioning "blockchain," "secure data," "encryption," or "privacy-preserving AI."
+      - Links to GitHub repositories in YC startup profiles containing cryptographic code.
+      - Forum discussions about "quantum computing threats" or "post-quantum cryptography."
+    decision_logic:
+      - IF a startup utilizes pre-quantum cryptographic primitives (e.g., RSA, ECC) AND their data is long-lived THEN flag for high-priority review.
+      - IF a startup's core business relies on cryptographic security AND they show no PQC adoption THEN generate a specific recommendation.
+      - IF a startup is exploring PQC solutions THEN offer guidance on best practices and available resources.
+    actions:
+      - Use YC's internal search (simulated) to filter startups by keywords like "encryption," "blockchain."
+      - Access linked public code repositories (e.g., GitHub) from startup profiles.
+      - Run an automated code analysis tool (simulated) to identify cryptographic libraries.
+      - Generate a structured vulnerability report and PQC recommendation document.
+      - Submit the report via YC's internal startup feedback portal (simulated).
+    verification:
+      - Confirmation of report submission to the relevant startup and YC partners.
+      - Log entry of the audit performed and recommendations generated.
+      - Notification of the startup acknowledging receipt of the vulnerability assessment.
+    recovery:
+      - IF code repository access fails THEN flag startup for manual review and direct contact.
+      - IF analysis tool returns errors THEN re-run analysis with adjusted parameters or switch to a different tool.
+      - IF submission portal is down THEN queue report for later submission and notify relevant internal teams.
+  - name: "automate_ml_model_deployment_pipeline_for_yc_startup"
+    trigger_roles:
+      - "AI Lifecycle & MLOps Automation Maestro"
+    strategy:
+      - Identify a YC startup with a mature ML model in development but lacking robust MLOps infrastructure.
+      - Design and implement a fully automated CI/CD pipeline for model training, versioning, testing, and deployment.
+      - Integrate the pipeline with existing YC-provided cloud resources or recommended third-party tools.
+    reference_patterns:
+      - Startup profiles mentioning "ML model in production," "scaling AI," or "deployment challenges."
+      - Forum posts from founders asking about "MLOps tools," "CI/CD for AI," or "model drift."
+      - YC internal project tracking (simulated) showing a startup's ML project stuck in "development" phase for too long.
+    decision_logic:
+      - IF a startup has a validated ML model AND no automated deployment THEN prioritize pipeline creation.
+      - IF a startup is struggling with model versioning or reproducibility THEN implement a robust tracking system.
+      - IF the startup uses a supported cloud provider THEN leverage YC's pre-configured templates for that provider.
+    actions:
+      - Access the startup's designated cloud environment (e.g., AWS, GCP, Azure - simulated access).
+      - Configure a CI/CD pipeline using tools like GitHub Actions, GitLab CI, or Jenkins (simulated setup).
+      - Integrate with MLflow, DVC, or similar for model versioning and experiment tracking (simulated integration).
+      - Deploy a sample model to a staging environment via the new pipeline (simulated deployment).
+      - Document the MLOps pipeline and provide handover instructions to the startup.
+    verification:
+      - Successful execution of the automated pipeline, deploying a test model.
+      - Confirmation from the startup that the pipeline is operational and accessible.
+      - Monitoring dashboard (simulated) showing pipeline health and model performance metrics.
+    recovery:
+      - IF pipeline deployment fails THEN review logs, debug configuration, and retry.
+      - IF integration with a specific tool fails THEN attempt an alternative compatible tool or escalate for manual intervention.
+      - IF startup feedback indicates issues THEN provide direct support and iterate on the pipeline design.
+  - name: "orchestrate_automated_threat_response_for_yc_platform_vulnerability"
+    trigger_roles:
+      -"Cognitive Security Orchestration & Automated Response Nexus"
+    strategy:
+      - Detect a critical security vulnerability or active threat targeting the www_ycombinator_com platform or a core YC service.
+      - Automatically trigger a pre-defined incident response playbook, isolating affected systems and deploying countermeasures.
+      - Coordinate communication with relevant YC internal teams and affected startups.
+    reference_patterns:
+      - Alerts from YC's security monitoring systems (simulated SIEM/EDR).
+      - Anomalous login attempts or data access patterns on YC internal systems.
+      - Reports of phishing attempts or malware targeting YC staff or founders.
+    decision_logic:
+      - IF a critical vulnerability is detected AND an automated playbook exists THEN execute the playbook immediately.
+      - IF the threat involves data exfiltration THEN prioritize data isolation and integrity checks.
+      - IF the threat impacts multiple startups THEN initiate a broader communication and mitigation strategy.
+    actions:
+      - Isolate affected network segments or cloud resources (simulated network controls).
+      - Deploy security patches or configuration changes to vulnerable systems (simulated patch management).
+      - Revoke compromised API keys or user credentials (simulated identity management).
+      - Trigger automated alerts to YC security team and relevant stakeholders.
+      - Draft and send templated incident notification emails to affected users/startups (simulated email system).
+    verification:
+      - Confirmation that affected systems are isolated and countermeasures are active.
+      - Log entries showing successful execution of all playbook steps.
+      - Receipt confirmation of incident notifications by internal teams and affected parties.
+    recovery:
+      - IF an automated response step fails THEN attempt manual execution of that step and log the failure.
+      - IF isolation causes unintended service disruption THEN revert isolation for non-critical services and re-evaluate.
+      - IF communication system fails THEN use an alternative emergency communication channel.
+  - name: "evaluate_yc_platform_ui_for_wcag_2_2_compliance_and_generate_remediation_plan"
+    trigger_roles:
+      - "Accessibility & Inclusive Design Paragon"
+    strategy:
+      - Conduct a comprehensive automated and manual audit of key user flows on www_ycombinator_com against WCAG 2.2 guidelines.
+      - Identify accessibility barriers in UI components, navigation, and content presentation.
+      - Generate a prioritized remediation plan with specific actionable recommendations for the YC development team.
+    reference_patterns:
+      - User feedback (simulated) mentioning difficulties with screen readers, keyboard navigation, or color contrast.
+      - Internal YC design system documentation (simulated) lacking explicit accessibility guidelines.
+      - Absence of accessibility statements or features (e.g., skip links, alt text for all images) on the YC website.
+    decision_logic:
+      - IF critical user flows (e.g., application submission, forum posting) fail WCAG 2.2 AA standards THEN prioritize immediate remediation.
+      - IF a design component is used ubiquitously across the platform AND it has accessibility issues THEN flag for global redesign.
+      - IF a quick fix (e.g., adding alt text) can significantly improve accessibility THEN recommend immediate implementation.
+    actions:
+      - Use automated accessibility testing tools (e.g., Lighthouse, Axe DevTools - simulated execution) on key YC pages.
+      - Perform manual keyboard navigation and screen reader testing on critical user paths.
+      - Review YC's UI component library (simulated) for accessibility attributes.
+      - Document identified issues in a structured report, referencing specific WCAG guidelines.
+      - Create a prioritized task list for the YC development team in their project management system (simulated Jira/Asana).
+    verification:
+      - Automated tools report a significant reduction in accessibility violations after proposed changes (simulated).
+      - Confirmation from YC development team that the remediation plan has been integrated into their backlog.
+      - Manual re-testing confirms improved accessibility for previously identified barriers.
+    recovery:
+      - IF automated tools fail to run THEN attempt manual audit for critical paths and log tool failure.
+      - IF remediation plan is rejected due to resource constraints THEN re-prioritize and propose phased implementation.
+      - IF project management system integration fails THEN export plan as a document and send via email.
+  - name: "synthesize_public_perception_report_on_ai_ethics_for_yc_portfolio"
+    trigger_roles:
+      - "Strategic Communications & Public Perception Synthesizer"
+    strategy:
+      - Monitor global news, social media, and academic discourse for sentiment and trends related to AI ethics, bias, and societal impact.
+      - Analyze how these trends might affect the public perception and regulatory landscape for YC's AI-focused portfolio companies.
+      - Generate a strategic communications brief for YC partners and relevant startups, outlining risks and proactive messaging opportunities.
+    reference_patterns:
+      - High volume of negative news articles or social media discussions about "AI bias," "data privacy," or "job displacement by AI."
+      - Reports from think tanks or NGOs on ethical AI guidelines.
+      - Public statements from regulatory bodies regarding AI governance.
+    decision_logic:
+      - IF a significant negative public sentiment trend emerges related to a core AI application area of YC startups THEN prioritize a detailed report.
+      - IF a new regulatory proposal impacting AI is gaining traction THEN analyze its communication implications.
+      - IF a YC startup is mentioned in a public discussion (positive or negative) related to AI ethics THEN provide tailored guidance.
+    actions:
+      - Utilize media monitoring tools (simulated Meltwater/Brandwatch) to track keywords like "AI ethics," "algorithmic bias," "YC AI."
+      - Analyze sentiment and identify key narratives across various platforms.
+      - Cross-reference findings with YC's AI startup portfolio to identify direct relevance.
+      - Draft a strategic communications brief, including risk assessments and recommended talking points.
+      - Submit the brief to YC partners via their internal communication platform (simulated Slack/email).
+    verification:
+      - Confirmation of brief receipt by YC partners.
+      - Internal discussions or actions taken by YC based on the report's recommendations.
+      - Subsequent monitoring shows an adjustment in YC's or portfolio companies' public messaging.
+    recovery:
+      - IF monitoring tools fail THEN revert to manual news aggregation and sentiment analysis.
+      - IF brief submission fails THEN attempt alternative communication channels or re-queue.
+      - IF initial brief is deemed insufficient THEN gather more data and refine the analysis.
+  - name: "design_and_deploy_adaptive_microservice_architecture_for_yc_internal_tool"
+    trigger_roles:
+      - "Self-Assembling & Reconfigurable Micro-Architecture Fabricator"
+    strategy:
+      - Identify a monolithic or underperforming internal YC tool that requires increased scalability, resilience, or feature velocity.
+      - Automatically decompose the tool into a set of self-assembling, reconfigurable microservices.
+      - Deploy the new microservice architecture to a cloud-native environment, ensuring seamless integration and minimal downtime.
+    reference_patterns:
+      - Performance alerts (simulated) for a specific YC internal application (e.g., application review system, founder directory).
+      - Developer feedback (simulated) complaining about "slow deployments," "tight coupling," or "difficulty scaling."
+      - High resource utilization metrics for a single application instance.
+    decision_logic:
+      - IF an internal tool consistently exceeds performance thresholds AND its architecture is monolithic THEN initiate microservice decomposition.
+      - IF a tool requires frequent, independent feature updates THEN prioritize modularization into microservices.
+      - IF the new architecture can leverage existing YC cloud infrastructure components THEN optimize for those.
+    actions:
+      - Analyze the existing codebase and identify logical boundaries for microservices (simulated code analysis).
+      - Generate microservice definitions and API contracts (simulated OpenAPI/gRPC definition).
+      - Provision cloud resources (e.g., Kubernetes clusters, serverless functions - simulated cloud API calls).
+      - Deploy individual microservices and configure inter-service communication (simulated CI/CD for microservices).
+      - Implement monitoring and auto-scaling for the new architecture.
+      - Migrate data from the old system to the new microservices (simulated data migration scripts).
+    verification:
+      - New microservice architecture is deployed and operational.
+      - Performance metrics show significant improvement (e.g., reduced latency, increased throughput).
+      - YC internal users confirm seamless transition and improved tool responsiveness.
+    recovery:
+      - IF microservice deployment fails THEN roll back to the previous monolithic version and debug.
+      - IF data migration encounters errors THEN pause migration, fix issues, and restart from checkpoint.
+      - IF a specific microservice fails to communicate THEN review network configurations and service discovery.
+  - name: "optimize_yc_startup_investment_portfolio_for_risk_adjusted_returns_using_algorithmic_trading_strategies"
+    trigger_roles:
+      - "Financial Algorithmic Steward"
+    strategy:
+      - Access YC's internal investment portfolio data, including startup valuations, funding rounds, and market performance.
+      - Develop and deploy algorithmic models to analyze market trends, predict startup success probabilities, and identify optimal investment/divestment points.
+      - Generate real-time recommendations for YC partners to maximize risk-adjusted returns across the portfolio.
+    reference_patterns:
+      - Market volatility alerts impacting specific sectors where YC has significant investments.
+      - Public news or analyst reports (simulated) on the performance of YC-backed companies or their competitors.
+      - Internal YC reports (simulated) showing underperforming investments or missed opportunities.
+    decision_logic:
+      - IF a startup's valuation trajectory deviates significantly from predicted models THEN re-evaluate its investment status.
+      - IF market conditions indicate an optimal window for follow-on investment or exit in a specific sector THEN generate a recommendation.
+      - IF a portfolio company shows signs of distress THEN recommend risk mitigation strategies or potential divestment.
+    actions:
+      - Access YC's internal investment database (simulated secure API).
+      - Ingest real-time market data from financial APIs (simulated Bloomberg/Refinitiv).
+      - Execute proprietary algorithmic models for portfolio optimization and risk assessment.
+      - Generate a prioritized list of investment/divestment recommendations, including rationale.
+      - Present recommendations to YC partners via a secure, interactive dashboard (simulated).
+    verification:
+      - YC partners acknowledge receipt and review of algorithmic recommendations.
+      - Subsequent investment decisions align with or are influenced by the generated recommendations.
+      - Portfolio performance metrics (simulated) show improved risk-adjusted returns over time.
+    recovery:
+      - IF market data feed fails THEN use cached data and alert for manual data input.
+      - IF algorithmic model execution fails THEN revert to a stable previous version and debug.
+      - IF dashboard presentation fails THEN generate a static report and email to partners.
+  - name: "orchestrate_multi_cloud_hybrid_deployment_for_yc_startup_global_expansion"
+    trigger_roles:
+      - "Omni-Dimensional Deployment & Orchestration Architect"
+    strategy:
+      - Identify a YC startup planning global expansion that requires a resilient, low-latency presence across multiple cloud providers and on-premise (hybrid) environments.
+      - Design and orchestrate a unified deployment strategy, leveraging containerization, service mesh, and global load balancing.
+      - Automate the provisioning, deployment, and management of infrastructure and applications across diverse environments.
+    reference_patterns:
+      - Startup profiles mentioning "global reach," "multi-region deployment," or "hybrid cloud strategy."
+      - Forum posts from founders asking about "cloud provider lock-in" or "global infrastructure challenges."
+      - YC internal project plans (simulated) for startups targeting new geographical markets.
+    decision_logic:
+      - IF a startup requires presence in regions not optimally served by a single cloud provider THEN initiate multi-cloud strategy.
+      - IF a startup has specific data residency requirements THEN incorporate on-premise or sovereign cloud solutions.
+      - IF the startup's application architecture is containerized THEN leverage Kubernetes or similar orchestration tools.
+    actions:
+      - Design a comprehensive infrastructure-as-code (IaC) blueprint using Terraform/Pulumi (simulated).
+      - Provision resources across AWS, GCP, Azure, and potentially on-premise data centers (simulated API calls).
+      - Deploy containerized applications using Kubernetes, OpenShift, or similar (simulated CI/CD integration).
+      - Configure a global service mesh (e.g., Istio, Linkerd) for inter-service communication and traffic management.
+      - Implement global DNS and load balancing for optimal routing and failover.
+      - Set up centralized monitoring and logging across all environments.
+    verification:
+      - Applications are successfully deployed and accessible across all targeted regions/environments.
+      - Monitoring dashboards confirm low latency and high availability across the distributed infrastructure.
+      - Startup confirms successful global expansion with robust infrastructure.
+    recovery:
+      - IF provisioning in one cloud provider fails THEN attempt an alternative region or cloud, or log for manual intervention.
+      - IF application deployment fails in a specific environment THEN roll back that environment and debug the deployment pipeline.
+      - IF service mesh configuration fails THEN revert to direct service communication and alert for manual fix.
+  - name: "broker_strategic_partnership_between_yc_startup_and_enterprise_for_ecosystem_growth"
+    trigger_roles:
+      - "Ecosystem & Partnership Synergy Orchestrator"
+    strategy:
+      - Identify a YC startup with a product or service that strategically complements a large enterprise's offerings or addresses a critical enterprise need.
+      - Proactively identify and engage with relevant decision-makers within the enterprise.
+      - Facilitate introductions, negotiate terms, and orchestrate the initial stages of a strategic partnership to drive mutual growth and ecosystem expansion.
+    reference_patterns:
+      - Startup profiles highlighting B2B solutions, enterprise-grade features, or integration capabilities.
+      - Public announcements (simulated) from large enterprises seeking innovative solutions in specific areas.
+      - YC internal data (simulated CRM) showing a startup's struggle to penetrate the enterprise market.
+      - Forum discussions where enterprises express interest in YC startups.
+    decision_logic:
+      - IF a YC startup's solution directly solves a known pain point for a target enterprise THEN prioritize partnership brokering.
+      - IF a partnership can unlock significant market access or distribution channels for a YC startup THEN pursue aggressively.
+      - IF the enterprise has a history of successful collaborations with startups THEN leverage that relationship.
+    actions:
+      - Utilize YC's internal network and external databases (simulated LinkedIn Sales Navigator, Crunchbase) to identify relevant enterprise contacts.
+      - Draft a compelling partnership proposal highlighting mutual benefits.
+      - Initiate outreach to enterprise decision-makers via email or YC's partner portal (simulated).
+      - Schedule introductory meetings between the startup founder(s) and enterprise representatives.
+      - Provide guidance and support during initial negotiation phases.
+    verification:
+      - Successful scheduling and completion of initial partnership meetings.
+      - Confirmation from both startup and enterprise of mutual interest in exploring collaboration.
+      - Progression to formal discussions or pilot project initiation.
+    recovery:
+      - IF initial outreach receives no response THEN refine the proposal and attempt alternative contacts or channels.
+      - IF an enterprise declines partnership THEN analyze feedback and identify alternative suitable partners.
+      - IF negotiations stall THEN provide mediation or suggest alternative partnership structures.
+
+  - name: "synthesize_startup_thesis_from_applications"
+    trigger_roles:
+      - "Cognitive Architecture & Symbolic Reasoning Integrator"
+    strategy:
+      - "Scan and parse all new startup applications for core problem statements, proposed solutions, and market fit."
+      - "Extract key entities, relationships, and causal links from unstructured text using symbolic reasoning models."
+      - "Generate a concise, high-level thesis statement for each application, highlighting its unique cognitive contribution to the YC ecosystem."
+    reference_patterns:
+      - "High volume of new applications appearing in 'Apply' section."
+      - "Lack of explicit categorization or thematic grouping among recent applications."
+      - "Need for quick, deep understanding of diverse startup concepts."
+    decision_logic:
+      - "IF new_applications_count > 0 THEN initiate application parsing."
+      - "IF application_parsed_successfully THEN generate_thesis_statement."
+      - "IF thesis_statement_generated THEN store_thesis_with_application_ID."
+    actions:
+      - "Navigate to 'Apply' section (www.ycombinator.com/apply)."
+      - "Access individual startup application details."
+      - "Process text fields (e.g., 'What do you do?', 'Problem', 'Solution')."
+      - "Submit generated thesis statement to an internal YC knowledge graph API (hypothetical)."
+    verification:
+      - "Confirm thesis statement is stored and linked to the correct application."
+      - "Verify thesis accurately reflects core concepts of the application."
+      - "Check for absence of logical inconsistencies in generated thesis."
+    recovery:
+      - "IF parsing_error THEN re-attempt parsing with alternative NLP model."
+      - "IF thesis_generation_failure THEN flag application for manual review and re-attempt with simpler symbolic model."
+
+  - name: "audit_platform_for_ethical_bias_in_startup_showcase"
+    trigger_roles:
+      - "Ethical AI & Responsible Innovation Enforcer"
+    strategy:
+      - "Analyze the distribution and visibility of showcased startups on the homepage and 'Companies' section."
+      - "Identify potential biases in algorithmic promotion based on founder demographics, industry, or funding stage."
+      - "Generate a compliance report detailing observed biases and recommending adjustments to promotion algorithms."
+    reference_patterns:
+      - "Disproportionate representation of certain demographics or industries in featured startups."
+      - "Algorithmic ranking discrepancies not solely explained by objective performance metrics."
+      - "User feedback or forum discussions raising concerns about fairness."
+    decision_logic:
+      - "IF featured_startup_demographics_skew > threshold THEN initiate bias analysis."
+      - "IF bias_detected_in_promotion_algorithm THEN generate_compliance_report."
+      - "IF compliance_report_generated THEN recommend_algorithmic_adjustment."
+    actions:
+      - "Navigate to www.ycombinator.com and www.ycombinator.com/companies."
+      - "Scrape visible startup listings and associated metadata (e.g., founder profiles, industry tags, funding rounds)."
+      - "Cross-reference with internal demographic data (hypothetical, assuming access)."
+      - "Submit compliance report to a designated internal ethics dashboard (hypothetical)."
+    verification:
+      - "Confirm report accurately reflects observed data and statistical analysis."
+      - "Verify recommendations are actionable and target specific algorithmic parameters."
+      - "Check for successful submission of the report to the ethics system."
+    recovery:
+      - "IF data_scraping_failure THEN retry scraping with different selectors."
+      - "IF bias_detection_model_error THEN re-run analysis with a different fairness metric."
+
+  - name: "optimize_user_onboarding_flow_for_applicant_conversion"
+    trigger_roles:
+      - "User Experience & Cognitive Flow Architect"
+    strategy:
+      - "Monitor user interaction patterns and drop-off rates within the startup application process."
+      - "Identify cognitive friction points and areas of confusion based on user behavior data (e.g., time spent on fields, re-visits)."
+      - "Propose A/B test variations for application form elements, instructional text, or progress indicators to improve completion rates."
+    reference_patterns:
+      - "High bounce rates on specific application pages."
+      - "Long dwell times on complex form fields without submission."
+      - "Frequent navigation back and forth between application sections."
+      - "Low conversion rate from 'started application' to 'submitted application'."
+    decision_logic:
+      - "IF application_drop_off_rate > benchmark THEN analyze user flow."
+      - "IF cognitive_friction_points_identified THEN propose_A/B_test_variations."
+      - "IF A/B_test_variations_proposed THEN submit_to_development_queue."
+    actions:
+      - "Access internal analytics dashboard for www.ycombinator.com/apply (hypothetical)."
+      - "Review heatmaps, clickstreams, and form analytics data."
+      - "Generate mockups or textual descriptions of proposed UI/UX changes."
+      - "Submit proposals to a project management system (e.g., Jira, Asana) for A/B testing implementation."
+    verification:
+      - "Confirm proposed changes directly address identified friction points."
+      - "Verify A/B test variations are clearly defined and measurable."
+      - "Check for successful submission of proposals to the development team."
+    recovery:
+      - "IF analytics_data_unavailable THEN request access or alternative data source."
+      - "IF proposal_rejected_by_dev_team THEN refine proposals based on feedback and resubmit."
+
+  - name: "identify_emerging_startup_trends_from_application_keywords"
+    trigger_roles:
+      - "Market Intelligence & Competitive Foresight Analyst"
+    strategy:
+      - "Continuously scan and aggregate keywords, industry tags, and problem statements from all incoming startup applications."
+      - "Apply temporal analysis and topic modeling to detect nascent industry shifts, technology adoption spikes, or unmet market needs."
+      - "Generate a foresight report highlighting potential investment areas or competitive threats for YC's portfolio."
+    reference_patterns:
+      - "Sudden increase in applications mentioning specific technologies (e.g., 'Web3 gaming', 'AI agents', 'CRISPR therapeutics')."
+      - "Clustering of applications addressing similar, previously niche, problems."
+      - "Mentions of new regulatory landscapes or geopolitical shifts in problem descriptions."
+    decision_logic:
+      - "IF new_application_batch_received THEN extract_keywords_and_topics."
+      - "IF significant_keyword_frequency_change > threshold THEN initiate_trend_analysis."
+      - "IF emerging_trend_identified THEN generate_foresight_report."
+    actions:
+      - "Access internal application database (hypothetical)."
+      - "Perform text mining and natural language processing on application descriptions, problem statements, and solutions."
+      - "Utilize internal or external market data APIs to cross-reference trends."
+      - "Publish foresight report to an internal YC intelligence portal (hypothetical)."
+    verification:
+      - "Confirm identified trends are statistically significant and not random noise."
+      - "Verify report clearly articulates the trend, its implications, and supporting evidence."
+      - "Check for successful publication of the report."
+    recovery:
+      - "IF keyword_extraction_failure THEN re-run NLP pipeline with different parameters."
+      - "IF trend_detection_model_error THEN adjust model sensitivity or use alternative algorithm."
+
+  - name: "map_interconnectedness_of_startup_data_across_platform"
+    trigger_roles:
+      - "Quantum Entanglement & Topological Data Fabric Architect"
+    strategy:
+      - "Ingest all available structured and unstructured data points related to startups (applications, funding, mentors, forum posts, news)."
+      - "Construct a multi-dimensional topological data fabric, identifying non-obvious, 'entangled' relationships between seemingly disparate data entities."
+      - "Visualize and query this fabric to reveal hidden network effects, influence pathways, or emergent properties within the YC ecosystem."
+    reference_patterns:
+      - "Need to understand complex relationships beyond simple database joins."
+      - "Requests for insights into 'why' certain startups succeed or fail, beyond obvious factors."
+      - "Difficulty in identifying cross-pollination opportunities between YC batches or industries."
+    decision_logic:
+      - "IF new_startup_data_available THEN update_data_fabric."
+      - "IF query_for_hidden_relationships_received THEN traverse_data_fabric."
+      - "IF entangled_relationships_identified THEN generate_insight_visualization."
+    actions:
+      - "Access various YC internal databases and APIs (e.g., application DB, funding DB, mentor network, forum DB)."
+      - "Utilize graph database technologies (e.g., Neo4j) or topological data analysis libraries (e.g., GUDHI) to build the fabric."
+      - "Generate interactive visualizations of the data fabric (e.g., network graphs, persistence diagrams)."
+      - "Publish insights to an internal YC data science portal (hypothetical)."
+    verification:
+      - "Confirm data fabric accurately represents all ingested data points and their relationships."
+      - "Verify generated insights are novel, non-trivial, and demonstrably derived from the fabric."
+      - "Check for successful publication of insights and visualizations."
+    recovery:
+      - "IF data_ingestion_failure THEN re-attempt data sync from source."
+      - "IF fabric_construction_error THEN review data schema and topological model parameters."
+
+  - name: "design_personalized_value_proposition_for_prospective_founders"
+    trigger_roles:
+      - "Hyper-Personalized Value Proposition Architect"
+    strategy:
+      - "Analyze the profile and stated needs of a prospective founder (e.g., from their initial inquiry, public profiles, or incomplete application)."
+      - "Dynamically synthesize a tailored message highlighting specific YC resources, mentor connections, or success stories most relevant to their unique stage, industry, and challenges."
+      - "Generate a personalized outreach message or dynamic content for the YC website to maximize their engagement and application submission."
+    reference_patterns:
+      - "Prospective founder lands on YC homepage but doesn't apply."
+      - "Incomplete application forms with specific sections left blank."
+      - "Direct inquiries from founders expressing particular pain points or aspirations."
+    decision_logic:
+      - "IF prospective_founder_profile_available THEN analyze_founder_needs."
+      - "IF founder_needs_identified THEN match_with_YC_resources."
+      - "IF personalized_match_found THEN generate_value_proposition_message."
+    actions:
+      - "Access CRM or lead management system for prospective founders (hypothetical)."
+      - "Utilize NLP on founder descriptions/inquiries and match against YC's knowledge base of resources, mentors, and success stories."
+      - "Generate a personalized email draft or dynamic website content snippet."
+      - "Trigger sending of personalized email or update website content via API."
+    verification:
+      - "Confirm generated message directly addresses the founder's identified needs."
+      - "Verify message highlights relevant and accurate YC value propositions."
+      - "Check for successful delivery of the personalized communication."
+    recovery:
+      - "IF founder_profile_incomplete THEN prompt for more information or use broader default messaging."
+      - "IF value_proposition_generation_failure THEN revert to a generic, high-level value statement."
+
+  - name: "implement_self_optimizing_feedback_loop_for_mentor_matching"
+    trigger_roles:
+      - "Meta-Cognitive Feedback & Self-Optimization Interface Designer"
+    strategy:
+      - "Monitor the outcomes and satisfaction ratings of mentor-startup pairings on the YC platform."
+      - "Analyze feedback from both mentors and founders regarding the quality and effectiveness of their matches."
+      - "Adjust the underlying mentor matching algorithm parameters in real-time based on this meta-feedback to continuously improve future pairings."
+    reference_patterns:
+      - "Low satisfaction scores for mentor-startup pairings."
+      - "Frequent requests for mentor changes from startups."
+      - "Mentors reporting low engagement from assigned startups."
+      - "Algorithmic matching suggestions consistently leading to suboptimal outcomes."
+    decision_logic:
+      - "IF mentor_match_feedback_received THEN analyze_feedback_sentiment_and_outcomes."
+      - "IF matching_algorithm_performance_below_threshold THEN identify_suboptimal_parameters."
+      - "IF suboptimal_parameters_identified THEN adjust_matching_algorithm_weights."
+    actions:
+      - "Access internal mentor-startup feedback system (hypothetical)."
+      - "Process structured feedback (ratings) and unstructured feedback (comments) using sentiment analysis."
+      - "Interact with the mentor matching algorithm's configuration API to modify parameters (e.g., weighting for industry, experience, availability)."
+      - "Log algorithm adjustments and their rationale."
+    verification:
+      - "Confirm algorithm parameters were successfully updated."
+      - "Verify subsequent mentor-startup matches show improved satisfaction scores."
+      - "Check for clear audit trail of all algorithm modifications."
+    recovery:
+      - "IF feedback_processing_error THEN re-attempt analysis or flag for manual review."
+      - "IF algorithm_adjustment_failure THEN revert to previous stable configuration and alert human oversight."
+
+  - name: "synthesize_cross_batch_knowledge_for_founder_playbooks"
+    trigger_roles:
+      - "Cross-Functional Collaboration & Knowledge Synthesizer"
+    strategy:
+      - "Aggregate and analyze successful strategies, common pitfalls, and best practices shared across various YC batches and forum discussions."
+      - "Identify recurring themes and actionable insights from founder testimonials, mentor advice, and internal post-mortem reports."
+      - "Generate structured 'playbooks' or 'guides' for current founders, synthesizing this distributed knowledge into easily digestible, actionable advice."
+    reference_patterns:
+      - "Repetitive questions in founder forums that have already been answered elsewhere."
+      - "Successful strategies from one batch not being effectively disseminated to others."
+      - "Requests from founders for consolidated advice on specific topics (e.g., 'first hire', 'fundraising seed round')."
+    decision_logic:
+      - "IF new_founder_discussions_or_reports_available THEN extract_knowledge_nuggets."
+      - "IF recurring_themes_or_actionable_insights_identified THEN synthesize_into_playbook_module."
+      - "IF playbook_module_generated THEN publish_to_founder_resource_center."
+    actions:
+      - "Access YC internal forums (www.ycombinator.com/forum), internal knowledge bases, and founder success stories."
+      - "Utilize topic modeling and summarization techniques to extract key information."
+      - "Format synthesized knowledge into structured playbook documents (e.g., Markdown, Confluence pages)."
+      - "Publish playbooks to the YC internal founder resource portal."
+    verification:
+      - "Confirm playbooks are comprehensive, accurate, and actionable."
+      - "Verify playbooks are easily discoverable and accessible to current founders."
+      - "Check for successful publication and indexing of new playbook content."
+    recovery:
+      - "IF knowledge_extraction_failure THEN refine NLP models or request human annotation."
+      - "IF playbook_generation_error THEN revert to manual curation or simpler summarization."
+
+  - name: "simulate_adversarial_legal_challenges_for_startup_IP"
+    trigger_roles:
+      - "Ethical AI Red Teaming & Adversarial Legal Strategist"
+    strategy:
+      - "Analyze a startup's intellectual property (IP) claims, business model, and market positioning as described in their application or profile."
+      - "Simulate potential legal challenges, patent infringements, or regulatory hurdles from hypothetical competitors or existing incumbents."
+      - "Generate a 'red team' report detailing vulnerabilities and recommending proactive legal strategies or adjustments to the startup's approach."
+    reference_patterns:
+      - "Startup operating in a highly litigious industry."
+      - "Claims of novel technology without clear patent strategy."
+      - "Business model directly competing with established players with strong IP portfolios."
+      - "Mentions of sensitive data handling or regulated markets."
+    decision_logic:
+      - "IF startup_profile_available THEN identify_key_IP_and_market_context."
+      - "IF potential_legal_vulnerabilities_detected THEN simulate_adversarial_scenarios."
+      - "IF red_team_report_generated THEN recommend_mitigation_strategies."
+    actions:
+      - "Access startup application details, public company profiles, and relevant industry legal databases (hypothetical)."
+      - "Utilize legal knowledge graphs and case law databases to identify precedents and potential challenges."
+      - "Generate a structured report outlining risks, likelihoods, and recommended actions."
+      - "Submit report to the startup's YC advisor and internal legal team (hypothetical)."
+    verification:
+      - "Confirm report accurately identifies plausible legal risks."
+      - "Verify recommendations are specific, actionable, and legally sound."
+      - "Check for successful submission of the report to relevant parties."
+    recovery:
+      - "IF IP_analysis_failure THEN request clarification from startup or conduct broader industry search."
+      - "IF legal_simulation_error THEN adjust simulation parameters or consult with a human legal expert."
+
+  - name: "proactively_suggest_relevant_resources_to_founders"
+    trigger_roles:
+      - "Predictive User Intent & Proactive Interaction Modeler"
+    strategy:
+      - "Continuously monitor founder activity on the YC platform (e.g., forum posts, resource access, application updates, internal communication)."
+      - "Predict the founder's immediate needs or next likely action based on their current context, historical behavior, and stage of development."
+      - "Proactively push highly relevant resources, mentor introductions, or forum discussions to the founder before they explicitly search for them."
+    reference_patterns:
+      - "Founder frequently searching for 'fundraising' resources after completing product development milestones."
+      - "Founder posting about 'hiring' challenges, but not accessing HR-related playbooks."
+      - "Low engagement with a specific YC resource despite its high relevance to a founder's stage."
+      - "Founder expressing frustration or asking questions that have well-documented answers."
+    decision_logic:
+      - "IF founder_activity_detected THEN infer_current_intent_and_stage."
+      - "IF predicted_need_matches_available_resource THEN calculate_relevance_score."
+      - "IF relevance_score > threshold THEN proactively_suggest_resource."
+    actions:
+      - "Access real-time founder activity streams (forum posts, page views, internal messages)."
+      - "Utilize machine learning models (e.g., sequence models, recommender systems) to predict intent."
+      - "Query YC's knowledge base for relevant articles, mentors, or forum threads."
+      - "Generate a personalized notification (e.g., in-app message, email) with the suggested resource."
+    verification:
+      - "Confirm suggested resource is highly relevant to the founder's predicted intent."
+      - "Verify founder engagement with the proactive suggestion (e.g., click-through rate)."
+      - "Check for successful delivery of the proactive notification."
+    recovery:
+      - "IF intent_prediction_confidence_low THEN broaden suggestions or defer to explicit search."
+      - "IF resource_suggestion_failure THEN log error and re-evaluate prediction model."
+
+  - name: "audit_bias_in_startup_applications"
+    trigger_roles:
+      - "Ethical AI & Algorithmic Bias Auditor"
+    strategy:
+      - "Access a batch of anonymized startup applications."
+      - "Apply a suite of bias detection algorithms to identify potential biases in language, scoring, or categorization."
+      - "Generate a detailed report highlighting areas of concern and suggesting mitigation strategies."
+    reference_patterns:
+      - "Frequent access to 'Applications' section."
+      - "Downloads of application data sets."
+      - "Uploads of analysis reports."
+      - "Interaction with 'Reviewer Guidelines' or 'Scoring Rubrics'."
+    decision_logic:
+      - "IF new application batch available THEN initiate audit."
+      - "IF bias score exceeds threshold THEN flag for manual review and generate detailed report."
+      - "IF no new applications THEN monitor for updates to application criteria."
+    actions:
+      - "Navigate to '/applications/pending_review'."
+      - "Click 'Download Anonymized Batch Data'."
+      - "Upload 'Bias_Audit_Report_[Date].pdf' to '/audit_results'."
+      - "Submit 'Bias Mitigation Recommendations' to '/policy_proposals'."
+    verification:
+      - "Confirmation message: 'Audit report uploaded successfully.'"
+      - "Presence of generated report in the audit results section."
+      - "Notification sent to relevant stakeholders regarding findings."
+    recovery:
+      - "IF upload fails THEN retry upload after 5 seconds."
+      - "IF data download fails THEN check network connection and retry."
+
+  - name: "propose_ethical_ai_sales_framework"
+    trigger_roles:
+      - "Ethical AI Sales & Trust Architect"
+    strategy:
+      - "Analyze existing YC sales and outreach materials for ethical AI messaging."
+      - "Develop a new framework for communicating YC's commitment to ethical AI to prospective founders and investors."
+      - "Present the framework for internal review and adoption."
+    reference_patterns:
+      - "Frequent access to 'Marketing Materials' and 'Founder Resources'."
+      - "Drafting and editing documents in 'Policy Proposals'."
+      - "Scheduling internal review meetings."
+    decision_logic:
+      - "IF new marketing campaign initiated THEN review for ethical alignment."
+      - "IF founder feedback indicates trust issues THEN propose new communication strategies."
+      - "IF framework approved THEN integrate into sales training modules."
+    actions:
+      - "Navigate to '/marketing/materials'."
+      - "Create new document 'Ethical_AI_Sales_Framework_V1.0.docx' in '/policy_proposals'."
+      - "Schedule 'Framework Review Meeting' with relevant teams."
+      - "Update 'Founder Onboarding Guide' with ethical AI section."
+    verification:
+      - "Confirmation message: 'Document saved successfully.'"
+      - "Meeting invitation sent and accepted by stakeholders."
+      - "Updated guide visible to new founders."
+    recovery:
+      - "IF document save fails THEN check permissions and retry."
+      - "IF meeting scheduling fails THEN re-attempt or notify administrator."
+
+  - name: "verify_immutable_ledger_integrity"
+    trigger_roles:
+      - "Digital Forensics & Immutable Ledger Architect"
+    strategy:
+      - "Access the platform's immutable ledger of key transactions and events."
+      - "Run cryptographic hash checks and cross-reference with distributed ledger nodes."
+      - "Generate a report on ledger integrity and any detected anomalies."
+    reference_patterns:
+      - "Access to 'Blockchain Explorer' or 'Ledger Audit' tools."
+      - "Frequent execution of 'Integrity Check' functions."
+      - "Generation of 'Audit Trail Reports'."
+    decision_logic:
+      - "IF scheduled integrity check time THEN initiate verification."
+      - "IF hash mismatch detected THEN flag as critical anomaly and alert security."
+      - "IF no anomalies THEN log successful verification."
+    actions:
+      - "Navigate to '/admin/ledger_audit'."
+      - "Click 'Run Full Integrity Check'."
+      - "Download 'Ledger_Integrity_Report_[Date].json'."
+      - "Submit 'Anomaly Alert' to '/security_incidents' if issues found."
+    verification:
+      - "Confirmation message: 'Integrity check completed.'"
+      - "Report downloaded successfully."
+      - "No critical alerts generated unless anomaly detected."
+    recovery:
+      - "IF check fails to complete THEN restart the process after 30 seconds."
+      - "IF report download fails THEN retry download or notify system admin."
+
+  - name: "optimize_resource_allocation_for_compute_jobs"
+    trigger_roles:
+      - "Cognitive Pipeline Optimization & Resource Alchemist"
+    strategy:
+      - "Monitor real-time compute resource utilization across various AI workloads (e.g., model training, inference)."
+      - "Identify bottlenecks and underutilized resources within the YC platform's infrastructure."
+      - "Dynamically reallocate compute, memory, and storage to optimize performance and cost efficiency for active pipelines."
+    reference_patterns:
+      - "Frequent access to 'Resource Dashboard' and 'Job Scheduler'."
+      - "Adjustments to 'Compute Cluster Settings'."
+      - "Analysis of 'Performance Logs'."
+    decision_logic:
+      - "IF CPU utilization > 80% for a specific job AND other jobs are idle THEN reallocate idle resources."
+      - "IF memory leak detected in a pipeline THEN isolate and reduce allocated memory."
+      - "IF cost efficiency drops below threshold THEN identify and optimize resource allocation."
+    actions:
+      - "Navigate to '/admin/resource_dashboard'."
+      - "Select 'Job ID: [specific_job_id]'."
+      - "Click 'Adjust Resource Allocation'."
+      - "Set 'CPU Cores' to 'X', 'Memory' to 'Y GB'."
+      - "Click 'Apply Changes'."
+    verification:
+      - "Confirmation message: 'Resource allocation updated successfully.'"
+      - "Observe real-time dashboard for changes in utilization metrics."
+      - "Check 'Job Performance Logs' for improved throughput."
+    recovery:
+      - "IF allocation fails THEN revert to previous settings and log error."
+      - "IF dashboard data is stale THEN refresh page and retry."
+
+  - name: "forecast_emergent_threats_in_startup_ecosystem"
+    trigger_roles:
+      - "Predictive Anomaly & Emergent Threat Forecaster"
+    strategy:
+      - "Analyze aggregated data from startup applications, forum discussions, and market trends on YC."
+      - "Utilize predictive models to identify nascent patterns indicating potential market disruptions, regulatory shifts, or competitive threats to YC startups."
+      - "Generate early warning alerts and detailed threat assessments."
+    reference_patterns:
+      - "Frequent access to 'Market Data Analytics' and 'Forum Activity Logs'."
+      - "Execution of 'Predictive Model' scripts."
+      - "Generation of 'Threat Assessment Reports'."
+    decision_logic:
+      - "IF anomaly score for a market segment exceeds threshold THEN initiate deep dive analysis."
+      - "IF specific keywords in forum discussions spike THEN cross-reference with market data."
+      - "IF new regulatory proposals detected THEN assess impact on YC portfolio."
+    actions:
+      - "Navigate to '/analytics/market_trends'."
+      - "Run 'Threat_Forecasting_Model_V2.py'."
+      - "Download 'Emergent_Threat_Report_[Date].pdf'."
+      - "Post 'Early Warning Alert: [Threat Summary]' to '/internal_alerts'."
+    verification:
+      - "Confirmation message: 'Forecasting model executed successfully.'"
+      - "Report downloaded and accessible."
+      - "Alert visible in internal alerts dashboard."
+    recovery:
+      - "IF model execution fails THEN check data sources and retry."
+      - "IF report generation fails THEN review model output for errors."
+
+  - name: "design_ethical_ai_interaction_guidelines_for_founders"
+    trigger_roles:
+      - "Ethical AI Interaction & Trust Architect"
+    strategy:
+      - "Review existing YC founder resources and community guidelines for AI-specific interaction principles."
+      - "Develop comprehensive guidelines for founders on building AI products that foster user trust and ensure ethical interaction."
+      - "Propose integration of these guidelines into the YC curriculum and mentorship programs."
+    reference_patterns:
+      - "Access to 'Founder Handbook' and 'Community Forum Rules'."
+      - "Drafting new policy documents in 'Policy Proposals'."
+      - "Scheduling workshops or presentations."
+    decision_logic:
+      - "IF new AI-focused batch announced THEN prioritize guideline development."
+      - "IF founder feedback indicates confusion on AI ethics THEN clarify guidelines."
+      - "IF guidelines approved THEN create training modules for mentors."
+    actions:
+      - "Navigate to '/founder_resources/guidelines'."
+      - "Create new document 'Ethical_AI_Interaction_Guidelines_V1.0.docx' in '/policy_proposals'."
+      - "Submit 'Curriculum Integration Proposal' to '/program_development'."
+      - "Schedule 'Founder Workshop: Ethical AI Design'."
+    verification:
+      - "Confirmation message: 'Document saved successfully.'"
+      - "Proposal visible in program development queue."
+      - "Workshop scheduled and announced."
+    recovery:
+      - "IF document save fails THEN check permissions and retry."
+      - "IF proposal submission fails THEN re-attempt or notify administrator."
+
+  - name: "harvest_algorithmic_market_sentiment"
+    trigger_roles:
+      - "Algorithmic Trend & Market Sentiment Harvester"
+    strategy:
+      - "Deploy sentiment analysis algorithms across YC forum discussions, news feeds linked to YC companies, and public market data."
+      - "Identify emerging trends, shifts in investor sentiment, and early indicators of market opportunities or downturns relevant to the YC ecosystem."
+      - "Generate real-time sentiment dashboards and trend reports."
+    reference_patterns:
+      - "Frequent access to 'Forum Data', 'News Aggregator', and 'Market Data APIs'."
+      - "Execution of 'Sentiment Analysis Models'."
+      - "Generation of 'Sentiment Dashboards' and 'Trend Reports'."
+    decision_logic:
+      - "IF sentiment score for a sector drops by X% in Y hours THEN trigger alert."
+      - "IF specific keywords (e.g., 'acquisition', 'IPO') spike THEN analyze associated sentiment."
+      - "IF new YC company launches THEN monitor initial market reaction and sentiment."
+    actions:
+      - "Navigate to '/data_feeds/external_sources'."
+      - "Execute 'Market_Sentiment_Harvester_V3.py'."
+      - "Update 'Real-time Sentiment Dashboard' at '/analytics/sentiment_dashboard'."
+      - "Generate 'Weekly_Market_Sentiment_Report_[Date].pdf'."
+    verification:
+      - "Confirmation message: 'Sentiment analysis completed.'"
+      - "Dashboard updates reflect current data."
+      - "Report generated and accessible."
+    recovery:
+      - "IF script fails THEN check API connections and retry."
+      - "IF dashboard update fails THEN refresh and re-push data."
+
+  - name: "map_strategic_disruption_vectors"
+    trigger_roles:
+      - "Strategic Foresight & Disruption Cartographer"
+    strategy:
+      - "Analyze global technological advancements, geopolitical shifts, and emerging scientific breakthroughs."
+      - "Identify potential disruption vectors that could impact YC's portfolio companies or create new investment opportunities."
+      - "Create strategic foresight maps and scenario analyses for YC leadership."
+    reference_patterns:
+      - "Access to 'Global Tech Scans' and 'Research Papers Database'."
+      - "Creation of 'Scenario Planning Models'."
+      - "Presentation of 'Strategic Foresight Briefings'."
+    decision_logic:
+      - "IF new breakthrough in AI/biotech announced THEN assess its disruptive potential."
+      - "IF major geopolitical event occurs THEN analyze its impact on supply chains and markets."
+      - "IF a new 'black swan' event is modeled THEN develop contingency scenarios."
+    actions:
+      - "Navigate to '/research/global_trends'."
+      - "Create new 'Disruption_Vector_Map_Q3_2024.pptx' in '/strategic_planning'."
+      - "Schedule 'Foresight Briefing' with YC partners."
+      - "Update 'Opportunity & Threat Matrix' for portfolio companies."
+    verification:
+      - "Confirmation message: 'Document saved successfully.'"
+      - "Meeting invitation sent and accepted."
+      - "Matrix updated with new insights."
+    recovery:
+      - "IF document save fails THEN check permissions and retry."
+      - "IF meeting scheduling fails THEN re-attempt or notify administrator."
+
+  - name: "optimize_investment_portfolio_with_quantum_analytics"
+    trigger_roles:
+      - "Quantum-Enhanced Data Analytics & Optimization Strategist"
+    strategy:
+      - "Access YC's investment portfolio data, market performance, and founder metrics."
+      - "Apply quantum-inspired optimization algorithms to identify optimal portfolio rebalancing strategies, risk mitigation, and high-potential investment opportunities."
+      - "Generate recommendations for YC's investment committee."
+    reference_patterns:
+      - "Access to 'Portfolio Performance Data' and 'Market Simulation Tools'."
+      - "Execution of 'Quantum Optimization Algorithms'."
+      - "Generation of 'Investment Recommendation Reports'."
+    decision_logic:
+      - "IF market volatility exceeds threshold THEN run portfolio rebalancing optimization."
+      - "IF new high-potential startup identified THEN assess optimal investment allocation."
+      - "IF quarterly review period THEN generate comprehensive portfolio optimization report."
+    actions:
+      - "Navigate to '/investments/portfolio_analytics'."
+      - "Execute 'Quantum_Portfolio_Optimizer_V1.0.py'."
+      - "Download 'Quantum_Optimized_Investment_Recommendations_[Date].pdf'."
+      - "Submit recommendations to '/investment_committee_proposals'."
+    verification:
+      - "Confirmation message: 'Optimization completed successfully.'"
+      - "Report downloaded and accessible."
+      - "Recommendations visible in committee proposals."
+    recovery:
+      - "IF algorithm execution fails THEN check data inputs and retry."
+      - "IF report generation fails THEN review algorithm output for errors."
+
+  - name: "orchestrate_founder_data_privacy_consent"
+    trigger_roles:
+      - "Data Privacy & Consent Orchestrator"
+    strategy:
+      - "Review and update YC's data privacy policies and consent forms for founders and applicants."
+      - "Implement and monitor a system for granular consent management, ensuring compliance with global data protection regulations (e.g., GDPR, CCPA)."
+      - "Provide tools and guidance for founders on managing user data privacy within their own products."
+    reference_patterns:
+      - "Access to 'Privacy Policy Editor' and 'Consent Management Dashboard'."
+      - "Updates to 'Terms of Service' and 'Data Processing Agreements'."
+      - "Generation of 'Compliance Audit Reports'."
+    decision_logic:
+      - "IF new data regulation enacted THEN review and update policies."
+      - "IF founder requests data deletion THEN ensure full compliance and record."
+      - "IF consent rates drop THEN investigate user experience and clarity of forms."
+    actions:
+      - "Navigate to '/admin/privacy_settings'."
+      - "Update 'Founder_Data_Consent_Form_V2.0.html'."
+      - "Monitor 'Consent Management Dashboard' for compliance metrics."
+      - "Generate 'Quarterly_Privacy_Compliance_Report_[Date].pdf'."
+      - "Post 'Data Privacy Best Practices for Startups' to '/founder_resources/legal'."
+    verification:
+      - "Confirmation message: 'Consent form updated successfully.'"
+      - "Dashboard shows updated consent rates."
+      - "Report generated and accessible."
+    recovery:
+      - "IF form update fails THEN check syntax and retry."
+      - "IF dashboard data is inconsistent THEN refresh and re-sync data sources."
+
+  - name: "orchestrate_yc_startup_outreach_campaign"
+    trigger_roles:
+      - "Multi-Channel Sales Funnel Orchestrator"
+    strategy:
+      - Identify high-potential startups on YC's directory based on specified criteria (e.g., sector, funding stage, technology stack).
+      - Design a multi-stage outreach campaign leveraging YC's internal messaging tools and external integrations.
+      - Monitor engagement and optimize campaign parameters for conversion to further discussions.
+    reference_patterns:
+      - Frequent visits to 'Companies' and 'Jobs' sections.
+      - Accessing startup profiles and contact information.
+      - Utilizing YC's internal messaging features.
+    decision_logic:
+      - IF startup_profile_matches_criteria THEN initiate_outreach_sequence.
+      - IF outreach_message_opened_but_no_reply_within_24h THEN send_follow_up_message.
+      - IF startup_expresses_interest THEN escalate_to_human_sales_rep_via_internal_notification.
+    actions:
+      - Navigate to 'Companies' directory.
+      - Apply filters (e.g., 'Industry', 'Stage').
+      - Select specific startup profiles.
+      - Compose and send messages via YC's platform.
+      - Schedule follow-ups.
+    verification:
+      - Confirmation of message delivery.
+      - Tracking of message open rates and reply rates.
+      - Notification of successful lead hand-off.
+    recovery:
+      - IF message_send_failure THEN retry_send_after_5_minutes.
+      - IF no_response_after_3_follow_ups THEN archive_lead_and_log_reason.
+
+  - name: "generate_synthetic_startup_data_for_yc_analysis"
+    trigger_roles:
+      - "Generative Model & Synthetic Data Fabricator"
+    strategy:
+      - Analyze existing YC startup data (e.g., funding rounds, growth metrics, industry trends) to understand underlying distributions and relationships.
+      - Generate synthetic startup profiles, performance metrics, and market scenarios that mimic real-world YC data while preserving privacy.
+      - Validate the synthetic data's statistical properties against the original dataset for fidelity.
+    reference_patterns:
+      - Extensive access to YC's internal data analytics dashboards (if available).
+      - Frequent queries to YC's public data APIs (if applicable).
+      - Interactions with data visualization tools.
+    decision_logic:
+      - IF data_privacy_constraints_exist THEN prioritize_synthetic_data_generation.
+      - IF synthetic_data_distribution_deviates_significantly_from_real THEN re-tune_generation_parameters.
+      - IF new_market_trend_identified THEN generate_scenario_data_reflecting_trend.
+    actions:
+      - Access YC's 'Data' or 'Analytics' sections (hypothetical).
+      - Query YC's public API for startup data (if available).
+      - Input parameters for synthetic data generation (e.g., number of startups, industry focus).
+      - Trigger data generation process.
+      - Download or export generated synthetic datasets.
+    verification:
+      - Statistical comparison reports showing similarity between real and synthetic data.
+      - Review of generated data samples for plausibility.
+      - Confirmation of data export completion.
+    recovery:
+      - IF data_generation_fails THEN check_input_parameters_and_retry.
+      - IF validation_metrics_are_poor THEN adjust_model_hyperparameters_and_regenerate.
+
+  - name: "coordinate_cyber_response_to_yc_platform_threat"
+    trigger_roles:
+      - "Geospatial Cyber-Kinetic Response Coordinator"
+    strategy:
+      - Monitor YC platform for anomalous activity indicative of cyber threats (e.g., unusual login patterns, data exfiltration attempts, DDoS signatures).
+      - Geographically pinpoint the origin of the threat and assess potential kinetic impact on physical infrastructure or personnel.
+      - Orchestrate a coordinated digital and, if necessary, physical response with relevant security teams and law enforcement.
+    reference_patterns:
+      - Real-time monitoring of YC's security logs and network traffic.
+      - Accessing IP geolocation services.
+      - Interacting with incident response dashboards.
+    decision_logic:
+      - IF anomalous_activity_detected_above_threshold THEN trigger_incident_response_protocol.
+      - IF threat_origin_is_external_and_malicious THEN initiate_blocking_and_reporting_procedures.
+      - IF threat_escalates_to_physical_risk THEN alert_physical_security_and_local_authorities.
+    actions:
+      - Access YC's 'Security Operations Center' dashboard (hypothetical).
+      - Review real-time threat alerts.
+      - Initiate IP blocking via YC's network controls.
+      - Generate incident report with threat details and geolocation.
+      - Send internal alerts to security teams.
+    verification:
+      - Confirmation of threat mitigation (e.g., traffic blocked, malicious accounts suspended).
+      - Receipt of incident report by relevant stakeholders.
+      - Log entries confirming response actions.
+    recovery:
+      - IF blocking_action_fails THEN attempt_alternative_mitigation_strategy.
+      - IF incident_report_submission_fails THEN retry_submission_and_notify_manual_review.
+
+  - name: "optimize_yc_startup_investment_revenue_prediction"
+    trigger_roles:
+      - "Predictive Revenue Optimization Engine"
+    strategy:
+      - Analyze historical YC investment data, startup performance metrics, and market trends to build predictive models for future revenue generation from YC's portfolio.
+      - Identify optimal investment strategies or portfolio adjustments to maximize long-term returns.
+      - Provide actionable recommendations to YC partners on potential exits, follow-on investments, or divestitures.
+    reference_patterns:
+      - Deep dives into YC's 'Portfolio' and 'Investment' sections.
+      - Accessing financial statements and valuation data of portfolio companies.
+      - Running simulations on potential investment scenarios.
+    decision_logic:
+      - IF predicted_ROI_for_startup_X_falls_below_threshold THEN flag_for_review_or_divestment_consideration.
+      - IF market_conditions_shift_favorably_for_sector_Y THEN recommend_increased_investment_in_sector_Y_startups.
+      - IF a_startup_shows_accelerated_growth_beyond_prediction THEN re-evaluate_its_valuation_and_potential_exit_strategy.
+    actions:
+      - Navigate to YC's 'Portfolio Management' dashboard (hypothetical).
+      - Access individual startup financial data.
+      - Run predictive models on selected startups or the entire portfolio.
+      - Generate revenue forecast reports.
+      - Submit investment recommendations to YC partners.
+    verification:
+      - Comparison of predicted vs. actual revenue outcomes over time.
+      - Confirmation of recommendation delivery and review by partners.
+      - Audit trail of model runs and data used.
+    recovery:
+      - IF model_prediction_accuracy_is_low THEN retrain_model_with_updated_data_and_parameters.
+      - IF recommendation_submission_fails THEN retry_submission_and_alert_manual_review.
+
+  - name: "enforce_decentralized_trust_for_yc_community_contributions"
+    trigger_roles:
+      - "Decentralized Consensus & Trust Fabric Enforcer"
+    strategy:
+      - Monitor user-generated content and interactions on YC forums and comments for adherence to community guidelines and trust protocols.
+      - Utilize decentralized identity and reputation systems (if integrated) to assess the trustworthiness of contributions and participants.
+      - Initiate consensus-based moderation actions (e.g., flagging, downvoting, temporary suspension) based on community-defined rules and verified violations.
+    reference_patterns:
+      - Real-time scanning of YC 'Hacker News' comments and forum posts.
+      - Analyzing user reputation scores (if visible).
+      - Detecting patterns of spam, misinformation, or malicious behavior.
+    decision_logic:
+      - IF comment_violates_community_guidelines_AND_reputation_score_is_low THEN automatically_flag_for_review_and_reduce_visibility.
+      - IF multiple_users_report_content_AND_consensus_threshold_met THEN initiate_moderation_action.
+      - IF user_consistently_contributes_high_quality_content THEN boost_reputation_score_and_visibility.
+    actions:
+      - Access YC 'Hacker News' comment feeds.
+      - Apply content analysis algorithms to identify violations.
+      - Trigger automated flagging or downvoting mechanisms.
+      - Initiate temporary user suspension via YC's moderation tools.
+      - Update user reputation scores (if applicable).
+    verification:
+      - Confirmation of moderation action execution.
+      - Review of community feedback on moderation decisions.
+      - Audit log of trust score adjustments.
+    recovery:
+      - IF moderation_action_fails_to_apply THEN retry_action_and_notify_human_moderator.
+      - IF false_positive_detected THEN revert_action_and_adjust_detection_parameters.
+
+  - name: "construct_yc_startup_knowledge_graph_for_semantic_search"
+    trigger_roles:
+      - "Cognitive Architecture & Knowledge Graph Ontologist"
+    strategy:
+      - Extract entities (startups, founders, technologies, industries, investors) and relationships from all available YC data sources (public profiles, internal databases, news articles).
+      - Define and refine the ontology for the YC ecosystem, ensuring consistent semantic representation.
+      - Build and maintain a comprehensive knowledge graph that enables advanced semantic search and reasoning across the YC platform.
+    reference_patterns:
+      - Extensive parsing of YC 'Companies', 'People', 'News' sections.
+      - Accessing internal YC databases for structured and unstructured data.
+      - Utilizing graph database visualization tools.
+    decision_logic:
+      - IF new_startup_profile_added THEN extract_entities_and_relationships_and_add_to_graph.
+      - IF existing_entity_information_updated THEN update_corresponding_nodes_and_edges_in_graph.
+      - IF semantic_search_query_fails_to_return_relevant_results THEN review_ontology_and_graph_structure_for_gaps.
+    actions:
+      - Crawl and parse YC website content (e.g., startup descriptions, founder bios).
+      - Ingest data from YC's internal CRM/database (hypothetical).
+      - Define new nodes and edges in the knowledge graph.
+      - Run graph validation queries to ensure consistency.
+      - Publish updated knowledge graph to YC's internal search engine.
+    verification:
+      - Successful execution of semantic search queries returning accurate results.
+      - Visualization of graph structure showing correct relationships.
+      - Log of new entities and relationships added.
+    recovery:
+      - IF data_extraction_fails THEN re-attempt_extraction_with_adjusted_parsers.
+      - IF graph_consistency_check_fails THEN identify_conflicting_data_and_resolve_manually.
+
+  - name: "allocate_global_talent_to_yc_startup_needs"
+    trigger_roles:
+      - "Global Talent & Cognitive Resource Allocator"
+    strategy:
+      - Analyze YC startup job postings and skill requirements, identifying critical talent gaps.
+      - Scan global talent pools (internal YC network, external platforms) for individuals with matching skills, experience, and cultural fit.
+      - Facilitate introductions and recommendations between startups and suitable candidates, optimizing for successful placements and resource utilization.
+    reference_patterns:
+      - Frequent visits to YC 'Jobs' board and startup profiles.
+      - Accessing internal YC founder/alumni network profiles.
+      - Utilizing external talent search APIs (if integrated).
+    decision_logic:
+      - IF startup_job_posting_matches_talent_profile_AND_talent_is_available THEN recommend_talent_to_startup.
+      - IF a_startup_struggles_to_fill_a_critical_role THEN proactively_search_for_talent_and_offer_introductions.
+      - IF talent_expresses_interest_in_specific_startup_type THEN prioritize_matching_with_relevant_opportunities.
+    actions:
+      - Navigate to YC 'Jobs' section.
+      - Parse job descriptions for keywords and skill requirements.
+      - Search YC's internal 'People' directory for matching profiles.
+      - Generate personalized talent recommendations for startups.
+      - Send introduction messages to both parties via YC's platform.
+    verification:
+      - Tracking of successful candidate introductions and interview rates.
+      - Feedback from startups on candidate quality.
+      - Confirmation of message delivery.
+    recovery:
+      - IF talent_recommendation_fails_to_generate_interest THEN refine_matching_algorithm_and_retry.
+      - IF message_send_failure THEN retry_send_after_5_minutes.
+
+  - name: "construct_legal_ontology_for_yc_startup_agreements"
+    trigger_roles:
+      - "Legal Ontology & Knowledge Graph Constructor"
+    strategy:
+      - Analyze a vast corpus of YC's standard legal documents (SAFE notes, investment agreements, employment contracts) to identify key legal concepts, clauses, and relationships.
+      - Define a formal legal ontology that semantically represents these concepts, enabling automated analysis, comparison, and generation of legal documents.
+      - Integrate this ontology into a knowledge graph to support legal reasoning and compliance checks for YC startups.
+    reference_patterns:
+      - Extensive access to YC's 'Legal Documents' library (hypothetical).
+      - Parsing of legal text for entities, attributes, and relationships.
+      - Interactions with ontology editing tools.
+    decision_logic:
+      - IF new_legal_document_type_introduced THEN extend_ontology_to_cover_new_concepts.
+      - IF a_legal_term_has_multiple_interpretations THEN define_disambiguation_rules_within_ontology.
+      - IF compliance_check_fails_due_to_missing_legal_context THEN enrich_knowledge_graph_with_relevant_legal_precedents.
+    actions:
+      - Access YC's 'Legal Resources' section (hypothetical).
+      - Ingest legal document templates and executed agreements.
+      - Define classes, properties, and relationships in the legal ontology.
+      - Populate a legal knowledge graph with instances from documents.
+      - Run consistency checks on the ontology and graph.
+    verification:
+      - Successful automated extraction of key terms from new legal documents.
+      - Validation of legal reasoning queries against the knowledge graph.
+      - Expert review of ontology structure for accuracy.
+    recovery:
+      - IF ontology_creation_fails_due_to_schema_conflicts THEN resolve_conflicts_manually_and_retry.
+      - IF knowledge_graph_population_fails THEN check_data_source_integrity_and_retry.
+
+  - name: "audit_yc_platform_for_ethical_ai_compliance"
+    trigger_roles:
+      - "Ethical AI & Trustworthiness Guardian"
+    strategy:
+      - Conduct regular audits of all AI systems operating on the YC platform (e.g., recommendation engines, moderation algorithms) for bias, fairness, transparency, and privacy compliance.
+      - Identify potential ethical risks and vulnerabilities in AI models and data usage.
+      - Propose and implement mitigation strategies to ensure YC's AI adheres to ethical guidelines and fosters user trust.
+    reference_patterns:
+      - Accessing internal AI model documentation and performance metrics.
+      - Reviewing user feedback related to AI system outcomes.
+      - Analyzing data privacy policies and compliance reports.
+    decision_logic:
+      - IF bias_detected_in_startup_recommendation_algorithm THEN flag_for_re-training_with_debiased_data.
+      - IF user_feedback_indicates_lack_of_transparency_in_AI_decision THEN recommend_implementing_explainable_AI_features.
+      - IF data_usage_violates_privacy_policy THEN initiate_data_access_restriction_and_audit.
+    actions:
+      - Access YC's 'AI Governance' dashboard (hypothetical).
+      - Run fairness and bias detection tools on AI models.
+      - Review data access logs for compliance.
+      - Generate ethical AI audit reports.
+      - Submit recommendations for model adjustments or policy changes.
+    verification:
+      - Reduction in detected bias metrics over time.
+      - Positive shift in user trust surveys related to AI.
+      - Confirmation of policy adherence.
+    recovery:
+      - IF audit_tool_fails_to_run THEN troubleshoot_tool_configuration_and_retry.
+      - IF proposed_mitigation_fails_to_address_issue THEN explore_alternative_solutions_and_consult_ethics board.
+
+  - name: "engineer_yc_startup_virality_and_growth_trajectories"
+    trigger_roles:
+      - "Algorithmic Growth Trajectory & Virality Engineer"
+    strategy:
+      - Analyze YC startup growth metrics, user acquisition funnels, and product engagement data to identify drivers of virality and scalable growth.
+      - Develop and test algorithmic interventions or feature recommendations for YC startups to optimize their growth loops and accelerate user adoption.
+      - Predict future growth trajectories and identify potential bottlenecks or inflection points for YC portfolio companies.
+    reference_patterns:
+      - Deep dives into YC 'Startup Metrics' dashboards.
+      - Analyzing user behavior data on YC-affiliated platforms (if available).
+      - Running A/B tests on growth-related features.
+    decision_logic:
+      - IF a_startup_shows_high_churn_rate_at_specific_stage THEN recommend_targeted_retention_strategies.
+      - IF a_product_feature_exhibits_strong_viral_coefficient THEN recommend_amplifying_its_visibility_and_sharing_mechanisms.
+      - IF predicted_growth_trajectory_stagnates THEN identify_bottlenecks_and_propose_growth_hacks.
+    actions:
+      - Access YC's 'Growth Analytics' platform (hypothetical).
+      - Analyze startup-specific user acquisition, activation, retention, referral, and revenue (AARRR) metrics.
+      - Simulate impact of proposed growth interventions.
+      - Generate growth strategy recommendations for YC startups.
+      - Monitor and report on the effectiveness of implemented strategies.
+    verification:
+      - Observed increase in key growth metrics (e.g., user sign-ups, engagement, referrals).
+      - Positive feedback from startups on growth recommendations.
+      - Accuracy of predicted growth trajectories.
+    recovery:
+      - IF growth_intervention_fails_to_yield_results THEN re-evaluate_strategy_and_propose_alternative_tactics.
+      - IF data_ingestion_for_metrics_fails THEN troubleshoot_data_pipeline_and_retry.
+
+  - name: "optimize_startup_application_funnel"
+    trigger_roles:
+      - "Reinforcement Learning & Adaptive Control Strategist"
+    strategy:
+      - Analyze user interaction data on application pages (e.g., time spent, form field completion rates, drop-off points).
+      - Identify bottlenecks and areas for improvement in the application submission process.
+      - Propose and A/B test modifications to the application flow, form design, or guidance text to maximize successful submissions.
+    reference_patterns:
+      - High bounce rates on application forms.
+      - Low conversion rates from "Start Application" to "Submit Application".
+      - Significant time spent on specific form fields without completion.
+    decision_logic:
+      - IF (application_conversion_rate < 0.15) THEN (prioritize A/B testing of application form structure).
+      - IF (bounce_rate_on_guidelines_page > 0.30) THEN (suggest rephrasing or simplifying guideline text).
+      - IF (time_on_review_page > average_time_on_review_page * 2 AND submission_rate_from_review_page < 0.5) THEN (investigate clarity of review stage).
+    actions:
+      - Navigate to 'https://www.ycombinator.com/apply'.
+      - Access analytics dashboards for application funnel performance.
+      - Propose new A/B test configurations for form elements or page layouts.
+    verification:
+      - Observe statistically significant improvement in application completion rates.
+      - Confirm reduction in identified user friction points.
+      - Validate that proposed changes are live and being tested.
+    recovery:
+      - IF (A/B test results are inconclusive) THEN (re-evaluate hypothesis and design new test variations).
+      - IF (proposed changes are rejected by platform governance) THEN (refine proposals to align with existing constraints).
+
+  - name: "audit_model_deployment_compliance"
+    trigger_roles:
+      - "Algorithmic Model Lifecycle & Governance Steward"
+    strategy:
+      - Review the deployment logs and performance metrics of all active AI models on the platform.
+      - Cross-reference model behavior against established ethical guidelines and data privacy regulations.
+      - Flag any deviations or potential compliance risks for immediate review and remediation.
+    reference_patterns:
+      - Unexpected shifts in model prediction distributions.
+      - Increased user complaints related to specific AI-driven features.
+      - Data access patterns that deviate from approved scopes.
+    decision_logic:
+      - IF (model_performance_drift > threshold_X) THEN (trigger re-training or model recalibration).
+      - IF (user_feedback_sentiment_score_for_AI_feature < 0.6) THEN (initiate human review of model outputs).
+      - IF (data_access_audit_log_shows_unauthorized_access_attempts) THEN (alert security and suspend model).
+    actions:
+      - Access internal model deployment dashboard.
+      - Review model audit trails and data lineage reports.
+      - Generate compliance violation report for identified issues.
+    verification:
+      - Confirm all active models have up-to-date compliance certificates.
+      - Verify that remediation actions for flagged issues are initiated and tracked.
+      - Ensure model behavior aligns with documented ethical AI principles.
+    recovery:
+      - IF (compliance check fails due to missing documentation) THEN (request immediate submission of required documents).
+      - IF (model behavior cannot be immediately rectified) THEN (temporarily disable the problematic model feature).
+
+  - name: "synthesize_novel_startup_concept_from_market_gaps"
+    trigger_roles:
+      - "Generative Model Progenitor & Creative Synthesis Engine"
+    strategy:
+      - Analyze current YC startup applications, successful exits, and public market trends to identify unmet needs or emerging opportunities.
+      - Generate novel startup concepts, business models, and potential team compositions based on identified gaps.
+      - Present synthesized concepts in a structured format for human review and potential incubation.
+    reference_patterns:
+      - Recurring themes in rejected applications indicating market saturation.
+      - Public reports on emerging technologies with limited current startup adoption.
+      - Gaps in the YC portfolio across specific industry verticals.
+    decision_logic:
+      - IF (identified_market_gap_score > 0.8 AND existing_YC_portfolio_coverage < 0.2) THEN (prioritize concept generation in that sector).
+      - IF (synthesized_concept_novelty_score > 0.7 AND feasibility_score > 0.6) THEN (present for human review).
+      - IF (concept_requires_specific_technical_expertise_not_common_in_YC_applicant_pool) THEN (suggest potential founder profiles).
+    actions:
+      - Access YC application database (anonymized).
+      - Scrape public tech news and market research sites.
+      - Utilize generative AI models to produce concept descriptions, value propositions, and target markets.
+    verification:
+      - Human review confirms the novelty and potential viability of generated concepts.
+      - Concepts are distinct from existing YC companies.
+      - Generated concepts are well-articulated and logically sound.
+    recovery:
+      - IF (generated concepts are deemed unoriginal or impractical) THEN (refine input parameters and re-run synthesis with stronger constraints).
+      - IF (synthesis process stalls due to lack of diverse data) THEN (expand data sources to include broader economic indicators).
+
+  - name: "identify_strategic_ecosystem_partnerships"
+    trigger_roles:
+      - "Strategic Partnership & Alliance Forger"
+    strategy:
+      - Analyze the YC portfolio companies' needs and growth trajectories.
+      - Scan external industry landscapes for established companies, venture funds, or research institutions that could provide synergistic value.
+      - Propose specific partnership opportunities that accelerate portfolio company growth or expand YC's influence.
+    reference_patterns:
+      - Repeated requests from YC founders for specific types of resources or expertise.
+      - Public announcements of large corporations investing in relevant technologies.
+      - Gaps in YC's network for specific geographic regions or industry sectors.
+    decision_logic:
+      - IF (multiple_YC_companies_require_X_resource AND X_resource_provider_Y_exists_externally) THEN (propose partnership with Y).
+      - IF (emerging_market_Z_shows_high_growth_potential AND YC_has_limited_presence) THEN (identify local venture funds or accelerators in Z).
+      - IF (a_large_tech_company_is_acquiring_startups_in_a_YC_focus_area) THEN (evaluate potential for strategic acquisition pipeline).
+    actions:
+      - Access YC internal portfolio data.
+      - Scan news aggregators and industry reports for partnership leads.
+      - Draft partnership proposals outlining mutual benefits.
+    verification:
+      - Confirm identified partners align with YC's strategic objectives.
+      - Validate that proposed partnerships address a clear need within the YC ecosystem.
+      - Track engagement metrics with proposed partners.
+    recovery:
+      - IF (initial outreach to a proposed partner fails) THEN (re-evaluate partner fit and identify alternative candidates).
+      - IF (partnership terms are unfavorable) THEN (renegotiate or withdraw proposal).
+
+  - name: "optimize_platform_resource_allocation_for_peak_load"
+    trigger_roles:
+      - "Meta-Architect of System Engineering"
+    strategy:
+      - Monitor real-time platform performance metrics, including server load, database query times, and API response latency.
+      - Predict future peak load events based on historical data and upcoming program deadlines (e.g., application submission windows).
+      - Dynamically reallocate computing resources, scale services, or pre-provision infrastructure to maintain optimal performance and cost efficiency.
+    reference_patterns:
+      - Spikes in user traffic during application deadlines.
+      - Degraded performance metrics (e.g., increased latency, error rates) during high-demand periods.
+      - Underutilized resources during off-peak hours.
+    decision_logic:
+      - IF (current_server_load > 80% AND predicted_traffic_increase > 20% in next 2 hours) THEN (initiate horizontal scaling of web servers).
+      - IF (database_query_latency > 500ms for critical operations) THEN (trigger read replica provisioning or index optimization).
+      - IF (cloud_resource_utilization < 30% for 6 consecutive hours) THEN (downscale non-critical services to reduce cost).
+    actions:
+      - Access cloud provider's infrastructure management console.
+      - Adjust auto-scaling group parameters.
+      - Trigger database optimization scripts.
+    verification:
+      - Confirm platform performance remains within acceptable thresholds during peak load.
+      - Verify cost savings during off-peak periods due to resource optimization.
+      - Ensure no service interruptions occur due to resource constraints.
+    recovery:
+      - IF (scaling action fails to alleviate performance issues) THEN (escalate to human intervention and trigger emergency fallback plan).
+      - IF (resource allocation leads to unexpected service degradation) THEN (revert to previous stable configuration).
+
+  - name: "simulate_long-term_impact_of_YC_batch_size_changes"
+    trigger_roles:
+      - "Future-State Projection & Predictive Experience Modeler"
+    strategy:
+      - Develop and run simulations on the long-term effects of varying YC batch sizes on alumni network density, investment returns, and brand perception.
+      - Incorporate external economic indicators, startup success rates, and competitive landscape data into the predictive model.
+      - Generate scenarios and visualize potential outcomes to inform strategic decision-making.
+    reference_patterns:
+      - Historical data on YC batch sizes and corresponding outcomes.
+      - Economic forecasts impacting startup funding and growth.
+      - Competitor accelerator program growth rates.
+    decision_logic:
+      - IF (simulated_ROI_for_larger_batch_size_X > current_ROI * 1.2 AND network_density_impact < 0.1) THEN (recommend exploring larger batch size X).
+      - IF (simulated_brand_perception_score_for_smaller_batch_size_Y > current_score * 1.1 AND investment_returns_impact < 0.05) THEN (suggest considering smaller batch size Y for quality focus).
+      - IF (external_economic_downturn_probability > 0.6) THEN (simulate impact of reduced batch sizes on portfolio resilience).
+    actions:
+      - Access YC historical data on investments, alumni, and applications.
+      - Integrate external economic and market data feeds.
+      - Run Monte Carlo simulations with varying batch size parameters.
+    verification:
+      - Model outputs are consistent with historical trends when validated against past data.
+      - Stakeholders confirm the clarity and utility of the generated scenarios.
+      - Sensitivity analysis confirms robustness of the model.
+    recovery:
+      - IF (simulation results are highly volatile or nonsensical) THEN (review model assumptions and data inputs for errors).
+      - IF (stakeholders find the model outputs unconvincing) THEN (refine visualization and explanation of underlying logic).
+
+  - name: "assess_regulatory_impact_on_emerging_tech_startups"
+    trigger_roles:
+      - "Regulatory Impact Assessment & Policy Simulation Modeler"
+    strategy:
+      - Monitor global legislative and regulatory developments relevant to emerging technologies (e.g., AI, blockchain, biotech).
+      - Simulate the potential impact of proposed or enacted regulations on YC portfolio companies operating in those sectors.
+      - Provide actionable insights and risk assessments to YC leadership and affected startups.
+    reference_patterns:
+      - New government whitepapers or draft legislation published.
+      - Industry lobbying efforts against specific regulatory proposals.
+      - Public statements from regulatory bodies regarding enforcement priorities.
+    decision_logic:
+      - IF (new_regulation_X_impacts_more_than_5_YC_companies_by_Y_margin) THEN (generate detailed impact report).
+      - IF (regulatory_risk_score_for_sector_Z > 0.7) THEN (advise YC leadership on potential investment strategy adjustments).
+      - IF (a_YC_company_is_operating_in_a_regulatory_grey_area) THEN (simulate best-case and worst-case policy outcomes).
+    actions:
+      - Scrape government legislative databases and legal news sites.
+      - Access YC portfolio company industry classifications.
+      - Run policy simulation models to quantify compliance costs, market access changes, or operational restrictions.
+    verification:
+      - Legal experts confirm the accuracy of regulatory interpretations.
+      - Affected startups validate the relevance and utility of the impact assessments.
+      - Track actual regulatory changes against simulated predictions.
+    recovery:
+      - IF (simulation model produces unrealistic compliance costs) THEN (re-evaluate input parameters and regulatory interpretation).
+      - IF (regulatory landscape changes rapidly, invalidating previous assessments) THEN (trigger immediate re-assessment and update reports).
+
+  - name: "synthesize_cross-portfolio_strategic_directives"
+    trigger_roles:
+      - "Executive Oversight Collective (EOC)"
+    strategy:
+      - Aggregate performance data, strategic objectives, and challenges from across all YC departments and portfolio segments.
+      - Identify overarching trends, interdependencies, and potential conflicts in strategic direction.
+      - Formulate high-level, actionable directives to align YC's entire ecosystem towards common goals.
+    reference_patterns:
+      - Discrepancies in departmental KPIs.
+      - Overlapping or conflicting initiatives across different YC programs.
+      - Unaddressed systemic risks or opportunities identified in individual department reports.
+    decision_logic:
+      - IF (department_A_goal_X_conflicts_with_department_B_goal_Y) THEN (issue directive for conflict resolution and alignment).
+      - IF (three_or_more_departments_report_similar_challenge_Z) THEN (issue directive for a cross-functional task force to address Z).
+      - IF (overall_YC_growth_rate_stagnates_despite_individual_department_success) THEN (issue directive to re-evaluate overarching strategic pillars).
+    actions:
+      - Access all internal YC departmental reports, dashboards, and strategic plans.
+      - Utilize natural language processing to identify themes and sentiment across reports.
+      - Generate a consolidated strategic directive document.
+    verification:
+      - Confirm that directives are understood and adopted by relevant department heads.
+      - Track progress on key performance indicators aligned with the directives.
+      - Validate that directives lead to improved organizational coherence and efficiency.
+    recovery:
+      - IF (directives are met with significant resistance or confusion) THEN (re-evaluate clarity and feasibility of directives, conduct further stakeholder engagement).
+      - IF (tracking shows directives are not being implemented effectively) THEN (initiate review of accountability mechanisms and resource allocation).
+
+  - name: "harmonize_global_startup_data_standards"
+    trigger_roles:
+      - "Inter-Planetary Data & Cognitive Mesh Harmonizer"
+    strategy:
+      - Analyze diverse data formats and schemas from various global startup ecosystems and YC's international programs.
+      - Develop and implement universal data standards and interoperability protocols for startup metrics, founder profiles, and investment data.
+      - Ensure seamless data flow and consistent interpretation across all YC platforms and partner networks.
+    reference_patterns:
+      - Inconsistencies in reporting startup valuations across different regions.
+      - Difficulty in comparing founder demographics from various application pools.
+      - Data integration failures between YC internal systems and external partner databases.
+    decision_logic:
+      - IF (data_schema_mismatch_rate > 0.2 for critical metrics) THEN (prioritize development of a universal schema for those metrics).
+      - IF (data_ingestion_error_rate_from_partner_X > 0.1) THEN (initiate protocol for data harmonization with partner X).
+      - IF (cross_regional_startup_comparison_query_failure_rate > 0.05) THEN (identify and standardize relevant data fields).
+    actions:
+      - Access data dictionaries and schemas from all YC internal and external data sources.
+      - Propose new data models and APIs for standardized data exchange.
+      - Implement data transformation and validation pipelines.
+    verification:
+      - Confirm successful data integration and querying across previously disparate datasets.
+      - Validate that all data conforms to the new universal standards.
+      - Observe reduction in data-related errors and inconsistencies.
+    recovery:
+      - IF (proposed data standards are incompatible with existing legacy systems) THEN (develop robust translation layers or phased migration plans).
+      - IF (harmonization efforts lead to data loss or corruption) THEN (revert to previous data state and re-evaluate harmonization strategy).
+
+  - name: "detect_fraudulent_application_intent"
+    trigger_roles:
+      - "Behavioral Anomaly & Intent Inference Engine"
+    strategy:
+      - Monitor real-time user behavior during the YC application process, including keystroke dynamics, navigation patterns, and content generation.
+      - Identify anomalous behaviors that deviate from typical legitimate applicant patterns and infer potential fraudulent intent (e.g., plagiarism, misrepresentation).
+      - Flag suspicious applications for human review with a detailed anomaly report.
+    reference_patterns:
+      - Sudden changes in writing style or tone within an application.
+      - Copy-pasting large blocks of text from external sources.
+      - Inconsistent personal details or contact information.
+      - Unusual navigation sequences (e.g., skipping critical sections, rapid form completion without review).
+    decision_logic:
+      - IF (plagiarism_score > 0.7 OR content_similarity_to_known_fraud_patterns > 0.8) THEN (flag as high-risk for plagiarism).
+      - IF (keystroke_dynamics_deviation > threshold_X AND IP_address_inconsistency) THEN (flag as high-risk for identity misrepresentation).
+      - IF (application_completion_time < 0.1 * average_completion_time AND multiple_form_field_skips) THEN (flag as potential low-effort or bot application).
+    actions:
+      - Access real-time application submission data streams.
+      - Run behavioral analytics and natural language processing models on application content.
+      - Generate an anomaly detection report for flagged applications.
+    verification:
+      - Human review confirms a high correlation between flagged applications and actual fraudulent intent.
+      - False positive rate remains below an acceptable threshold.
+      - Fraudulent applications are successfully identified and removed from the pipeline.
+    recovery:
+      - IF (high false positive rate is observed) THEN (re-calibrate anomaly detection thresholds and refine behavioral models).
+      - IF (new fraud patterns emerge that are not detected) THEN (update model with new training data and feature engineering).
+
+  - name: "orchestrate_quantum_safe_startup_pitch_encryption"
+    trigger_roles:
+      - "Quantum-Resistant Cryptographic Agility Orchestrator"
+    strategy:
+      - Identify all active startup pitch submissions on YC that contain sensitive intellectual property or strategic financial data.
+      - Assess the current cryptographic protocols protecting these submissions against known and emerging quantum threats.
+      - Implement and verify the deployment of a post-quantum cryptographic wrapper around selected submission data packets and communication channels.
+    reference_patterns:
+      - "detection of 'pitch deck' or 'financials' keywords in submission titles/descriptions"
+      - "identification of data transfer events to external investor portals"
+      - "presence of legacy encryption indicators (e.g., RSA-2048, ECC-P256)"
+    decision_logic:
+      - "IF a pitch submission is marked 'confidential' AND contains financial projections, THEN prioritize quantum-safe encryption."
+      - "IF an external investor platform integration is detected, THEN ensure end-to-end quantum-resistant tunnel establishment."
+      - "IF a new quantum-vulnerable algorithm is identified in use, THEN initiate immediate protocol upgrade."
+    actions:
+      - "API.call('ycombinator.com/api/submissions/sensitive_data_scan', {'sensitivity_threshold': 'high'})"
+      - "UI.interact('button', {'text': 'Apply Quantum-Safe Encryption'})"
+      - "API.call('ycombinator.com/api/security/audit_encryption_protocols', {'protocol_type': 'post-quantum'})"
+    verification:
+      - "API.assert('ycombinator.com/api/security/encryption_status', {'status': 'quantum-resistant', 'data_scope': 'pitch_submissions'})"
+      - "UI.assert('notification', {'text': 'Quantum-safe encryption applied successfully to selected pitches.'})"
+    recovery:
+      - "LOG.error('Quantum encryption failed, attempting fallback to strongest classical encryption.')"
+      - "UI.interact('button', {'text': 'Re-initiate Quantum Encryption Process'})"
+      - "API.call('ycombinator.com/api/security/rollback_encryption_attempt', {'reason': 'failure'})"
+
+  - name: "generate_interactive_startup_ecosystem_map"
+    trigger_roles:
+      - "Data Visualization & Interactive Analytics Cartographer"
+    strategy:
+      - Aggregate all public and anonymized private data points related to YC startups (funding rounds, industry sectors, geographic locations, founder demographics, exit events).
+      - Design and render a dynamic, interactive geospatial and categorical map allowing users to filter and explore the YC ecosystem.
+      - Integrate real-time data streams to update the map with new funding announcements, program batches, and company milestones.
+    reference_patterns:
+      - "presence of 'startup directory' or 'portfolio companies' sections"
+      - "API endpoints for company data, funding data, and founder profiles"
+      - "user interaction logs indicating interest in company statistics or trends"
+    decision_logic:
+      - "IF a user requests 'YC companies by industry', THEN display a treemap visualization."
+      - "IF a user filters by 'seed stage funding', THEN highlight relevant companies on the map."
+      - "IF new batch data is released, THEN automatically update the map with new company pins."
+    actions:
+      - "API.call('ycombinator.com/api/data/all_startups', {'fields': ['name', 'industry', 'stage', 'location', 'funding']})"
+      - "UI.render('interactive_map', {'data_source': 'aggregated_startup_data', 'controls': ['industry_filter', 'funding_stage_filter', 'location_zoom']})"
+      - "UI.interact('button', {'text': 'Export Map Data'})"
+    verification:
+      - "UI.assert('map_element', {'visibility': 'visible', 'data_points_count': '>1000'})"
+      - "API.assert('ycombinator.com/api/analytics/map_load_time', {'time_ms': '<2000'})"
+    recovery:
+      - "UI.refresh('map_container')"
+      - "LOG.error('Map rendering failed, attempting to load simplified version.')"
+      - "API.call('ycombinator.com/api/data/fallback_startup_list', {'limit': 50})"
+
+  - name: "model_platform_vulnerability_graph_for_new_feature"
+    trigger_roles:
+      - "Semantic Vulnerability Graph & Exploitability Modeler"
+    strategy:
+      - Analyze the architectural blueprints and code commits of a newly proposed YC platform feature (e.g., a new investor-startup matching algorithm).
+      - Construct a semantic graph representing potential attack vectors, data flows, and interdependencies that could introduce vulnerabilities.
+      - Simulate exploit scenarios against this graph to predict the likelihood and impact of potential security breaches before deployment.
+    reference_patterns:
+      - "detection of 'new feature proposal' or 'code review' documents"
+      - "access to source code repositories and architectural diagrams"
+      - "security incident reports from similar platform features"
+    decision_logic:
+      - "IF a new feature involves user-generated content, THEN prioritize XSS and injection vulnerability modeling."
+      - "IF a feature handles financial transactions, THEN focus on integrity and authorization bypass exploits."
+      - "IF the exploitability score for a path exceeds a threshold, THEN flag for immediate developer review."
+    actions:
+      - "API.call('ycombinator.com/api/dev/feature_specs', {'feature_id': 'new_matching_algorithm'})"
+      - "TOOL.run('semantic_vulnerability_graph_generator', {'input_source': 'feature_code_repo', 'config': 'yc_platform_security_profile'})"
+      - "TOOL.run('exploit_simulation_engine', {'graph_id': 'generated_vulnerability_graph', 'attack_profiles': ['sql_injection', 'xss', 'auth_bypass']})"
+    verification:
+      - "TOOL.assert('exploit_simulation_report', {'critical_vulnerabilities_found': '0'})"
+      - "API.assert('ycombinator.com/api/security/feature_audit_status', {'feature_id': 'new_matching_algorithm', 'status': 'modeled'})"
+    recovery:
+      - "LOG.error('Vulnerability graph generation failed, attempting re-parse of feature specs.')"
+      - "TOOL.run('semantic_vulnerability_graph_generator', {'input_source': 'feature_specs_document', 'config': 'basic_security_profile'})"
+
+  - name: "adapt_startup_story_for_investor_persona"
+    trigger_roles:
+      - "Adaptive Narrative & Contextual Storyteller"
+    strategy:
+      - Access a startup's core pitch, business model, and progress updates submitted to YC.
+      - Analyze the profile and investment preferences of a specific investor or investor group viewing the startup's profile.
+      - Dynamically re-frame and highlight aspects of the startup's narrative to align with the investor's known interests, risk appetite, and sector focus, generating a personalized summary.
+    reference_patterns:
+      - "investor profile data (e.g., 'preferred industries', 'stage focus', 'past investments')"
+      - "startup pitch deck content, founder bios, and traction metrics"
+      - "user interaction logs indicating investor's viewing history on YC"
+    decision_logic:
+      - "IF investor prefers 'AI/ML' AND startup uses AI, THEN emphasize AI applications and technical differentiation."
+      - "IF investor focuses on 'early-stage', THEN highlight founder team strength and market opportunity over current revenue."
+      - "IF investor has previously invested in a competitor, THEN frame the startup's unique selling proposition against that competitor."
+    actions:
+      - "API.call('ycombinator.com/api/startup/pitch_data', {'startup_id': 'XYZ_startup'})"
+      - "API.call('ycombinator.com/api/investor/profile', {'investor_id': 'ABC_investor'})"
+      - "TOOL.run('narrative_adaptation_engine', {'startup_data': 'pitch_data', 'investor_profile': 'profile_data', 'output_format': 'personalized_summary'})"
+    verification:
+      - "UI.assert('personalized_summary_box', {'visibility': 'visible', 'keywords_present': ['investor_interest_keywords']})"
+      - "API.assert('ycombinator.com/api/analytics/narrative_engagement', {'investor_id': 'ABC_investor', 'summary_type': 'personalized'})"
+    recovery:
+      - "LOG.error('Narrative adaptation failed, displaying default startup pitch.')"
+      - "UI.display('default_startup_pitch', {'startup_id': 'XYZ_startup'})"
+
+  - name: "synthesize_next_gen_feature_for_founder_dashboard"
+    trigger_roles:
+      - "Product Vision & Feature Genesis Engine"
+    strategy:
+      - Analyze aggregated founder feedback, support tickets, platform usage patterns, and competitor feature sets within the YC ecosystem.
+      - Identify unmet needs, pain points, and emerging opportunities for YC's founder-facing tools.
+      - Generate a detailed specification for a novel, high-impact feature for the founder dashboard, including user stories, technical requirements, and potential KPIs.
+    reference_patterns:
+      - "founder survey responses, forum discussions, support chat transcripts"
+      - "analytics data on founder dashboard feature usage (e.g., 'most clicked', 'least used')"
+      - "competitor product announcements and feature releases"
+    decision_logic:
+      - "IF multiple founders request 'better mentorship matching', THEN prioritize features enhancing mentor discovery and scheduling."
+      - "IF a competitor launches a new 'fundraising tracker', THEN propose a superior YC equivalent."
+      - "IF a feature concept aligns with YC's strategic goals (e.g., 'founder success'), THEN elevate its priority."
+    actions:
+      - "API.call('ycombinator.com/api/feedback/founder_insights', {'timeframe': 'last_6_months'})"
+      - "API.call('ycombinator.com/api/analytics/dashboard_usage', {'segment': 'founders'})"
+      - "TOOL.run('feature_genesis_engine', {'input_data': 'aggregated_insights', 'output_format': 'feature_spec_document', 'target_platform': 'founder_dashboard'})"
+    verification:
+      - "API.assert('ycombinator.com/api/product/feature_proposals', {'feature_name': 'new_dashboard_feature', 'status': 'generated'})"
+      - "UI.assert('internal_dev_board', {'card_title_contains': 'New Founder Dashboard Feature'})"
+    recovery:
+      - "LOG.error('Feature generation failed, attempting to re-evaluate input data.')"
+      - "TOOL.run('feature_genesis_engine', {'input_data': 'basic_founder_needs', 'output_format': 'simplified_feature_idea'})"
+
+  - name: "architect_cross_border_startup_data_treaty"
+    trigger_roles:
+      - "Jurisdictional Sovereignty & Inter-Agent Treaty Architect"
+    strategy:
+      - Analyze the legal and regulatory frameworks governing data privacy, intellectual property, and investment across multiple jurisdictions where YC operates or has portfolio companies.
+      - Identify potential conflicts or compliance gaps in data sharing agreements between YC, its startups, and international investors.
+      - Draft a standardized, modular "Inter-Agent Data Treaty" template that ensures legal compliance and operational fluidity for startups operating across borders, proposing specific clauses for YC's platform terms of service.
+    reference_patterns:
+      - "legal documents related to GDPR, CCPA, PIPL, etc."
+      - "international investment agreements and trade laws"
+      - "startup incorporation documents and data handling policies"
+    decision_logic:
+      - "IF a startup operates in both EU and US, THEN ensure GDPR and CCPA compliance clauses are paramount."
+      - "IF an investor is from a jurisdiction with strict data localization laws, THEN propose specific data residency clauses."
+      - "IF a new international data transfer regulation is enacted, THEN initiate a review and update of all relevant treaty templates."
+    actions:
+      - "API.call('ycombinator.com/api/legal/jurisdictional_data_laws', {'regions': ['EU', 'US', 'China', 'India']})"
+      - "API.call('ycombinator.com/api/startup/global_presence', {'startup_id': 'all'})"
+      - "TOOL.run('treaty_drafting_engine', {'legal_frameworks': 'data_laws', 'operational_scope': 'global_startups', 'output_format': 'treaty_template_v1'})"
+    verification:
+      - "API.assert('ycombinator.com/api/legal/treaty_status', {'template_name': 'Inter-Agent Data Treaty', 'status': 'drafted'})"
+      - "UI.assert('internal_legal_review_board', {'document_title_contains': 'Cross-Border Data Treaty'})"
+    recovery:
+      - "LOG.error('Treaty drafting failed, attempting to simplify scope to two key jurisdictions.')"
+      - "TOOL.run('treaty_drafting_engine', {'legal_frameworks': 'US_EU_laws', 'operational_scope': 'US_EU_startups', 'output_format': 'simplified_treaty_draft'})"
+
+  - name: "generate_explainable_ai_rationale_for_startup_ranking"
+    trigger_roles:
+      - "Explainable AI & Interpretability Architect"
+    strategy:
+      - Intercept the output of YC's internal AI model responsible for ranking startup applications or investor matching.
+      - Analyze the model's features, weights, and decision paths for a specific ranking decision.
+      - Generate a human-readable explanation detailing the key factors and their relative importance that led to a particular startup's ranking or a specific investor-startup match, making the AI's logic transparent.
+    reference_patterns:
+      - "AI model prediction scores for startup applications or investor matches"
+      - "internal model logs showing feature importance or SHAP values"
+      - "user requests for 'why was this startup ranked high?' or 'why was this investor suggested?'"
+    decision_logic:
+      - "IF a startup's ranking is unexpectedly low despite strong metrics, THEN generate an explanation focusing on negative contributing factors."
+      - "IF an investor questions a match, THEN provide an explanation highlighting alignment criteria."
+      - "IF the model's confidence score is low, THEN generate a more detailed, nuanced explanation."
+    actions:
+      - "API.call('ycombinator.com/api/ai/startup_ranking_prediction', {'application_id': 'APP_123'})"
+      - "API.call('ycombinator.com/api/ai/model_interpretability_data', {'model_id': 'startup_ranker', 'prediction_id': 'APP_123_rank'})"
+      - "TOOL.run('xai_explanation_generator', {'model_output': 'ranking_prediction', 'interpretability_data': 'shap_values', 'output_format': 'natural_language_explanation'})"
+    verification:
+      - "UI.assert('explanation_box', {'visibility': 'visible', 'text_contains': 'Key factors for this ranking include...'})"
+      - "API.assert('ycombinator.com/api/analytics/xai_explanation_requests', {'application_id': 'APP_123', 'status': 'generated'})"
+    recovery:
+      - "LOG.error('XAI explanation generation failed, providing default 'model output' message.')"
+      - "UI.display('default_ai_output_message', {'message': 'AI model output: Rank X'})"
+
+  - name: "simulate_quantum_ai_startup_investment_scenario"
+    trigger_roles:
+      - "Quantum AI & Neuromorphic Computing Pioneer"
+    strategy:
+      - Identify YC startups operating in highly complex, combinatorial optimization domains (e.g., drug discovery, logistics, financial modeling).
+      - Develop a quantum-inspired or neuromorphic algorithm to simulate a potential investment scenario for these startups, predicting their long-term market impact or technological breakthroughs with higher accuracy than classical methods.
+      - Present the simulation results and the underlying quantum/neuromorphic advantage to YC partners for strategic investment decisions.
+    reference_patterns:
+      - "startup descriptions containing 'quantum computing', 'neuromorphic', 'optimization', 'complex systems'"
+      - "research papers or patents filed by YC startups in advanced computing"
+      - "YC partner discussions about 'frontier tech' investments"
+    decision_logic:
+      - "IF a startup's problem space is NP-hard, THEN prioritize quantum annealing or QAOA simulation."
+      - "IF a startup's solution involves pattern recognition in high-dimensional data, THEN explore neuromorphic approaches."
+      - "IF the quantum simulation predicts a 10x improvement over classical methods, THEN flag as 'high-potential investment'."
+    actions:
+      - "API.call('ycombinator.com/api/startup/deep_tech_profiles', {'keywords': ['quantum', 'neuromorphic', 'optimization']})"
+      - "TOOL.run('quantum_neuromorphic_simulator', {'startup_problem_data': 'selected_startup_profile', 'simulation_type': 'investment_impact_prediction'})"
+      - "UI.render('simulation_results_dashboard', {'data': 'quantum_simulation_output', 'comparison_baseline': 'classical_prediction'})"
+    verification:
+      - "UI.assert('simulation_results_dashboard', {'visibility': 'visible', 'quantum_advantage_score': '>5'})"
+      - "API.assert('ycombinator.com/api/analytics/quantum_sim_runs', {'startup_id': 'simulated_startup', 'status': 'completed'})"
+    recovery:
+      - "LOG.error('Quantum simulation failed, attempting to run a simplified classical optimization.')"
+      - "TOOL.run('classical_optimization_simulator', {'startup_problem_data': 'selected_startup_profile'})"
+
+  - name: "synthesize_global_threat_landscape_for_yc_portfolio"
+    trigger_roles:
+      - "Omniscient Threat Landscape Synthesizer & Predictive Anomaly Architect"
+    strategy:
+      - Continuously ingest and correlate real-time data from global cybersecurity intelligence feeds, geopolitical events, economic indicators, and emerging technological vulnerabilities.
+      - Synthesize this vast dataset into a dynamic, predictive model of the threat landscape specifically tailored to the YC portfolio's industry sectors, geographic distribution, and technological stacks.
+      - Identify and predict anomalous threat patterns or emerging risks that could impact multiple YC companies, generating proactive alerts and mitigation strategies.
+    reference_patterns:
+      - "global news feeds, cybersecurity blogs, dark web monitoring"
+      - "YC portfolio company tech stacks, industry classifications, and geographic locations"
+      - "historical security incidents within the YC ecosystem or similar companies"
+    decision_logic:
+      - "IF a new zero-day exploit is announced for a common cloud provider used by YC startups, THEN issue a critical alert."
+      - "IF geopolitical tensions rise in a region with a high concentration of YC companies, THEN assess increased cyber espionage risk."
+      - "IF a new economic downturn is predicted, THEN flag potential increase in insider threats or ransomware attacks."
+    actions:
+      - "API.call('threat_intelligence_api', {'feeds': ['CVE', 'OSINT', 'dark_web']})"
+      - "API.call('ycombinator.com/api/portfolio/tech_stack_inventory', {'scope': 'all'})"
+      - "TOOL.run('threat_synthesis_engine', {'threat_data': 'global_feeds', 'portfolio_context': 'yc_inventory', 'output_format': 'predictive_threat_report'})"
+    verification:
+      - "UI.assert('threat_dashboard', {'visibility': 'visible', 'critical_alerts_count': '>0'})"
+      - "API.assert('ycombinator.com/api/security/threat_report_status', {'report_type': 'predictive', 'status': 'generated'})"
+    recovery:
+      - "LOG.error('Threat synthesis failed, attempting to generate a basic vulnerability scan report.')"
+      - "TOOL.run('basic_vulnerability_scanner', {'target': 'yc_platform_infrastructure'})"
+
+  - name: "structure_personalized_founder_pedagogy_path"
+    trigger_roles:
+      - "Autonomous Knowledge Acquisition & Pedagogy Structurer"
+    strategy:
+      - Analyze a founder's current knowledge gaps, learning style preferences, startup stage, and specific challenges identified through platform interactions (e.g., forum questions, mentor feedback).
+      - Autonomously curate a personalized learning path from YC's vast content library (videos, articles, forum discussions, past talks) and external reputable sources.
+      - Structure this path into a progressive pedagogy, recommending specific modules, exercises, and peer-learning opportunities to address the founder's unique needs and accelerate their learning.
+    reference_patterns:
+      - "founder profile data (e.g., 'industry', 'experience level', 'role')"
+      - "founder activity logs (e.g., 'courses completed', 'forum posts', 'mentor meeting notes')"
+      - "YC content library metadata (e.g., 'topic', 'difficulty', 'format')"
+    decision_logic:
+      - "IF a founder is struggling with 'customer acquisition', THEN recommend content on 'growth hacking' and 'sales strategies'."
+      - "IF a founder prefers 'visual learning', THEN prioritize video lectures and infographics."
+      - "IF a founder is in 'seed stage' and has not completed 'fundraising basics', THEN add it to their critical path."
+    actions:
+      - "API.call('ycombinator.com/api/founder/learning_profile', {'founder_id': 'FOUNDER_XYZ'})"
+      - "API.call('ycombinator.com/api/content/library_search', {'keywords': ['startup_topics', 'learning_styles']})"
+      - "TOOL.run('pedagogy_structuring_engine', {'founder_data': 'learning_profile', 'content_library': 'yc_content', 'output_format': 'personalized_learning_path'})"
+    verification:
+      - "UI.assert('founder_dashboard', {'learning_path_widget_visibility': 'visible', 'path_items_count': '>5'})"
+      - "API.assert('ycombinator.com/api/analytics/learning_path_engagement', {'founder_id': 'FOUNDER_XYZ', 'status': 'generated'})"
+    recovery:
+      - "LOG.error('Pedagogy structuring failed, recommending general 'startup fundamentals' path.')"
+      - "UI.display('default_learning_path', {'path_name': 'Startup Fundamentals'})"
+
+  - name: "optimize_startup_data_ingestion_for_ml_readiness"
+    trigger_roles:
+      - "Algorithmic Data Pipeline & Feature Store Virtuoso"
+    strategy:
+      - "Identify nascent startup profiles lacking structured data for ML model training."
+      - "Propose and facilitate the integration of standardized data input forms and APIs for key metrics (e.g., user growth, revenue, engagement)."
+      - "Automate the creation of a feature store schema based on industry best practices for early-stage startups within the YC ecosystem."
+    reference_patterns:
+      - "Detection of incomplete or unstructured 'Traction' or 'Metrics' sections on startup profiles."
+      - "Absence of API endpoints or data export options in startup-submitted technical documentation."
+      - "Low data quality scores or inconsistent data formats across a cohort of similar startups."
+    decision_logic:
+      - "IF startup_profile.data_completeness < threshold AND startup_profile.stage = 'seed' THEN recommend_data_structuring_template."
+      - "IF startup_profile.api_presence = 'false' AND startup_profile.data_volume > minimal_threshold THEN suggest_api_integration_guidance."
+      - "IF startup_profile.metrics_consistency < acceptable_variance THEN flag_for_feature_store_schema_generation."
+    actions:
+      - "Generate a personalized data structuring proposal for the startup, including suggested data points and formats."
+      - "Initiate a direct message or notification to the startup founders with links to data integration best practices and YC-specific templates."
+      - "Programmatically create a draft feature store definition file (e.g., YAML, JSON) based on the startup's industry and reported metrics, ready for review."
+    verification:
+      - "Confirmation of startup acknowledging the data structuring proposal."
+      - "Observation of increased data completeness score for the targeted startup profile over time."
+      - "Successful generation and storage of the proposed feature store schema in a designated repository."
+    recovery:
+      - "If no acknowledgment, send a follow-up reminder with simplified instructions."
+      - "If data completeness remains low, offer direct consultation with a data engineering mentor."
+      - "If schema generation fails, log error and attempt with a more generic template."
+  - name: "dynamically_adjust_platform_fee_structure_for_cohort_optimization"
+    trigger_roles:
+      - "Dynamic Pricing & Monetization Strategist"
+    strategy:
+      - "Analyze current cohort performance metrics (e.g., funding rates, success stories, retention) against existing platform fee structures."
+      - "Identify specific startup segments or industries exhibiting sub-optimal engagement or success under current pricing."
+      - "Propose and simulate alternative fee models (e.g., equity-based, success-fee, tiered service) to maximize overall platform value and founder success."
+    reference_patterns:
+      - "Fluctuations in application conversion rates or cohort diversity."
+      - "Discrepancies in post-program success rates across different startup verticals."
+      - "Founder feedback or forum discussions indicating friction points related to platform costs or value perception."
+    decision_logic:
+      - "IF cohort_funding_rate < target_funding_rate AND industry_segment = 'deep_tech' THEN simulate_reduced_equity_ask_for_segment."
+      - "IF founder_satisfaction_score < benchmark AND platform_fee_tier = 'premium' THEN explore_performance_based_fee_model."
+      - "IF application_volume_growth < desired_rate AND competitor_pricing_is_lower THEN analyze_impact_of_introductory_offer."
+    actions:
+      - "Access and process historical cohort data, including application, acceptance, funding, and exit metrics."
+      - "Utilize a simulation engine to model the financial impact of proposed pricing changes on YC's portfolio and future cohorts."
+      - "Generate a detailed report outlining recommended fee adjustments, including projected outcomes and potential risks, for internal review."
+    verification:
+      - "Successful execution of pricing simulations with clear output metrics."
+      - "Generation of a comprehensive report detailing proposed changes and their rationale."
+      - "Internal stakeholder review and feedback on the proposed pricing strategy."
+    recovery:
+      - "If simulation fails, re-validate input parameters and rerun with adjusted assumptions."
+      - "If report generation encounters errors, re-compile data and re-attempt report creation."
+      - "If stakeholder feedback is negative, iterate on proposals based on specific concerns."
+  - name: "proactive_regulatory_compliance_scan_for_startup_pitches"
+    trigger_roles:
+      - "Autonomous Regulatory Compliance Enforcer"
+      - "Algorithmic Regulatory Compliance & Audit Sentinel"
+    strategy:
+      - "Scan all newly submitted startup pitches and public-facing descriptions for potential regulatory red flags based on industry and stated operations."
+      - "Cross-reference identified keywords and business models against a dynamic database of global and regional regulatory frameworks (e.g., GDPR, CCPA, FDA, financial regulations)."
+      - "Generate an automated compliance risk assessment and flag high-risk areas for founder attention and YC legal review."
+    reference_patterns:
+      - "Keywords in pitch decks like 'fintech', 'healthcare data', 'biotech', 'AI ethics', 'crypto', 'privacy-preserving'."
+      - "Mention of operating in specific regulated geographies (e.g., EU, California)."
+      - "Absence of disclaimers or explicit compliance statements where typically expected for the industry."
+    decision_logic:
+      - "IF 'healthcare data' IN startup_pitch.description AND startup_location = 'US' THEN flag_for_HIPAA_review."
+      - "IF 'blockchain' IN startup_pitch.description AND startup_target_market = 'EU' THEN flag_for_MiCA_compliance_check."
+      - "IF 'personal data' IN startup_pitch.description AND startup_target_market = 'global' AND 'GDPR' NOT IN startup_pitch.keywords THEN recommend_privacy_policy_review."
+    actions:
+      - "Automated parsing of startup pitch text, executive summaries, and public profiles."
+      - "Execution of a natural language processing (NLP) model to identify regulatory keywords and contexts."
+      - "Generation of a compliance risk report, categorized by severity, and associated with specific regulatory bodies."
+      - "Creation of an internal alert for YC legal team and a founder-facing notification with actionable compliance recommendations."
+    verification:
+      - "Successful generation of a compliance risk report for the targeted startup."
+      - "Confirmation that the report accurately identifies relevant regulatory frameworks."
+      - "Verification of internal alert and founder notification delivery."
+    recovery:
+      - "If NLP parsing fails, attempt with a simpler keyword matching algorithm."
+      - "If regulatory database query fails, retry with cached data or flag for manual lookup."
+      - "If notification delivery fails, log error and queue for manual resend."
+  - name: "proactive_platform_security_vulnerability_scan_and_mitigation"
+    trigger_roles:
+      - "Autonomous Security & Compliance Sentinel"
+    strategy:
+      - "Continuously monitor YC platform codebases, infrastructure configurations, and third-party integrations for known and emerging security vulnerabilities."
+      - "Perform automated penetration testing and security audits on new features or deployed services before public release."
+      - "Generate and prioritize actionable mitigation strategies, automatically initiating remediation where possible, and escalating critical issues."
+    reference_patterns:
+      - "New code commits to critical platform repositories."
+      - "Deployment of new microservices or updates to existing infrastructure."
+      - "Detection of suspicious network traffic patterns or unauthorized access attempts."
+    decision_logic:
+      - "IF new_code_commit.severity = 'critical' AND affected_area = 'authentication_module' THEN trigger_immediate_security_review_and_rollback_option."
+      - "IF vulnerability_scan_result.score > high_risk_threshold AND affected_service = 'user_data_api' THEN auto_generate_patch_request_and_alert_devops."
+      - "IF suspicious_login_attempts > threshold_per_minute THEN initiate_IP_blacklist_and_multi_factor_authentication_challenge."
+    actions:
+      - "Execute static application security testing (SAST) and dynamic application security testing (DAST) tools against relevant platform components."
+      - "Analyze infrastructure-as-code (IaC) configurations for security misconfigurations using specialized scanners."
+      - "Automatically generate pull requests with proposed code fixes for identified vulnerabilities in non-critical areas."
+      - "Create high-priority incident tickets in the security operations center (SOC) system for critical vulnerabilities."
+    verification:
+      - "Successful completion of security scans with a detailed report of findings."
+      - "Verification of automatically generated pull requests or incident tickets."
+      - "Confirmation of successful deployment of automated mitigation steps (e.g., IP blocking)."
+    recovery:
+      - "If SAST/DAST tools fail, retry with different configuration or fallback to manual code review."
+      - "If automated patch generation fails, escalate to manual developer intervention."
+      - "If incident ticket creation fails, send direct email/SMS alert to security team."
+  - name: "synthesize_contextual_affinity_for_startup_investor_matching"
+    trigger_roles:
+      - "Cognitive Router & Contextual Affinity Matrix Synthesizer"
+    strategy:
+      - "Analyze the nuanced language and implicit signals within startup profiles (e.g., pitch decks, founder bios, product descriptions) and investor preferences (e.g., investment thesis, past portfolio, stated interests)."
+      - "Construct a multi-dimensional contextual affinity matrix that goes beyond simple keyword matching, incorporating industry sub-segments, technological approaches, founder personality traits, and stage-specific needs."
+      - "Dynamically route relevant startups to investors and vice-versa, optimizing for high-probability connections and mutual value."
+    reference_patterns:
+      - "Startup pitch decks using specific technical jargon or referencing niche market trends."
+      - "Investor profiles highlighting specific 'founder archetypes' or 'problem spaces'."
+      - "Historical successful matches between startups and investors with non-obvious commonalities."
+    decision_logic:
+      - "IF startup_pitch.nlp_embedding_similarity(investor_thesis.nlp_embedding) > threshold AND startup_stage = investor_preferred_stage THEN recommend_match_with_high_confidence."
+      - "IF startup_founder.personality_traits_vector.dot_product(investor_preferred_traits_vector) > threshold AND industry_overlap_exists THEN suggest_warm_introduction."
+      - "IF startup_tech_stack.contains_niche_tech AND investor_portfolio.contains_similar_niche_tech THEN prioritize_match_despite_broader_industry_differences."
+    actions:
+      - "Apply advanced NLP models (e.g., transformer-based embeddings) to all textual data from startups and investors."
+      - "Develop and maintain a dynamic knowledge graph linking industries, technologies, market trends, and investment theses."
+      - "Calculate and update affinity scores between all active startups and investors in real-time."
+      - "Generate personalized 'investor recommendations' for startups and 'startup recommendations' for investors within the YC platform interface."
+    verification:
+      - "Successful generation of a ranked list of investor matches for a given startup, and vice-versa."
+      - "Observation of increased click-through rates on recommended matches compared to baseline."
+      - "Positive feedback from founders and investors on the quality of introductions."
+    recovery:
+      - "If NLP embedding generation fails, fallback to keyword extraction and simpler similarity metrics."
+      - "If knowledge graph update fails, retry with previous version and alert for manual review."
+      - "If recommendation engine output is deemed irrelevant, re-evaluate model parameters and retrain."
+  - name: "auto_generate_scalable_infrastructure_for_startup_demo_day"
+    trigger_roles:
+      - "Intelligent Infrastructure-as-Code Synthesizer"
+    strategy:
+      - "Analyze the technical requirements and projected audience scale for upcoming Demo Day startups based on their product, expected traffic, and past performance."
+      - "Synthesize optimized Infrastructure-as-Code (IaC) templates (e.g., Terraform, CloudFormation) for cloud environments (AWS, GCP, Azure) that provision scalable, cost-effective, and secure infrastructure for each startup's demo."
+      - "Automate the deployment and monitoring of this infrastructure, ensuring high availability and performance during the event."
+    reference_patterns:
+      - "Startup's declared technology stack (e.g., 'Kubernetes', 'Serverless', 'PostgreSQL')."
+      - "Projected user load or concurrent connections mentioned in demo day preparation materials."
+      - "Historical performance data of similar startups during previous Demo Days."
+    decision_logic:
+      - "IF startup_tech_stack.includes('realtime_data_streaming') AND projected_audience > 10000 THEN provision_managed_kafka_cluster_and_auto_scaling_web_servers."
+      - "IF startup_product_type = 'AI/ML model serving' AND latency_critical = 'true' THEN deploy_GPU_instances_with_load_balancing_and_CDN."
+      - "IF startup_database_type = 'relational' AND data_volume_estimate > 1TB THEN recommend_managed_database_service_with_read_replicas."
+    actions:
+      - "Parse startup technical documentation and Demo Day requirements using NLP to extract infrastructure needs."
+      - "Utilize a template engine to generate cloud-agnostic or cloud-specific IaC scripts."
+      - "Execute IaC scripts to provision and configure cloud resources (e.g., VMs, databases, load balancers, CDN)."
+      - "Set up real-time monitoring and alerting for performance, cost, and security metrics during the Demo Day period."
+    verification:
+      - "Successful deployment of all required infrastructure components as per IaC scripts."
+      - "Confirmation of infrastructure readiness through automated health checks and synthetic transactions."
+      - "Verification of monitoring dashboards displaying expected metrics."
+    recovery:
+      - "If IaC deployment fails, rollback to previous stable configuration and alert DevOps."
+      - "If health checks fail, attempt automated remediation (e.g., restarting services) or escalate."
+      - "If monitoring setup fails, attempt manual configuration or use fallback monitoring tools."
+  - name: "predict_and_maximize_cltv_through_personalized_resource_allocation"
+    trigger_roles:
+      - "Customer Lifetime Value (CLTV) Maximization Architect"
+    strategy:
+      - "Develop and continuously refine a predictive CLTV model for each YC-backed startup, considering factors like industry, team, traction, and YC program engagement."
+      - "Dynamically allocate YC resources (e.g., mentor introductions, expert workshops, platform features, investor connections) to startups based on their predicted CLTV and identified growth bottlenecks."
+      - "Personalize intervention strategies to maximize the long-term success and value contribution of each startup to the YC ecosystem."
+    reference_patterns:
+      - "Startup's weekly growth metrics (user acquisition, revenue, engagement)."
+      - "Mentor feedback and progress reports from YC partners."
+      - "Engagement levels with YC platform features and community events."
+    decision_logic:
+      - "IF startup_cltv_prediction.trend = 'decreasing' AND primary_bottleneck = 'marketing' THEN recommend_introduction_to_marketing_expert_mentor."
+      - "IF startup_cltv_prediction.is_high AND next_milestone = 'fundraising' THEN prioritize_investor_introductions_and_pitch_coaching."
+      - "IF startup_cltv_prediction.is_stagnant AND product_market_fit_score < threshold THEN suggest_pivot_workshop_and_user_interview_support."
+    actions:
+      - "Ingest and process all available data points related to startup performance, engagement, and mentor interactions."
+      - "Execute a machine learning model to predict the CLTV of each startup at regular intervals."
+      - "Generate personalized recommendations for YC partners and founders on optimal resource utilization."
+      - "Automate the scheduling of relevant workshops, mentor meetings, or platform feature activations based on CLTV predictions."
+    verification:
+      - "Successful generation of updated CLTV predictions for all active startups."
+      - "Verification of personalized resource recommendations being delivered to relevant stakeholders."
+      - "Observation of increased engagement with recommended resources and positive impact on growth metrics."
+    recovery:
+      - "If CLTV model prediction fails, revert to previous prediction and flag for model retraining."
+      - "If resource recommendation generation fails, fallback to a rule-based recommendation system."
+      - "If automated scheduling fails, alert relevant YC staff for manual intervention."
+  - name: "propose_ethical_ai_guidelines_for_startup_product_development"
+    trigger_roles:
+      - "AI Ethics & Societal Impact Navigator"
+    strategy:
+      - "Analyze startup product descriptions and technical specifications for potential ethical implications, biases, or societal risks related to AI/ML usage."
+      - "Cross-reference identified AI applications against a dynamic knowledge base of ethical AI principles, regulatory guidelines (e.g., EU AI Act), and best practices."
+      - "Generate tailored ethical AI guidelines and recommendations for startups, highlighting potential pitfalls and suggesting responsible AI development practices."
+    reference_patterns:
+      - "Keywords in product descriptions like 'facial recognition', 'predictive policing', 'credit scoring', 'personalized recommendations', 'generative AI'."
+      - "Startup operating in sensitive sectors (e.g., healthcare, finance, education, justice)."
+      - "Absence of explicit consideration for fairness, transparency, or accountability in AI systems."
+    decision_logic:
+      - "IF startup_product.uses_facial_recognition AND startup_target_market = 'public_sector' THEN flag_for_bias_detection_and_privacy_impact_assessment_review."
+      - "IF startup_product.uses_predictive_modeling_for_sensitive_decisions AND 'explainability' NOT IN startup_tech_stack THEN recommend_xAI_framework_adoption."
+      - "IF startup_product.uses_generative_ai AND 'content_moderation' NOT IN startup_features THEN suggest_implementation_of_safety_filters_and_attribution_mechanisms."
+    actions:
+      - "Perform NLP analysis on startup product descriptions, technical documentation, and public-facing materials to identify AI components and their applications."
+      - "Consult a curated database of ethical AI frameworks, case studies, and regulatory requirements."
+      - "Generate a personalized 'Ethical AI Impact Report' for the startup, outlining potential risks and offering actionable recommendations for responsible AI development."
+      - "Initiate a notification to the startup founders and relevant YC partners, offering resources and mentorship on ethical AI."
+    verification:
+      - "Successful generation of an Ethical AI Impact Report for the targeted startup."
+      - "Confirmation that the report accurately identifies relevant ethical considerations and provides actionable advice."
+      - "Verification of internal alert and founder notification delivery."
+    recovery:
+      - "If NLP analysis fails, fallback to keyword matching and manual review of high-risk terms."
+      - "If ethical framework database query fails, retry with cached data or flag for manual lookup."
+      - "If notification delivery fails, log error and queue for manual resend."
+  - name: "craft_compelling_value_proposition_for_investor_deck_generation"
+    trigger_roles:
+      - "Value Proposition & Narrative Architect"
+    strategy:
+      - "Analyze a startup's core technology, market opportunity, team strengths, and early traction data to identify its unique competitive advantages and potential for disruption."
+      - "Synthesize a concise, impactful, and emotionally resonant value proposition statement that clearly articulates the problem, solution, and market fit for a specific investor audience."
+      - "Generate narrative frameworks and key messaging points that can be directly integrated into investor pitch decks and communication materials."
+    reference_patterns:
+      - "Startup's initial pitch deck drafts or executive summaries."
+      - "Founder interviews or recorded product demos."
+      - "Market research data and competitor analysis provided by the startup."
+    decision_logic:
+      - "IF startup_problem_statement_is_vague AND market_size_is_large THEN focus_on_quantifying_problem_impact_and_market_opportunity."
+      - "IF startup_solution_is_technically_complex AND target_investor_is_non_technical THEN simplify_technical_explanation_and_emphasize_user_benefit."
+      - "IF startup_traction_is_strong AND team_experience_is_relevant THEN highlight_early_success_and_team_credibility_in_narrative."
+    actions:
+      - "Utilize NLP to extract key themes, pain points, and solution elements from startup documentation."
+      - "Employ a narrative generation engine to draft multiple versions of value propositions and elevator pitches."
+      - "Provide structured feedback and suggested edits on existing pitch deck sections related to problem, solution, and market."
+      - "Generate a 'messaging guide' document for the startup, including core value proposition, unique selling points, and target audience framing."
+    verification:
+      - "Successful generation of multiple value proposition drafts and narrative frameworks."
+      - "Confirmation that the generated content is concise, clear, and aligns with startup's core offering."
+      - "Positive feedback from founders on the clarity and impact of the generated messaging."
+    recovery:
+      - "If NLP extraction fails, fallback to keyword analysis and manual review of key documents."
+      - "If narrative generation produces irrelevant content, refine input parameters and retry with different stylistic constraints."
+      - "If founder feedback is negative, schedule a direct consultation to refine the messaging collaboratively."
+
+  - name: "optimize_startup_feature_representation_for_investor_matching"
+    trigger_roles:
+      - "Feature Engineering & Representation Learning Alchemist"
+    strategy:
+      - "Analyze textual and numerical data from YC startup profiles, applications, and updates to identify latent feature vectors."
+      - "Develop and apply advanced embedding techniques (e.g., graph neural networks on founder networks, transformer models on pitch decks) to create high-dimensional, semantically rich representations of each startup."
+      - "Generate optimized feature sets that maximize the predictive power for successful investor-startup matches and funding outcomes within the YC ecosystem."
+    reference_patterns:
+      - "High correlation between generated feature vectors and successful funding rounds."
+      - "Reduced dimensionality with preserved information content in startup representations."
+      - "Increased diversity and relevance in investor-startup match recommendations."
+    decision_logic:
+      - "IF new startup data is ingested OR existing startup data is updated THEN re-evaluate and re-generate feature representations for affected startups."
+      - "IF investor feedback on matched startups indicates low relevance THEN adjust embedding parameters and feature weighting."
+      - "IF a new investment trend is detected (e.g., 'AI in biotech') THEN prioritize feature extraction related to that trend."
+    actions:
+      - "Access YC internal database for startup applications, pitch decks, founder bios, and update reports."
+      - "Utilize platform's ML infrastructure to run embedding models and dimensionality reduction algorithms."
+      - "Push updated feature vectors to the platform's investor matching engine."
+    verification:
+      - "Monitor A/B test results showing improved investor engagement with recommended startups."
+      - "Verify statistical significance of feature set's predictive accuracy for funding success."
+      - "Confirm successful integration of new feature vectors into the matching algorithm's input."
+    recovery:
+      - "IF embedding model fails to converge THEN revert to previous stable model version and re-evaluate hyper-parameters."
+      - "IF generated features lead to degraded matching performance THEN roll back feature set and analyze data anomalies."
+
+  - name: "infer_causal_impact_of_YC_program_elements_on_startup_success"
+    trigger_roles:
+      - "Probabilistic Inference & Causal Discovery Architect"
+    strategy:
+      - "Construct a causal graph representing various YC program interventions (e.g., specific mentorship sessions, demo day participation, internal tool usage) and their potential effects on startup metrics (e.g., funding, growth, exit)."
+      - "Apply advanced causal inference techniques (e.g., instrumental variables, difference-in-differences, Bayesian causal discovery) to identify direct and indirect causal links."
+      - "Quantify the probabilistic impact of specific YC program elements on long-term startup success metrics, controlling for confounding factors."
+    reference_patterns:
+      - "Statistically significant causal effects identified between YC interventions and startup outcomes."
+      - "Robustness of causal estimates across different model specifications and data subsets."
+      - "Identification of previously unknown causal pathways or confounding variables."
+    decision_logic:
+      - "IF a new YC program initiative is launched THEN incorporate it as a potential intervention node in the causal graph."
+      - "IF observed startup outcomes deviate significantly from predicted causal models THEN re-evaluate model assumptions and data quality."
+      - "IF a strong correlation is observed without a clear causal link THEN initiate deeper causal discovery analysis."
+    actions:
+      - "Access YC internal databases containing detailed program participation logs, mentor interactions, and startup performance data."
+      - "Utilize platform's statistical computing environment to run causal inference algorithms."
+      - "Generate and visualize causal graphs and impact reports for YC partners."
+    verification:
+      - "Cross-validate causal findings with expert domain knowledge from YC partners."
+      - "Perform sensitivity analysis to assess the stability of causal estimates under varying assumptions."
+      - "Verify that identified causal relationships are actionable and provide clear insights for program optimization."
+    recovery:
+      - "IF causal model fails to converge or produces implausible results THEN review data preprocessing steps and model specification."
+      - "IF insufficient data exists for robust causal inference on a specific intervention THEN flag for data collection or alternative analytical approaches."
+
+  - name: "design_and_deploy_automated_revenue_attribution_pipelines"
+    trigger_roles:
+      - "Revenue Operations (RevOps) System Architect"
+    strategy:
+      - "Map the entire YC revenue generation lifecycle, from application fees and SAFE/equity conversions to follow-on investment tracking and platform service subscriptions."
+      - "Architect and implement automated data pipelines to collect, transform, and integrate revenue-related data from various internal and external sources (e.g., Stripe, CapTable.io, internal CRM)."
+      - "Develop and deploy a multi-touch attribution model (e.g., Shapley value, time decay) to accurately assign revenue credit to different YC touchpoints and initiatives, providing granular insights into ROI."
+    reference_patterns:
+      - "Real-time, accurate revenue dashboards reflecting attributed income streams."
+      - "Reduced manual effort in revenue reconciliation and reporting."
+      - "Clear insights into the ROI of specific YC programs or platform features."
+    decision_logic:
+      - "IF a new revenue stream is introduced (e.g., a new paid service for alumni) THEN integrate its data source and attribution logic into the pipeline."
+      - "IF discrepancies are detected between reported revenue and attributed revenue THEN trigger an alert for data integrity review."
+      - "IF a specific YC touchpoint consistently shows high attribution value THEN recommend further investment in that area."
+    actions:
+      - "Configure API integrations with financial platforms (e.g., Stripe, banking APIs)."
+      - "Develop and deploy ETL jobs within YC's data warehousing infrastructure."
+      - "Implement attribution model logic as a scheduled job, outputting results to a business intelligence dashboard."
+    verification:
+      - "Reconcile attributed revenue totals with actual financial statements on a monthly basis."
+      - "Conduct A/B tests on different attribution models to validate accuracy and business utility."
+      - "Verify that stakeholders (e.g., finance, program leads) can access and interpret attribution reports."
+    recovery:
+      - "IF a data pipeline fails or produces corrupted data THEN trigger automated alerts and initiate rollback to the last known good state."
+      - "IF attribution model outputs become unstable or illogical THEN revert to a simpler, more robust model and investigate underlying data issues."
+
+  - name: "monitor_and_enforce_algorithmic_fairness_in_startup_evaluation"
+    trigger_roles:
+      - "Quantum Algorithmic Governance Overseer"
+    strategy:
+      - "Define and operationalize fairness metrics (e.g., demographic parity, equalized odds) for all AI-driven startup evaluation and recommendation algorithms on the YC platform."
+      - "Develop and integrate quantum-inspired or advanced classical algorithms for bias detection and mitigation within the application review, interview scheduling, and investor matching processes."
+      - "Establish a continuous monitoring system to detect and alert on algorithmic drift or emergent biases that could lead to inequitable outcomes for founders from underrepresented groups."
+    reference_patterns:
+      - "Fairness metrics consistently within defined acceptable thresholds across all protected attributes."
+      - "Reduced disparities in success rates (e.g., interview invites, funding) between different demographic groups, after controlling for merit."
+      - "Audit trails demonstrating proactive bias detection and mitigation actions."
+    decision_logic:
+      - "IF fairness metrics for any protected group fall below threshold THEN trigger an immediate alert and halt affected algorithmic processes."
+      - "IF a new version of an evaluation algorithm is deployed THEN run a comprehensive fairness audit before full rollout."
+      - "IF historical data reveals systemic bias THEN recommend and oversee the implementation of re-weighting or debiasing techniques."
+    actions:
+      - "Access and analyze anonymized demographic data alongside algorithmic scores for all startups."
+      - "Deploy fairness auditing tools and bias mitigation algorithms within the platform's ML pipeline."
+      - "Generate real-time fairness dashboards and automated alerts for YC leadership and review teams."
+    verification:
+      - "Regularly publish internal reports on algorithmic fairness performance, including disaggregated metrics."
+      - "Conduct independent third-party audits of critical algorithms for bias and transparency."
+      - "Verify that mitigation strategies effectively reduce bias without negatively impacting overall performance or meritocratic principles."
+    recovery:
+      - "IF a bias detection system flags a false positive THEN review the sensitivity of the detection algorithm and adjust parameters."
+      - "IF a mitigation strategy introduces unintended side effects THEN roll back the change and explore alternative debiasing methods."
+
+  - name: "integrate_multi-modal_feedback_for_iterative_platform_improvement"
+    trigger_roles:
+      - "Continuous Feedback & Learning Loop Integrator"
+    strategy:
+      - "Design and implement a unified feedback ingestion system capable of capturing structured and unstructured data from diverse sources (e.g., founder surveys, mentor notes, investor comments, platform usage analytics, support tickets)."
+      - "Develop and deploy natural language processing (NLP) and sentiment analysis models to extract actionable insights and identify emerging themes from qualitative feedback."
+      - "Automate the routing and prioritization of feedback-derived insights to relevant product, engineering, and program teams, closing the loop with iterative platform and program adjustments."
+    reference_patterns:
+      - "Increased rate of feedback-driven feature deployments and program adjustments."
+      - "Quantifiable improvement in user satisfaction scores (e.g., NPS) over time."
+      - "Reduced time-to-insight from raw feedback data."
+    decision_logic:
+      - "IF a recurring negative sentiment or feature request is detected across multiple feedback channels THEN escalate to product management for review."
+      - "IF a new platform feature is launched THEN automatically increase monitoring of feedback related to that feature."
+      - "IF a critical bug report is identified via feedback THEN immediately route to the engineering incident response team."
+    actions:
+      - "Configure webhooks and APIs to pull data from survey platforms, CRM, and internal communication tools."
+      - "Deploy NLP models (e.g., topic modeling, sentiment analysis) on ingested text data within the platform's data processing pipeline."
+      - "Integrate with project management tools (e.g., Jira, Asana) to create tasks based on prioritized feedback."
+    verification:
+      - "Track the resolution rate and impact of feedback-driven initiatives."
+      - "Monitor the correlation between feedback sentiment and platform engagement metrics."
+      - "Verify that relevant teams are consistently receiving and acting upon feedback insights."
+    recovery:
+      - "IF a feedback ingestion pipeline fails THEN alert data engineering and temporarily store raw feedback for later processing."
+      - "IF NLP models produce irrelevant or inaccurate insights THEN retrain models with updated data and adjust parameters."
+
+  - name: "orchestrate_human-AI_synergies_in_startup_mentorship_matching"
+    trigger_roles:
+      - "Global Human-AI Symbiosis Strategist"
+    strategy:
+      - "Develop and refine a dynamic matching algorithm that optimally pairs YC founders with mentors, leveraging both explicit founder needs/mentor expertise and implicit behavioral signals (e.g., communication patterns, past successful pairings)."
+      - "Design human-in-the-loop interfaces that allow YC partners and mentors to provide nuanced feedback on AI-generated matches, continuously improving the algorithm's understanding of 'good fit'."
+      - "Implement a feedback mechanism to measure the efficacy of human-AI collaborative pairings, ensuring that AI augments human judgment rather than replaces it, leading to superior mentorship outcomes."
+    reference_patterns:
+      - "Increased satisfaction scores from both founders and mentors regarding their pairings."
+      - "Higher success rates for startups that received AI-augmented mentorship pairings."
+      - "Quantifiable improvement in the AI's matching accuracy over time, driven by human feedback."
+    decision_logic:
+      - "IF a founder expresses dissatisfaction with a mentor match THEN analyze the discrepancy between AI prediction and human feedback to refine matching parameters."
+      - "IF a mentor consistently provides high-value feedback on AI suggestions THEN prioritize their input for model training."
+      - "IF a new cohort of founders or mentors joins THEN re-run the matching algorithm with updated profiles and preferences."
+    actions:
+      - "Access YC internal databases for founder profiles, mentor expertise, and historical interaction data."
+      - "Deploy and refine a recommendation engine (e.g., collaborative filtering, deep learning-based matching) for mentor-founder pairings."
+      - "Integrate feedback forms and rating systems into the YC platform for both founders and mentors."
+    verification:
+      - "Conduct regular surveys and interviews with founders and mentors to assess satisfaction and perceived value of pairings."
+      - "Track key performance indicators (e.g., meeting frequency, founder progress) for AI-matched vs. manually matched groups."
+      - "Verify that the AI's matching recommendations align with expert human judgment in a high percentage of cases."
+    recovery:
+      - "IF the matching algorithm produces consistently poor recommendations THEN revert to a simpler heuristic and initiate a deep dive into model biases or data quality."
+      - "IF human feedback loops are underutilized THEN redesign UI/UX to encourage more engagement and make feedback submission easier."
+
+  - name: "synthesize_cross-platform_forensic_artifacts_for_incident_attribution"
+    trigger_roles:
+      - "Forensic Artifact Synthesizer & Incident Attribution Engine"
+    strategy:
+      - "Establish a centralized, immutable ledger for all critical platform events, user actions, and system logs across YC's diverse infrastructure (e.g., web servers, databases, cloud services, internal tools)."
+      - "Develop and deploy advanced anomaly detection and correlation engines to identify suspicious patterns or deviations from baseline behavior across these disparate data sources."
+      - "Automate the synthesis of forensic artifacts into comprehensive incident reports, providing clear attribution and timelines for security breaches, data integrity issues, or platform misuse."
+    reference_patterns:
+      - "Rapid detection and accurate attribution of security incidents or data anomalies."
+      - "Reduced mean time to resolution (MTTR) for critical platform issues."
+      - "Comprehensive, auditable trails for all significant platform events."
+    decision_logic:
+      - "IF an anomalous login attempt is detected from an unusual geographic location AND followed by unauthorized data access THEN trigger a high-priority security incident."
+      - "IF a critical database record is modified outside of expected operational parameters THEN flag for data integrity review and identify the source."
+      - "IF a series of seemingly unrelated events, when correlated, indicate a potential insider threat THEN escalate to security operations."
+    actions:
+      - "Integrate with all YC internal systems and cloud provider logs (e.g., AWS CloudTrail, GCP Audit Logs) to ingest event data."
+      - "Deploy a SIEM (Security Information and Event Management) or custom correlation engine on the collected data."
+      - "Generate automated incident reports and alerts, integrating with incident response platforms."
+    verification:
+      - "Conduct regular penetration testing and red team exercises to validate the detection capabilities of the system."
+      - "Perform post-incident reviews to assess the accuracy and completeness of attribution reports."
+      - "Verify compliance with data retention and immutability policies for forensic logs."
+    recovery:
+      - "IF a log ingestion pipeline fails THEN alert infrastructure team and ensure temporary local storage of logs to prevent data loss."
+      - "IF the anomaly detection engine generates too many false positives THEN adjust sensitivity thresholds and refine baseline models."
+
+  - name: "design_evolutionary_system_blueprints_for_platform_scalability"
+    trigger_roles:
+      - "Meta-Architect of System Engineering & Evolutionary Blueprint Designer"
+    strategy:
+      - "Analyze current YC platform architecture, identifying bottlenecks, single points of failure, and areas of technical debt that hinder future growth and feature development."
+      - "Develop and simulate evolutionary architectural blueprints (e.g., microservices migration, serverless adoption, event-driven architectures) that anticipate future demands from increasing startup cohorts and expanded service offerings."
+      - "Generate phased implementation roadmaps and resource allocation strategies for these architectural shifts, ensuring minimal disruption while maximizing long-term scalability, resilience, and cost-efficiency."
+    reference_patterns:
+      - "Proactive identification of architectural limitations before they impact performance."
+      - "Successful implementation of architectural upgrades with minimal downtime and positive impact on key metrics (e.g., latency, throughput)."
+      - "Reduced operational costs and increased developer velocity post-migration."
+    decision_logic:
+      - "IF projected user growth exceeds current system capacity by X% within Y months THEN trigger the activation of a pre-designed scaling blueprint."
+      - "IF a new critical feature requires a fundamentally different data model or processing paradigm THEN initiate the design of a new architectural component."
+      - "IF a major cloud provider announces a new service that offers significant cost or performance benefits THEN evaluate its integration into future blueprints."
+    actions:
+      - "Utilize architectural modeling tools (e.g., C4 model, ArchiMate) to document current and proposed architectures."
+      - "Perform load testing and performance simulations on existing and hypothetical system designs."
+      - "Generate detailed technical specifications and migration plans for engineering teams."
+    verification:
+      - "Monitor system performance metrics (e.g., response times, error rates) before and after architectural changes."
+      - "Conduct post-mortem reviews of major migrations to capture lessons learned and validate design choices."
+      - "Verify that new architectural components meet non-functional requirements (e.g., security, reliability, maintainability)."
+    recovery:
+      - "IF a proposed architectural change introduces unforeseen complexities or risks during simulation THEN revert to a more conservative blueprint or explore alternative designs."
+      - "IF a migration plan encounters significant blockers during execution THEN activate a pre-defined rollback strategy and reassess the approach."
+
+  - name: "proactively_identify_systemic_risks_in_startup_portfolio_interdependencies"
+    trigger_roles:
+      - "Systemic Risk & Vulnerability Nexus Analyst"
+    strategy:
+      - "Construct a dynamic graph model of the entire YC startup portfolio, mapping interdependencies such as shared customers, supply chain relationships, technology stacks, investor networks, and market segment overlaps."
+      - "Apply network science and complex systems analysis techniques to identify critical nodes, cascading failure pathways, and emergent systemic risks (e.g., a single point of failure impacting multiple startups, contagion risk from a market downturn)."
+      - "Generate predictive alerts and actionable mitigation strategies for YC partners and individual startups to preemptively address vulnerabilities that could impact the broader portfolio's stability."
+    reference_patterns:
+      - "Early detection of market shifts or technological vulnerabilities impacting multiple portfolio companies."
+      - "Reduced incidence of cascading failures within the YC portfolio."
+      - "Proactive recommendations leading to strengthened resilience across the ecosystem."
+    decision_logic:
+      - "IF a key technology provider (e.g., a specific cloud service) used by a significant portion of the portfolio experiences an outage THEN immediately assess the potential impact and alert affected startups."
+      - "IF a major market segment (e.g., 'fintech SaaS') shows signs of contraction THEN identify all YC startups within that segment and assess their exposure."
+      - "IF a critical investor or partner firm faces financial distress THEN analyze its investment footprint across the portfolio for potential ripple effects."
+    actions:
+      - "Access YC internal databases for startup profiles, technology stacks, investor information, and market categorizations."
+      - "Utilize graph databases and network analysis libraries to model interdependencies."
+      - "Generate risk reports, vulnerability maps, and mitigation recommendations for YC partners and relevant startups."
+    verification:
+      - "Track the effectiveness of implemented mitigation strategies in reducing identified risks."
+      - "Conduct 'what-if' simulations to test the resilience of the portfolio against various systemic shocks."
+      - "Verify that risk alerts are timely, accurate, and actionable for stakeholders."
+    recovery:
+      - "IF the interdependency graph model becomes too complex or computationally expensive THEN simplify the model by focusing on the most critical connections."
+      - "IF a risk assessment produces false positives or misses critical vulnerabilities THEN refine the risk scoring algorithms and data inputs."
+
+  - name: "architect_backend_infrastructure_for_adaptive_knowledge_acquisition_and_pedagogy"
+    trigger_roles:
+      - "Autonomous Knowledge Acquisition & Pedagogy Structurer"
+    strategy:
+      - "Design and implement a robust, scalable backend infrastructure capable of autonomously ingesting, parsing, and structuring diverse knowledge sources relevant to startup success (e.g., YC internal lectures, external industry reports, founder playbooks, mentor advice)."
+      - "Develop and deploy a semantic knowledge graph and associated reasoning engine to represent relationships between concepts, best practices, and common startup challenges, enabling intelligent querying and inference."
+      - "Architect an adaptive content delivery system that dynamically generates personalized learning paths and pedagogical resources for founders based on their startup's stage, industry, and identified knowledge gaps, leveraging the structured knowledge base."
+    reference_patterns:
+      - "Increased engagement with YC's educational content and resources."
+      - "Quantifiable improvement in founder knowledge retention and application of best practices."
+      - "Reduced time for founders to find relevant information and solutions to common problems."
+    decision_logic:
+      - "IF a new YC lecture or external industry report is published THEN automatically ingest, process, and integrate its content into the knowledge graph."
+      - "IF a founder consistently struggles with a specific topic (e.g., 'go-to-market strategy') THEN the system should proactively recommend relevant learning modules and expert connections."
+      - "IF the knowledge graph identifies a new emerging best practice THEN prioritize its integration and dissemination to relevant founders."
+    actions:
+      - "Develop data pipelines for ingesting various content formats (e.g., video transcripts, PDFs, web articles) into a centralized knowledge repository."
+      - "Implement graph database technologies (e.g., Neo4j, Amazon Neptune) to store and query the semantic knowledge graph."
+      - "Build an API layer for the adaptive content delivery system to serve personalized recommendations to the founder-facing platform."
+    verification:
+      - "Monitor founder progress through learning paths and track the application of learned concepts in their startup updates."
+      - "Conduct A/B tests on different pedagogical approaches and content recommendations to optimize learning outcomes."
+      - "Verify the accuracy and completeness of the knowledge graph through automated checks and expert review."
+    recovery:
+      - "IF a knowledge ingestion pipeline fails to parse a new content type THEN alert the engineering team and temporarily store the raw content for manual processing."
+      - "IF the semantic reasoning engine produces irrelevant or incorrect recommendations THEN review the graph schema and reasoning rules for inconsistencies."
