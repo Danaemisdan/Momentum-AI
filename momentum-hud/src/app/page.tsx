@@ -20,6 +20,8 @@ export default function Home() {
   const [status, setStatus] = useState({ agent: false, audio: false, vision: false });
   const [showSplash, setShowSplash] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
+  const isVisibleRef = useRef(false);
+  useEffect(() => { isVisibleRef.current = isVisible; }, [isVisible]);
   const [currentDialogue, setCurrentDialogue] = useState("");
   const currentDialogueRef = useRef("");
   
@@ -134,7 +136,7 @@ export default function Home() {
                                   ttsWsRef.current.send(chunk);
                               }
                               
-                              if (!isVisible) {
+                              if (!isVisibleRef.current) {
                                   setIsVisible(true);
                                   invoke("show_window_now");
                               }
@@ -163,7 +165,7 @@ export default function Home() {
                           if (ttsWsRef.current?.readyState === WebSocket.OPEN) {
                               ttsWsRef.current.send(chunk);
                           }
-                          if (!isVisible) {
+                          if (!isVisibleRef.current) {
                               setIsVisible(true);
                               invoke("show_window_now");
                           }
@@ -203,7 +205,7 @@ export default function Home() {
       }
       
       // Wake Word Activation
-      if (!isVisible && (lower.includes("momentum") || lower.includes("hey momentum"))) {
+      if (!isVisibleRef.current && (lower.includes("momentum") || lower.includes("hey momentum"))) {
           setIsVisible(true);
           invoke("show_window_now");
           

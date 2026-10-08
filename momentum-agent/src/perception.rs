@@ -1,6 +1,7 @@
 use crate::types::UIElement;
 use chromiumoxide::Page;
 use serde_json::Value;
+use std::process::Command;
 
 /// Robust perception engine that extracts interactive elements from the main page.
 pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
@@ -67,28 +68,136 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
             let local_id = v["id"].as_str().unwrap_or("error").to_string();
             // ID is "main:el_0" — exactly what the model will see and must output as the selector
             let full_id = format!("main:{}", local_id);
+            let role = v["role"].as_str().unwrap_or("").to_string();
+            let text = v["text"].as_str().unwrap_or("").to_string();
+            let title = v["title"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let aria_label = v["aria_label"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let semantic_intent = crate::intent::infer_intent(&role, &text, title.as_deref(), aria_label.as_deref());
+
             all_elements.push(UIElement {
                 id: full_id,
-                role: v["role"].as_str().unwrap_or("").to_string(),
-                text: v["text"].as_str().unwrap_or("").to_string(),
+                role,
+                text,
                 selector: format!("[data-momentum-id='{}']", local_id),
                 x: v["x"].as_f64().unwrap_or(0.0),
                 y: v["y"].as_f64().unwrap_or(0.0),
                 href: v["href"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
-                title: v["title"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                title,
                 tag: v["tag"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
-                aria_label: v["aria_label"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                aria_label,
                 placeholder: v["placeholder"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
                 is_clickable: v["is_clickable"].as_bool().unwrap_or(false),
                 is_input_like: v["is_input_like"].as_bool().unwrap_or(false),
                 frame_id: None,
+                semantic_intent,
+                spatial_zone: None,
             });
         }
     }
     
     // Sort top-to-bottom (reading order) and cap at 80
     all_elements.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal));
-    Ok(all_elements.into_iter().take(80).collect())
+    all_elements.truncate(80);
+    
+    assign_spatial_zones(&mut all_elements);
+    Ok(all_elements)
+}
+
+/// Robust perception engine that extracts native interactive elements from the macOS Accessibility API.
+pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut all_elements = Vec::new();
+    
+    // Execute the compiled Swift script `mac_ax` asynchronously so we don't block the Tokio executor thread
+    let output = tokio::process::Command::new("./scripts/mac_ax")
+        .current_dir(std::env::current_dir()?)
+        .output()
+        .await?;
+        
+    if !output.status.success() {
+        return Err("Failed to extract native UI tree from macOS Accessibility API".into());
+    }
+    
+    let json_str = String::from_utf8_lossy(&output.stdout);
+    let nodes: Value = serde_json::from_str(&json_str).unwrap_or(Value::Null);
+    
+    if let Some(nodes_array) = nodes.as_array() {
+        for v in nodes_array {
+            let local_id = v["id"].as_str().unwrap_or("error").to_string();
+            let full_id = format!("native:{}", local_id);
+            let role = v["role"].as_str().unwrap_or("").to_string();
+            let text = v["title"].as_str().unwrap_or("").to_string();
+            let title_desc = v["description"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let is_input_like = v["role"].as_str().unwrap_or("") == "AXTextField" || v["role"].as_str().unwrap_or("") == "AXTextArea";
+            let semantic_intent = crate::intent::infer_intent(&role, &text, title_desc.as_deref(), None);
+
+            all_elements.push(UIElement {
+                id: full_id.clone(),
+                role,
+                text,
+                selector: full_id, // For native, selector is just the ID
+                x: v["x"].as_f64().unwrap_or(0.0),
+                y: v["y"].as_f64().unwrap_or(0.0),
+                href: None,
+                title: title_desc,
+                tag: None,
+                aria_label: None,
+                placeholder: None,
+                is_clickable: true, // Native elements extracted are filtered to be interactive
+                is_input_like,
+                frame_id: None,
+                semantic_intent,
+                spatial_zone: None,
+            });
+        }
+    }
+    
+    // Sort top-to-bottom (reading order) and cap at 80
+    all_elements.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal));
+    all_elements.truncate(80);
+    
+    assign_spatial_zones(&mut all_elements);
+    
+    Ok(all_elements)
+}
+
+/// Helper function to geometrically cluster UI elements into semantic spatial zones
+fn assign_spatial_zones(elements: &mut [UIElement]) {
+    if elements.is_empty() { return; }
+    
+    let mut min_x = f64::MAX;
+    let mut max_x = f64::MIN;
+    let mut min_y = f64::MAX;
+    let mut max_y = f64::MIN;
+    
+    for el in elements.iter() {
+        if el.x < min_x { min_x = el.x; }
+        if el.x > max_x { max_x = el.x; }
+        if el.y < min_y { min_y = el.y; }
+        if el.y > max_y { max_y = el.y; }
+    }
+    
+    // Avoid division by zero if all elements are stacked
+    let width = if max_x > min_x { max_x - min_x } else { 1.0 };
+    let height = if max_y > min_y { max_y - min_y } else { 1.0 };
+    
+    for el in elements.iter_mut() {
+        let rel_x = (el.x - min_x) / width;
+        let rel_y = (el.y - min_y) / height;
+        
+        let zone = if rel_y < 0.12 {
+            "Top Navigation"
+        } else if rel_y > 0.90 {
+            "Bottom Bar"
+        } else if rel_x < 0.22 {
+            "Left Sidebar"
+        } else if rel_x > 0.85 {
+            "Right Sidebar"
+        } else {
+            "Main Content"
+        };
+        
+        el.spatial_zone = Some(zone.to_string());
+    }
 }
 
 /// Skill-aware page summary.

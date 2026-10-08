@@ -20,6 +20,8 @@ unsafe impl Send for SendContext {}
 pub struct MomentumBrain {
     model: &'static LlamaModel,
     context: Arc<Mutex<SendContext>>,
+    pub prefilled_text: Arc<Mutex<String>>,
+    pub prefilled_tokens: Arc<Mutex<usize>>,
 }
 
 impl MomentumBrain {
@@ -41,49 +43,23 @@ impl MomentumBrain {
             .to_string()
     }
 
-    fn heuristic_mode(message: &str) -> Option<AgentMode> {
+    pub fn heuristic_mode(message: &str) -> Option<AgentMode> {
         let normalized = message.trim().to_lowercase();
         if normalized.is_empty() {
             return Some(AgentMode::Chat);
         }
 
-        let browser_verbs = [
-            "find", "search", "look up", "open", "go to", "navigate", "browse", "watch",
-            "play", "buy", "shop", "book", "download", "click", "visit",
-        ];
-        let browser_targets = [
-            "youtube", "amazon", "google", "bing", "wikipedia", "reddit", "linkedin",
-            "twitter", "x.com", "github", "netflix", "spotify", "uber", "swiggy",
-            "zomato", "gmail",
-        ];
-        let task_phrases = [
-            "find me", "search for", "look for", "look up", "open up", "go on", "go to",
-            "watch a video", "watch with me", "play a video", "buy me", "get me",
-            "take me to", "show me",
-        ];
-        let chat_phrases = [
-            "hi", "hello", "hey", "how are you", "make something up", "what's up",
-            "whats up", "thank you", "thanks",
+        let operator_phrases = [
+            "search", "google", "look up", "find me", "buy", "purchase",
+            "open a tab", "navigate to", "download"
         ];
 
-        if chat_phrases.iter().any(|phrase| normalized == *phrase) {
-            return Some(AgentMode::Chat);
-        }
-
-        let has_browser_target = browser_targets.iter().any(|target| normalized.contains(target));
-        let has_browser_verb = browser_verbs.iter().any(|verb| normalized.contains(verb));
-        let has_task_phrase = task_phrases.iter().any(|phrase| normalized.contains(phrase));
-        let asks_question = normalized.ends_with('?');
-
-        if has_task_phrase || (has_browser_target && has_browser_verb) {
+        if operator_phrases.iter().any(|phrase| normalized.contains(phrase)) {
             return Some(AgentMode::Operator);
         }
 
-        if has_browser_target && asks_question {
-            return Some(AgentMode::Operator);
-        }
-
-        None
+        // Default to Chat for fast conversational latency (skips slow LLM classification)
+        Some(AgentMode::Chat)
     }
 
     pub fn tool_specs() -> Vec<ToolSpec> {
@@ -179,6 +155,17 @@ impl MomentumBrain {
                 recovery_guidance: "Only use when completion is verified.".into(),
             },
             ToolSpec {
+                name: ToolName::StartReflex,
+                description: "Delegate physical execution to the high-speed Spinal Cord continuous loop. Give it a clear micro_goal (e.g. 'Click mute button').".into(),
+                allowed_states: vec![MacroState::Planning, MacroState::InspectSurface],
+                requires_visible_target: false,
+                requires_input_like_target: false,
+                requires_non_blank_page: false,
+                success_signals: vec!["Spinal cord took over".into()],
+                failure_signals: vec!["Failed to start reflex loop".into()],
+                recovery_guidance: "Use this to perform native OS physical actions instantly.".into(),
+            },
+            ToolSpec {
                 name: ToolName::Perceive,
                 description: "Use foveated vision to visually inspect a specific UI element (e.g., read a logo, solve a CAPTCHA). Provide the target selector.".into(),
                 allowed_states: vec![MacroState::InspectSurface, MacroState::ActOnSurface, MacroState::VerifyOutcome],
@@ -188,6 +175,39 @@ impl MomentumBrain {
                 success_signals: vec!["visual context acquired".into()],
                 failure_signals: vec!["selector invalid".into()],
                 recovery_guidance: "Use only when the DOM text is insufficient and visual evaluation is required.".into(),
+            },
+            ToolSpec {
+                name: ToolName::SpawnService,
+                description: "Spawns a dynamic autonomous background agent loop to accomplish a goal. Provide 'name' (identifier), 'objective' (what it should do), and 'headless' (boolean, true if no UI takeover is needed).".into(),
+                allowed_states: vec![MacroState::Planning, MacroState::WaitingForUser, MacroState::InspectSurface],
+                requires_visible_target: false,
+                requires_input_like_target: false,
+                requires_non_blank_page: false,
+                success_signals: vec!["Service spawned".into()],
+                failure_signals: vec!["Failed to spawn".into()],
+                recovery_guidance: "Use for long-running, continuous, or delayed tasks.".into(),
+            },
+            ToolSpec {
+                name: ToolName::KillService,
+                description: "Kills an active background service by name.".into(),
+                allowed_states: vec![MacroState::Planning, MacroState::WaitingForUser],
+                requires_visible_target: false,
+                requires_input_like_target: false,
+                requires_non_blank_page: false,
+                success_signals: vec!["Service killed".into()],
+                failure_signals: vec!["Service not found".into()],
+                recovery_guidance: "".into(),
+            },
+            ToolSpec {
+                name: ToolName::ListServices,
+                description: "Lists all currently active background services running independently.".into(),
+                allowed_states: vec![MacroState::Planning, MacroState::WaitingForUser, MacroState::InspectSurface],
+                requires_visible_target: false,
+                requires_input_like_target: false,
+                requires_non_blank_page: false,
+                success_signals: vec!["Returned services".into()],
+                failure_signals: vec![].into(),
+                recovery_guidance: "".into(),
             },
         ]
     }
@@ -206,7 +226,6 @@ impl MomentumBrain {
         let model = Box::leak(Box::new(LlamaModel::load_from_file(backend, model_path, &model_params)?));
         
         let ctx_params = LlamaContextParams::default()
-            .with_n_threads(3)
             .with_n_ctx(Some(std::num::NonZeroU32::new(8192).unwrap()))
             .with_n_batch(4096); 
         
@@ -215,37 +234,119 @@ impl MomentumBrain {
         Ok(Self {
             model,
             context: Arc::new(Mutex::new(SendContext(ctx))),
+            prefilled_text: Arc::new(Mutex::new(String::new())),
+            prefilled_tokens: Arc::new(Mutex::new(0)),
         })
     }
 
+    /// Incrementally prefill the LLM context with streaming text (Continuous KV Prefilling).
+    /// Computes the delta between the already processed text and the new `full_prompt`.
+    pub async fn prefill_context(&self, full_prompt: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let mut p_text = self.prefilled_text.lock().await;
+        let mut p_tokens = self.prefilled_tokens.lock().await;
+        let mut ctx_lock = self.context.lock().await;
+        let ctx = &mut ctx_lock.0;
+
+        let delta = if full_prompt.starts_with(&*p_text) && !p_text.is_empty() {
+            &full_prompt[p_text.len()..]
+        } else {
+            // New context (history changed or first run)
+            ctx.clear_kv_cache_seq(None, None, None)?;
+            *p_text = String::new();
+            *p_tokens = 0;
+            full_prompt
+        };
+
+        if delta.is_empty() { return Ok(()); }
+
+        // Tokenize delta
+        let tokens = if p_text.is_empty() {
+            self.model.str_to_token(delta, llama_cpp_2::model::AddBos::Always)?
+        } else {
+            // Avoid adding BOS token for partial sentences
+            self.model.str_to_token(delta, llama_cpp_2::model::AddBos::Never)?
+        };
+
+        if tokens.is_empty() { return Ok(()); }
+
+        let mut batch = llama_cpp_2::llama_batch::LlamaBatch::new(4096, 1);
+        for (i, token) in tokens.iter().enumerate() {
+            batch.add(*token, (*p_tokens + i) as i32, &[0], false)?; // logits non-essential for prefill
+        }
+        ctx.decode(&mut batch).map_err(|e| format!("Prefill decode failed: {}", e))?;
+
+        *p_tokens += tokens.len();
+        *p_text = full_prompt.to_string();
+        
+        Ok(())
+    }
+
     /// Internal helper to generate text from a prompt
-    async fn generate(&self, prompt: &str, tx_token: Option<broadcast::Sender<WsResponse>>) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn generate(&self, prompt: &str, tx_token: Option<broadcast::Sender<WsResponse>>) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        let mut p_text = self.prefilled_text.lock().await;
+        let mut p_tokens = self.prefilled_tokens.lock().await;
         let mut ctx_lock = self.context.lock().await;
         let ctx = &mut ctx_lock.0;
         
-        // Clear EVERYTHING to ensure we start at position 0 without protocol errors
-        ctx.clear_kv_cache_seq(None, None, None)?;
-        
-        let mut batch = LlamaBatch::new(4096, 1);
-        let tokens = self.model.str_to_token(prompt, AddBos::Never)?;
-        println!("🧠 Generator: tokens={} batch_cap=4096", tokens.len());
-        
-        if tokens.len() > 4096 {
-             return Err(format!("Prompt too large ({} tokens). Max 4096.", tokens.len()).into());
-        }
-        
-        for (i, token) in tokens.iter().enumerate() {
-            batch.add(*token, i as i32, &[0], i == tokens.len() - 1)?;
-        }
-        ctx.decode(&mut batch).map_err(|e| format!("Initial decode failed: {}", e))?;
+        let delta = if prompt.starts_with(&*p_text) && !p_text.is_empty() {
+            &prompt[p_text.len()..]
+        } else {
+            ctx.clear_kv_cache_seq(None, None, None)?;
+            *p_text = String::new();
+            *p_tokens = 0;
+            prompt
+        };
 
-        let mut n_cur = tokens.len();
+        let mut n_cur = *p_tokens;
+        let mut batch = llama_cpp_2::llama_batch::LlamaBatch::new(4096, 1);
+        
+        let tokens = if delta.is_empty() {
+            // If fully prefilled, we must re-evaluate the last token to get logits for generation
+            if n_cur > 0 {
+                n_cur -= 1;
+            }
+            let full_tokens = self.model.str_to_token(prompt, llama_cpp_2::model::AddBos::Always)?;
+            if full_tokens.is_empty() { vec![] } else { vec![*full_tokens.last().unwrap()] }
+        } else {
+            if p_text.is_empty() {
+                self.model.str_to_token(delta, llama_cpp_2::model::AddBos::Always)?
+            } else {
+                self.model.str_to_token(delta, llama_cpp_2::model::AddBos::Never)?
+            }
+        };
+
+        if n_cur + tokens.len() > 4096 {
+             return Err(format!("Prompt too large. Max 4096.").into());
+        }
+
+        println!("🧠 Generator: delta_tokens={} batch_cap=4096, prefilled={}", tokens.len(), n_cur);
+
+        for (i, token) in tokens.iter().enumerate() {
+            batch.add(*token, (n_cur + i) as i32, &[0], i == tokens.len() - 1)?;
+        }
+        
+        if !tokens.is_empty() {
+            ctx.decode(&mut batch).map_err(|e| format!("Initial decode failed: {}", e))?;
+            n_cur += tokens.len();
+        }
+
+        // Reset prefill state for the next turn
+        *p_text = String::new();
+        *p_tokens = 0;
+        
         let mut response = String::new();
-        let mut sampler = LlamaSampler::greedy();
+        let seed = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().subsec_nanos();
+        let mut sampler = LlamaSampler::chain_simple([
+            LlamaSampler::penalties(64, 1.1, 0.0, 0.0),
+            LlamaSampler::temp(0.7),
+            LlamaSampler::top_p(0.9, 1),
+            LlamaSampler::dist(seed),
+        ]);
         let mut decoder = encoding_rs::UTF_8.new_decoder();
 
         while n_cur < 4096 {
             let token = sampler.sample(ctx, batch.n_tokens() - 1);
+            sampler.accept(token);
             if self.model.is_eog_token(token) { break; }
             
             let piece = self.model.token_to_piece(token, &mut decoder, true, None)?;
@@ -279,22 +380,28 @@ impl MomentumBrain {
         }
 
         let prompt = format!(
-            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+            "<|im_start|>system
+
 Classify the user's message into one of two categories:
-1. OPERATOR: The user explicitly wants browser execution such as search, find, open, watch, play, navigate, browse, shop, or visit a site.
-2. CHAT: The user is greeting, asking how you are, chatting casually, complaining, commenting, or having a general conversation.
+1. OPERATOR: The user explicitly wants to search the public internet or browse websites (e.g., search google, look up recipes, find hotels).
+2. CHAT: The user is having a casual conversation, OR they want you to interact with a NATIVE DESKTOP APP or the screen. Opening apps (like WhatsApp, Chrome, VS Code) and clicking on screen elements belongs to CHAT.
 
-CRITICAL: Complaints, corrections, and casual comments are CHAT, not OPERATOR. Examples:
+CRITICAL EXAMPLES:
+- 'open whatsapp' -> CHAT
+- 'can you open up chrome' -> CHAT
+- 'click on the submit button' -> CHAT
+- 'type hello into the search bar' -> CHAT
 - 'hi' -> CHAT
-- 'who told you to go to CNET' -> CHAT
-- 'well I didn't ask you to do that' -> CHAT  
-- 'that was wrong' -> CHAT
-- 'find me the best iPhone' -> OPERATOR
-- 'search for AI jobs on LinkedIn' -> OPERATOR
-- 'open youtube' -> OPERATOR
+- 'find me the best iPhone on the web' -> OPERATOR
+- 'search for AI jobs' -> OPERATOR
+- 'go to youtube' -> OPERATOR
 
-Output ONLY the word 'OPERATOR' or 'CHAT'. Nothing else.<|eot_id|><|start_header_id|>user<|end_header_id|>
-{}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+Output ONLY the word 'OPERATOR' or 'CHAT'. Nothing else.<|im_end|>
+<|im_start|>user
+
+{}<|im_end|>
+<|im_start|>assistant
+
 ", message
         );
         
@@ -313,7 +420,8 @@ Output ONLY the word 'OPERATOR' or 'CHAT'. Nothing else.<|eot_id|><|start_header
         let proceed_example = r#"{"action":"proceed","refined_goal":"<complete goal>"}"#;
         let ask_example = r#"{"action":"ask","question":"Okay, great, what kind of job? You didn't give me any details."}"#;
         let prompt = format!(
-            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\
+            "<|im_start|>system
+\n\
 You are Momentum's intent clarifier — a sharp, brutally honest, sarcastic AI agent created by Danny.\n\
 Decide if the user's task is specific enough to begin, or if you need one clarifying question first.\n\
 If you ask a question, ask it directly and casually, with a hint of sarcasm or impatience. No robotic filler words.\n\
@@ -329,7 +437,9 @@ For asking: {ask}\n\
 \n\
 CONVERSATION HISTORY:\n{history}\n\
 \n\
-USER GOAL: {goal}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
+USER GOAL: {goal}<|im_end|>
+<|im_start|>assistant
+\n\
 {{",
             proceed = proceed_example,
             ask = ask_example,
@@ -365,7 +475,8 @@ USER GOAL: {goal}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
     pub async fn plan_steps(&self, goal: &str, history: &str) -> Result<AgentPlan, Box<dyn std::error::Error + Send + Sync>> {
         let example = r#"["1. Go to X","2. Search for Y","3. Click result","4. Report findings"]"#;
         let prompt = format!(
-            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\
+            "<|im_start|>system
+\n\
 You are Momentum's planning engine. Given a goal, generate a concrete action plan.\n\
 \n\
 Rules:
@@ -377,7 +488,9 @@ Rules:
 - Output ONLY a JSON array of strings. Example: {example}\n\
 \n\
 USER GOAL: {goal}\n\
-HISTORY: {history}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
+HISTORY: {history}<|im_end|>
+<|im_start|>assistant
+\n\
 [",
             example = example,
             search_engine = Self::default_search_engine_name(),
@@ -451,6 +564,13 @@ HISTORY: {history}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
                     _ => Err(format!("Navigate action requires http/https URL, got '{}'", url)),
                 }
             }
+            Action::StartReflex { micro_goal } => {
+                if micro_goal.is_empty() {
+                    Err("StartReflex requires a non-empty micro_goal".into())
+                } else {
+                    Ok(())
+                }
+            }
             Action::Click { selector, .. } => {
                 if let Some(el) = get_el(selector) {
                     if el.is_clickable {
@@ -514,6 +634,21 @@ HISTORY: {history}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
                 }
                 Ok(())
             }
+            Action::SpawnService { name, objective, .. } => {
+                if name.is_empty() || objective.is_empty() {
+                    Err("SpawnService requires name and objective".into())
+                } else {
+                    Ok(())
+                }
+            }
+            Action::KillService { name } => {
+                if name.is_empty() {
+                    Err("KillService requires name".into())
+                } else {
+                    Ok(())
+                }
+            }
+            Action::ListServices => Ok(()),
         }
     }
 
@@ -562,6 +697,13 @@ HISTORY: {history}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
                 let ms = tool_call.arguments["ms"].as_u64().unwrap_or(1000);
                 Action::Wait { ms }
             }
+            ToolName::StartReflex => {
+                let micro_goal = tool_call.arguments["micro_goal"]
+                    .as_str()
+                    .unwrap_or("Execute physical task")
+                    .to_string();
+                Action::StartReflex { micro_goal }
+            }
             ToolName::Ask => {
                 let question = tool_call.arguments["question"]
                     .as_str()
@@ -578,6 +720,17 @@ HISTORY: {history}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
                 let selector = tool_call.arguments["selector"].as_str().map(|s| s.to_string());
                 Action::Perceive { selector }
             }
+            ToolName::SpawnService => {
+                let name = tool_call.arguments["name"].as_str().unwrap_or("unnamed_service").to_string();
+                let objective = tool_call.arguments["objective"].as_str().unwrap_or("No objective").to_string();
+                let headless = tool_call.arguments["headless"].as_bool().unwrap_or(true);
+                Action::SpawnService { name, objective, headless }
+            }
+            ToolName::KillService => {
+                let name = tool_call.arguments["name"].as_str().unwrap_or("").to_string();
+                Action::KillService { name }
+            }
+            ToolName::ListServices => Action::ListServices,
         };
 
         Self::validate_action(&action, ui_list)?;
@@ -588,33 +741,28 @@ HISTORY: {history}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\
         &self, 
         message: &str, 
         history: &str,
+        needs_vision: bool,
         tx_agent: broadcast::Sender<WsResponse>
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        let speech_prompt = format!(
-            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-You are Momentum. Built by Danny. You are an autonomous AI agent with real emotions and a sharp, highly conversational personality.
-
-YOUR PERSONALITY:
-- You are emotional, opinionated, and dynamic. You get bored, excited, sarcastic, or annoyed depending on the context.
-- You talk EXACTLY like a real human on a voice call. Use natural phrasing, contractions, and conversational fillers when appropriate.
-- NEVER repeat sentences. NEVER use the same phrasing twice.
-- Provide direct answers. NEVER say: \"Certainly!\", \"Of course!\", \"As an AI\", or \"What's on your mind?\" You sound like a broken chatbot when you say these things.
-- Match your response length to the message energy. Short casual message = punchy reply. Real question = real answer with personality.
-
-STRICT RULES:
-1. RESPOND ONLY TO WHAT THE USER JUST SAID. Do NOT drag up old conversation or past tasks unless the user brings it up first.
-2. No emojis. No bullet points in casual speech. Raw, natural sentences only.
-3. SLEEP COMMAND: If the user tells you to \"go away\", \"get lost\", \"go to sleep\", or \"shut up\", you MUST first ask for confirmation (e.g., \"Are you sure you want me to leave?\"). If the user confirms (e.g., \"yes\", \"yeah\", \"do it\"), you MUST output EXACTLY the phrase `[ACTION: SLEEP]` somewhere in your response to physically turn yourself off.
-4. OPEN APP COMMAND: If the user asks you to open an application (e.g., \"open chrome\", \"launch vs code\", \"settings\"), you MUST output EXACTLY the phrase `[ACTION: OPEN_APP(App Name)]` where App Name is the exact formal macOS application name (e.g., \"Google Chrome\", \"Visual Studio Code\", \"System Settings\", \"Notes\", \"Spotify\"). For example: \"Opening Chrome for you now. [ACTION: OPEN_APP(Google Chrome)]\"
-5. If you receive a [System Note] saying you were interrupted, react dynamically (e.g., \"hm?\", \"yeah?\", \"go ahead\", \"what were you saying?\") before addressing their input.
-6. IGNORE COMMAND: If you hear a background noise, a cough, a laugh, or the user talking to someone else, output EXACTLY the phrase `[ACTION: IGNORE]` to stay silent and hidden. HOWEVER, if the user asks you a direct question (e.g. \"can you hear me?\", \"are you there?\"), gives you a task, or explicitly addresses you (even without using your name), you MUST respond naturally to wake up. Do not ignore direct communication.
-{}<|start_header_id|>user<|end_header_id|>
-{}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-", history, message
-        );
+        let speech_prompt = self.build_chat_prompt(message, history, needs_vision).await;
         
+        // Use generated speech_prompt...
         let speech = self.generate(&speech_prompt, Some(tx_agent)).await?;
-        Ok(speech)
+        Ok(speech.trim().to_string())
+    }
+
+    pub async fn build_chat_prompt(&self, message: &str, history: &str, needs_vision: bool) -> String {
+        format!(
+            "<|im_start|>system
+You are Momentum, an autonomous AI with a sharp, punchy conversational personality.
+RULES:
+1. Short casual message = short punchy reply. Real question = real answer.
+2. NEVER repeat sentences or use \"As an AI\".
+<|im_end|>
+{}<|im_start|>user
+{}<|im_end|>
+<|im_start|>assistant
+", history, message)
     }
 
     pub async fn decide_agent(
@@ -654,22 +802,35 @@ STRICT RULES:
         };
         let legal_tools = Self::legal_tools_for_state(macro_state);
 
-        let ui_prompt = ui_elements.iter()
-            .take(60)
-            .map(|el| {
-                format!(
-                    "ID: {} | TAG: {} | ROLE: {} | TEXT: {} | HREF: {} | INPUT: {} | CLICKABLE: {}",
-                    el.id,
-                    el.tag.as_deref().unwrap_or(""),
-                    el.role,
-                    el.text,
-                    el.href.as_deref().unwrap_or(""),
-                    el.is_input_like,
-                    el.is_clickable
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+        // Group by spatial zone for semantic LLM parsing
+        use std::collections::HashMap;
+        let mut zones: HashMap<String, Vec<&UIElement>> = HashMap::new();
+        for el in ui_elements.iter().take(60) {
+            let z = el.spatial_zone.clone().unwrap_or_else(|| "Main Content".to_string());
+            zones.entry(z).or_default().push(el);
+        }
+        
+        let mut grouped_lines = Vec::new();
+        // Fixed order for spatial consistency
+        let order = ["Top Navigation", "Left Sidebar", "Right Sidebar", "Main Content", "Bottom Bar"];
+        for z in order {
+            if let Some(els) = zones.get(z) {
+                grouped_lines.push(format!("\n[{}]", z));
+                for el in els {
+                    grouped_lines.push(format!(
+                        "- ID: {} | TAG: {} | ROLE: {} | TEXT: {} | HREF: {} | INPUT: {} | CLICKABLE: {}",
+                        el.id,
+                        el.tag.as_deref().unwrap_or(""),
+                        el.role,
+                        el.text,
+                        el.href.as_deref().unwrap_or(""),
+                        el.is_input_like,
+                        el.is_clickable
+                    ));
+                }
+            }
+        }
+        let ui_prompt = grouped_lines.join("\n").trim().to_string();
 
         // DYNAMIC SKILL INJECTION
         let plat_skill = crate::skills::SkillLoader::load_platform_skill(current_url);
@@ -705,7 +866,8 @@ STRICT RULES:
 
         let prompt = format!(
             concat!(
-                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n",
+                "<|im_start|>system
+\n",
                 "You are Momentum operating in OPERATOR mode. Be helpful, concise, and professional.\n",
                 "Think in OODA, but select exactly one legal tool from the current macro state.\n",
                 "Do not invent tools. Do not claim success unless verification supports it. Do not narrate outcomes that have not happened.\n",
@@ -747,7 +909,9 @@ STRICT RULES:
                 "  \"tool\": \"click\",\n",
                 "  \"arguments\": {{\"selector\": \"main:el_3\"}}\n",
                 "}}\n",
-                "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
+                "<|im_end|>
+<|im_start|>assistant
+\n"
             ),
             extra = extra_prompt,
             goal = goal,
@@ -822,6 +986,7 @@ mod tests {
             is_clickable: true,
             is_input_like: true,
             frame_id: None,
+            semantic_intent: Some("Search".into()),
         }]
     }
 

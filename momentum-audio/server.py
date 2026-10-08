@@ -85,7 +85,7 @@ def synth_chunk(kokoro, text: str, voice: str):
     text = text.strip()
     if not text:
         return b"", None, None
-    samples, sample_rate = kokoro.create(text, voice=voice, speed=1.05, lang="en-us")
+    samples, sample_rate = kokoro.create(text, voice=voice, speed=1.25, lang="en-us")
     
     # Process through the pedalboard pipeline (fast, native C++)
     processed_samples = vocal_board(samples, sample_rate)
@@ -108,10 +108,10 @@ async def lifespan(app: FastAPI):
     app_state["executor"] = ThreadPoolExecutor(max_workers=2)
     
     # ─── Global STT Engine ────────────────────────────────────────────────────────
-    print("⚡ [3/3] Initializing Global STT Engine (Google Speech)...")
-    # app_state["whisper"] = WhisperModel("small.en", device="cpu", compute_type="int8", cpu_threads=4)
+    print("⚡ [3/3] Initializing Global STT Engine (faster-whisper)...")
+    app_state["whisper"] = WhisperModel("base", device="cpu", compute_type="int8")
     r = sr.Recognizer()
-    r.pause_threshold = 1.5
+    r.pause_threshold = 0.6
     r.non_speaking_duration = 0.5
     
     try:
@@ -124,16 +124,26 @@ async def lifespan(app: FastAPI):
 
     def stt_callback(recognizer, audio):
         try:
-            try:
-                text = recognizer.recognize_google(audio)
-            except sr.UnknownValueError:
-                return # Ignore static/silence completely
+            # Transcribe with Google Web Speech API (Free, super fast, high accuracy)
+            text = recognizer.recognize_google(audio).strip()
             
             if text:
                 # Filter out notorious Whisper hallucinations on silence
                 clean_lower = re.sub(r'[^a-z]', '', text.lower())
-                hallucinations = {"thankyou", "you", "mmhmm", "mm", "hmm", "okay", "yeah", "thatsthat", "god", "thatsit", "shh", "thisiscrazy", "oh", "ew", "hahaha", "ha", "huh", "wow", "what"}
-                if clean_lower in hallucinations:
+                hallucinations = {
+                    "thankyou", "you", "mmhmm", "mm", "hmm", "okay", "yeah", "thatsthat", 
+                    "god", "thatsit", "shh", "thisiscrazy", "oh", "ew", "hahaha", "ha", 
+                    "huh", "wow", "thanks", "byebye", "bye", "yourewelcome", 
+                    "welcome", "hello", "hi", "test", "testing", "imsorry", "sorry", 
+                    "yep", "yes", "nah", "uh", "um", "ah", "i", "a", "so", 
+                    "right", "sure", "well", "and", "but", "or", "to", "the"
+                }
+                
+                # Filter out pure filler sounds (e.g. "Hmm.", "Hmm. Hmm.", "Uh-huh.")
+                if re.fullmatch(r'(hmm|hm|mm|uh|ah|ha|huh)+', clean_lower):
+                    return
+                    
+                if clean_lower in hallucinations or len(clean_lower) < 2:
                     return
 
                 # Text-based Acoustic Echo Cancellation (AEC)
