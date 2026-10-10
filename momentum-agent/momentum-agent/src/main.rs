@@ -117,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("🚀 Momentum Agent starting...");
 
     let model_path = env::var("MOMENTUM_MODEL_PATH")
-        .unwrap_or_else(|_| "/Users/sanjeevn/Downloads/Momentum AI/momentum-engine-3b.gguf".to_string());
+        .unwrap_or_else(|_| "C:\Users\usha\Downloads\Momentum AI\momentum-agent\momentum-engine-0.5b.gguf".to_string());
     
     // Channels & Shared State
     // 512-capacity broadcast: prevents dropping clarification/plan messages when prior chat tokens fill the buffer

@@ -1,0 +1,82 @@
+{
+  "states": [
+    "Desktop",
+    "Spotify_Home",
+    "Spotify_Search",
+    "Spotify_Playing",
+    "Chrome_Home",
+    "Chrome_Search_Results"
+  ],
+  "transitions": [
+    {
+      "from": "Desktop",
+      "to": "Spotify_Home",
+      "actions": [
+        {
+          "action": "shell",
+          "command": "cmd /c start spotify:",
+          "timeout_ms": 3000
+        }
+      ]
+    },
+    {
+      "from": "Desktop",
+      "to": "Spotify_Search",
+      "actions": [
+        {
+          "action": "shell",
+          "command": "cmd /c start spotify:search:{song_name}",
+          "timeout_ms": 3000
+        }
+      ]
+    },
+    {
+      "from": "Spotify_Home",
+      "to": "Spotify_Search",
+      "actions": [
+        {
+          "action": "press_key",
+          "key": "tab",
+          "timeout_ms": 500
+        }
+      ]
+    },
+    {
+      "from": "Spotify_Search",
+      "to": "Spotify_Playing",
+      "actions": [
+        {
+          "action": "press_key",
+          "key": "tab",
+          "timeout_ms": 500
+        },
+        {
+          "action": "press_key",
+          "key": "tab",
+          "timeout_ms": 500
+        },
+        {
+          "action": "press_key",
+          "key": "tab",
+          "timeout_ms": 500
+        },
+        {
+          "action": "press_key",
+          "key": "enter",
+          "timeout_ms": 1000
+        }
+      ]
+    },
+    {
+      "from": "Desktop",
+      "to": "Chrome_Home",
+      "actions": [
+        {
+          "action": "shell",
+          "command": "cmd /c start chrome",
+          "timeout_ms": 2000
+        }
+      ]
+    }
+  ]
+}

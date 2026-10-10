@@ -10,6 +10,7 @@ mod vision_stream;
 mod reflex;
 mod intent;
 mod services;
+mod driver;
 
 use crate::browser::MomentumBrowser;
 use crate::brain::MomentumBrain;
@@ -117,7 +118,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("🚀 Momentum Agent starting...");
 
     let model_path = env::var("MOMENTUM_MODEL_PATH")
-        .unwrap_or_else(|_| "/Users/sanjeevn/Downloads/Momentum AI/momentum-engine-3b.gguf".to_string());
+        .unwrap_or_else(|_| r"C:\Users\usha\Downloads\Momentum AI\momentum-agent\momentum-engine-0.5b.gguf".to_string());
     
     // Channels & Shared State
     // 512-capacity broadcast: prevents dropping clarification/plan messages when prior chat tokens fill the buffer
@@ -140,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 3. Init Core Modules (Lazy)
     let browser_mu = Arc::new(Mutex::new(MomentumBrowser::init()));
     let brain = Arc::new(MomentumBrain::init(&model_path)?);
-    let _executor = ActionExecutor::new();
+    let driver = Arc::new(crate::driver::ActionDriver::new("windows"));
     
     // Init Vision Stream Optic Nerve (Shared Memory)
     // We must keep the stream instance alive so the memory map doesn't get dropped!
@@ -356,560 +357,85 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         });
                     }
                     AgentMode::Operator => {
-                        println!("🦾 Operator Mode (Phase 1: Clarification)");
-                        let goal = message.clone();
-                        let b_mu_agent = browser_mu.clone();
-                        let brain_agent = brain.clone();
-                        let tx_agent_loop = tx_agent.clone();
-                        let tx_agent_clone = tx_agent.clone(); // For use deeper in the loop
-                        let service_manager_agent = service_manager.clone();
-                        let mut executor_agent = ActionExecutor::new();
-                        let ask_notifier_agent = ask_notifier.clone();
-                        let history_str_agent = history_str.clone();
+                        println!("🦾 Operator Mode (Semantic UI Traversal)");
+                        println!("🧠 Generating Semantic Plan for: {}", message);
 
+                        let brain_agent = brain.clone();
+                        let driver_clone = driver.clone();
+                        let msg_clone = message.clone();
+                        
                         let mut active_guard = active_task.lock().await;
                         if let Some(handle) = active_guard.take() {
-                            println!("🛑 Cancelling previous active agent task due to new command.");
                             handle.abort();
                         }
 
                         let handle = tokio::spawn(async move {
-                            // ====================================================
-                            // PHASE 1: INTENT CLARIFICATION (before browser opens)
-                            // ====================================================
-                            println!("🔍 Phase 1: Clarifying intent for: {}", goal);
-                            let refined_goal = match brain_agent.clarify_intent(&goal, &history_str_agent).await {
-                                Ok(ClarificationResult::Ask { question }) => {
-                                    println!("❓ Clarification needed: {}", question);
-                                    // Send question to user and wait for their answer
-                                    let _ = tx_agent_loop.send(WsResponse {
-                                        msg_type: "action".into(),
-                                        t: None,
-                                        speech: Some(question.clone()),
-                                        action: Some(Action::Ask { question: question.clone() }),
-                                        thought: None,
-                                        agent_mode: Some(AgentMode::Operator),
-                                        macro_state: Some(MacroState::WaitingForUser),
-                                        tool_name: Some(ToolName::Ask),
-                                    });
-                                    // Yield to the async runtime so the WS forward task can flush
-                                    // this message to the frontend BEFORE we block on rx_ask.recv().
-                                    tokio::task::yield_now().await;
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                                    // Wait for user reply via the ask_notifier mechanism
-                                    let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
-                                    {
-                                        let mut ng = ask_notifier_agent.lock().await;
-                                        *ng = Some(tx_ask);
-                                    }
-                                    match rx_ask.recv().await {
-                                        Some(reply) => {
-                                            println!("▶️ User clarified: {}", reply);
-                                            format!("{} — specifically: {}", goal, reply)
+                            match brain_agent.extract_sequence_args(&msg_clone, &[]).await {
+                                Ok(plan_json) => {
+                                    if let Some(steps) = plan_json.as_array() {
+                                        println!("🗺️ Semantic Plan generated ({} steps)", steps.len());
+                                        for step in steps {
+                                            let action_type = step.get("action_type").and_then(|v| v.as_str()).unwrap_or("");
+                                            let intent = step.get("intent").and_then(|v| v.as_str());
+                                            let input_val = step.get("input").and_then(|v| v.as_str());
+                                            
+                                            println!("➡️ Executing step: {} (Intent: {:?})", action_type, intent);
+                                            
+                                            match action_type {
+                                                "OpenApp" => {
+                                                    if let Some(app) = input_val {
+                                                        println!("    💻 Launching: {}", app);
+                                                        let _ = std::process::Command::new("cmd")
+                                                            .arg("/C").arg(format!("start {}", app))
+                                                            .spawn();
+                                                        tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
+                                                    }
+                                                },
+                                                "UI_Intent" => {
+                                                    if let Some(target_intent) = intent {
+                                                        println!("    🔍 Scanning Live UI for semantic intent: {}", target_intent);
+                                                        
+                                                        // Fallback heuristic execution for desktop apps until Windows UIAutomation bridge is connected
+                                                        use enigo::{Direction::{Click}, Enigo, Key, Keyboard, Settings};
+                                                        let mut enigo = Enigo::new(&Settings::default()).unwrap();
+                                                        
+                                                        match target_intent {
+                                                            "Search" => {
+                                                                let _ = enigo.key(Key::Tab, Click);
+                                                                let _ = enigo.key(Key::Tab, Click);
+                                                                if let Some(text) = input_val {
+                                                                    println!("    ⌨️ Found Search Node! Typing: {}", text);
+                                                                    let _ = enigo.text(text);
+                                                                    let _ = enigo.key(Key::Return, Click);
+                                                                }
+                                                            },
+                                                            "MediaControl" => {
+                                                                let _ = enigo.key(Key::Tab, Click);
+                                                                println!("    🖱️ Found Media Control Node! Clicking Play...");
+                                                                let _ = enigo.key(Key::Return, Click);
+                                                            },
+                                                            _ => {
+                                                                println!("    ⚠️ No node matching intent {} found on current screen.", target_intent);
+                                                            }
+                                                        }
+                                                        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                                                    }
+                                                },
+                                                _ => println!("    ⚠️ Unknown semantic action_type"),
+                                            }
                                         }
-                                        None => goal.clone()
+                                        println!("✅ Semantic Plan Completed!");
+                                    } else {
+                                        println!("❌ LLM failed to output a JSON array.");
                                     }
                                 }
-                                Ok(ClarificationResult::Proceed { refined_goal }) => {
-                                    println!("✅ Goal clear: {}", refined_goal);
-                                    refined_goal
-                                }
-                                Err(e) => {
-                                    println!("⚠️ Clarification failed ({}), using original goal.", e);
-                                    goal.clone()
-                                }
-                            };
-
-                            // ====================================================
-                            // PHASE 2: PLANNING
-                            // ====================================================
-                            println!("📋 Phase 2: Planning steps for: {}", refined_goal);
-                            
-                            // === LIVE WEB CONTEXT FETCH ===
-                            // Fetch DDG results BEFORE planning so the model plans with real
-                            // current data instead of hallucinating from stale training.
-                            println!("🌐 Fetching live web context for plan...");
-                            let ddg_results = crate::scraper::search_duckduckgo(&refined_goal, 5).await;
-                            let now_str = {
-                                use std::time::{SystemTime, UNIX_EPOCH};
-                                let secs = SystemTime::now()
-                                    .duration_since(UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs();
-                                // Simple IST display: UTC+5:30 = +19800 seconds
-                                let ist_secs = secs + 19800;
-                                let days = ist_secs / 86400;
-                                let h = (ist_secs % 86400) / 3600;
-                                let m = (ist_secs % 3600) / 60;
-                                // Day of week (epoch was Thursday=4)
-                                let days_of_week = ["Thu","Fri","Sat","Sun","Mon","Tue","Wed"];
-                                let dow = days_of_week[(days % 7) as usize];
-                                format!("{} {:02}:{:02} IST, April 2026", dow, h, m)
-                            };
-                            let web_context = if ddg_results.is_empty() {
-                                println!("⚠️ DDG returned no results (offline or rate limited).");
-                                String::new()
-                            } else {
-                                println!("✅ DDG: {} results fetched for planning.", ddg_results.len());
-                                crate::scraper::format_context_block(&refined_goal, &ddg_results, &now_str)
-                            };
-                            
-                            // Build the enriched goal string: date + live context
-                            let temporal_prefix = format!("Today is {}.", now_str);
-                            let plan_context = if web_context.is_empty() {
-                                format!("{}\n\nGOAL: {}", temporal_prefix, refined_goal)
-                            } else {
-                                format!("{}\n\n{}\n\nGOAL: {}", temporal_prefix, web_context, refined_goal)
-                            };
-                            
-                            // Don't pass full history to plan_steps — prior unrelated tasks confuse the 3B model
-                            // and produce plans for the WRONG goal. The refined_goal already has all context needed.
-                            let mut plan = match brain_agent.plan_steps(&refined_goal, &plan_context).await {
-                                Ok(p) => {
-                                    println!("📋 Raw plan ({} steps):", p.len());
-                                    for (i, step) in p.iter().enumerate() {
-                                        println!("   {}: {}", i + 1, step);
-                                    }
-                                    p
-                                }
-                                Err(e) => {
-                                    println!("⚠️ Planning failed ({}), using fallback plan.", e);
-                                    vec![]
-                                }
-                            };
-
-                            // HARD OVERRIDE: The 3B model hallucinates specific sites (CNET, Wikipedia, etc.)
-                            // from training data. We never trust it to pick the right site. Unless the user
-                            // explicitly named a site in their request, ALWAYS force step 1 to be a Bing search.
-                            let user_named_site = ["bing", "google", "youtube", "linkedin", "github", "reddit", "amazon", "twitter", "x.com", "duckduckgo"]
-                                .iter()
-                                .any(|s| refined_goal.to_lowercase().contains(s));
-
-                            if !user_named_site {
-                                let search_step = format!(
-                                    "1. Go to {} and search for: {}",
-                                    default_search_engine_name(),
-                                    refined_goal
-                                );
-                                if plan.is_empty() {
-                                    plan = vec![
-                                        search_step,
-                                        "2. Read the top results and click the most relevant one.".into(),
-                                        "3. Extract and summarize the key information for the user.".into(),
-                                    ];
-                                } else {
-                                    plan[0] = search_step;
-                                }
+                                Err(e) => println!("❌ Extractor failed: {}", e),
                             }
-
-                            println!("📋 Final plan ({} steps):", plan.len());
-                            for (i, step) in plan.iter().enumerate() {
-                                println!("   {}: {}", i + 1, step);
-                            }
-
-
-                            // Don't announce the raw plan steps out loud — the OODA speech already narrates actions naturally
-                            let plan_speech = "On it.".to_string();
-                            let mut macro_state = infer_initial_macro_state(&refined_goal);
-                            let _ = tx_agent_loop.send(WsResponse {
-                                msg_type: "action".into(),
-                                t: None,
-                                speech: Some(plan_speech),
-                                action: Some(Action::Wait { ms: 1 }),
-                                thought: None,
-                                agent_mode: Some(AgentMode::Operator),
-                                macro_state: Some(macro_state.clone()),
-                                tool_name: Some(ToolName::Wait),
-                            });
-
-                            // ====================================================
-                            // PHASE 3: AWARENESS-DRIVEN EXECUTION (OODA loop)
-                            // ====================================================
-                            println!("🚀 Phase 3: Starting execution loop for: {}", refined_goal);
-                            let mut last_action_res = "Initial state. No actions taken yet.".to_string();
-                            let mut last_action_key = String::new();
-                            let mut consecutive_repeat_count = 0usize;
-                            let mut invalid_decision_count = 0usize;
-                            let mut current_plan_step: usize = 0;
-
-                            for s in 1..=20 {
-                                println!("\n--- STEP {} (OODA) [{:?} | Plan step {}/{}] ---", s, macro_state, current_plan_step + 1, plan.len());
-                                let mut b = b_mu_agent.lock().await;
-
-                                // --- PERCEIVE ---
-                                let mut ui_list = vec![];
-                                let mut current_url = "about:blank".to_string();
-                                let mut page_summary = "Browser not open yet.".to_string();
-
-                                if b.page.is_none() {
-                                    println!("🌐 Launching Google Chrome...");
-                                    if let Err(e) = b.ensure_launched().await {
-                                        println!("! Failed to launch: {}", e);
-                                        break;
-                                    }
-                                    drop(b);
-                                    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                                    continue;
-                                }
-
-                                if let Some(page) = &b.page {
-                                    current_url = page.url().await.ok().flatten()
-                                        .unwrap_or_else(|| "about:blank".to_string());
-                                    
-                                    // Get skill-aware page summary (includes block detection + platform context)
-                                    page_summary = perceive_summary(page, &current_url).await;
-                                    
-                                    // Log block signals immediately if detected
-                                    if page_summary.contains("[BLOCKED:") {
-                                        println!("🚨 BLOCK SIGNAL DETECTED at: {}", current_url);
-                                    } else if page_summary.contains("[PLATFORM:") {
-                                        println!("📍 Platform identified for: {}", current_url);
-                                    }
-                                    
-                                    println!("👁️ Page: {} | {}", current_url, &page_summary[..page_summary.len().min(120)]);
-                                    
-                                    // Try to get UI elements with retries
-                                    for i in 0..3 {
-                                        match perceive(page).await {
-                                            Ok(list) if !list.is_empty() => {
-                                                ui_list = list;
-                                                break;
-                                            }
-                                            Ok(_) => {
-                                                println!("⚠️ UI Empty. Waiting 1s (Attempt {}/3)...", i + 1);
-                                                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                                            }
-                                            Err(e) => {
-                                                println!("! Perception error: {}", e);
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if matches!(macro_state, MacroState::Planning) {
-                                    macro_state = MacroState::AcquireSurface;
-                                }
-
-                                if matches!(macro_state, MacroState::AcquireSurface)
-                                    && current_url != "about:blank"
-                                    && !current_url.is_empty()
-                                    && !ui_list.is_empty()
-                                {
-                                    macro_state = MacroState::InspectSurface;
-                                    last_action_res = format!(
-                                        "Page surface acquired at {}. Visible UI is available. Inspect the page and choose the next interaction.",
-                                        current_url
-                                    );
-                                }
-
-                                // Hard reload recovery if UI still empty on a real page
-                                if ui_list.is_empty() && current_url != "about:blank" && !current_url.is_empty() {
-                                    println!("! UI empty on non-blank page. Attempting HARD RELOAD...");
-                                    if let Some(p) = &b.page {
-                                        let _ = p.reload().await;
-                                        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                                        if let Ok(list) = perceive(p).await {
-                                            ui_list = list;
-                                        }
-                                        page_summary = perceive_summary(p, &current_url).await;
-                                    }
-                                }
-
-                                if ui_list.is_empty() && current_url != "about:blank" {
-                                    println!("! UI STILL empty. Asking user.");
-                                    let question = "I'm having trouble seeing the page. Is it showing a CAPTCHA, blank screen, or normal homepage?".to_string();
-                                    let _ = tx_agent_loop.send(WsResponse {
-                                        msg_type: "action".into(),
-                                        t: None,
-                                        speech: Some("I can't see anything on this page. It might be a bot check or still loading. Can you help?".into()),
-                                        action: Some(Action::Ask { question: question.clone() }),
-                                        thought: None,
-                                        agent_mode: Some(AgentMode::Operator),
-                                        macro_state: Some(MacroState::WaitingForUser),
-                                        tool_name: Some(ToolName::Ask),
-                                    });
-                                    let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
-                                    {
-                                        let mut ng = ask_notifier_agent.lock().await;
-                                        *ng = Some(tx_ask);
-                                    }
-                                    drop(b);
-                                    match rx_ask.recv().await {
-                                        Some(reply) => {
-                                            println!("▶️ AGENT RESUMED AFTER PERCEPTION HELP: {}", reply);
-                                            last_action_res = format!(
-                                                "User says the page state is: {}. Re-perceive the current page and continue from there.",
-                                                reply
-                                            );
-                                            macro_state = MacroState::InspectSurface;
-                                            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                                            continue;
-                                        }
-                                        None => break,
-                                    }
-                                }
-
-                                // --- DECIDE (Cognition) ---
-                                executor_agent.set_ui(ui_list.clone());
-                                let decision = match brain_agent.decide_agent(
-                                    &refined_goal,
-                                    &plan,
-                                    current_plan_step,
-                                    &history_str_agent,
-                                    &macro_state,
-                                    &current_url,
-                                    &page_summary,
-                                    &ui_list,
-                                    &last_action_res,
-                                    tx_agent_loop.clone()
-                                ).await {
-                                    Ok(d) => {
-                                        invalid_decision_count = 0;
-                                        d
-                                    }
-                                    Err(e) => {
-                                        invalid_decision_count += 1;
-                                        println!("! Agent Brain failed: {}. Injecting recovery hint and retrying...", e);
-                                        if invalid_decision_count >= 2 {
-                                            let question = "I'm stuck because my next action keeps coming back malformed. Can you rephrase the request or tell me the next move?".to_string();
-                                            let _ = tx_agent_loop.send(WsResponse {
-                                                msg_type: "action".into(),
-                                                t: None,
-                                                speech: Some(question.clone()),
-                                                action: Some(Action::Ask { question }),
-                                                thought: None,
-                                                agent_mode: Some(AgentMode::Operator),
-                                                macro_state: Some(MacroState::WaitingForUser),
-                                                tool_name: Some(ToolName::Ask),
-                                            });
-                                            break;
-                                        }
-                                        last_action_res = format!(
-                                            "⚠️ {} \
-                                            Output exactly one supported JSON action with no extra text.",
-                                            e
-                                        );
-                                        drop(b);
-                                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                                        continue; // retry this OODA step, don't kill the loop
-                                    }
-                                };
-
-                                // --- COMMUNICATE (speech + thought to UI) ---
-                                let tool_call = ToolCall {
-                                    tool: decision.tool.clone(),
-                                    arguments: decision.arguments.clone(),
-                                };
-                                let action = match MomentumBrain::validate_tool_call(&tool_call, &ui_list, &macro_state) {
-                                    Ok(action) => action,
-                                    Err(e) => {
-                                        invalid_decision_count += 1;
-                                        last_action_res = format!("Contract violation: {}. Choose a legal tool for {:?}.", e, macro_state);
-                                        println!("! Tool contract failed: {}", e);
-                                        drop(b);
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
-                                        continue;
-                                    }
-                                };
-
-                                println!("🗣️ Agent: {}", decision.external);
-                                let _ = tx_agent_loop.send(WsResponse {
-                                    msg_type: "action".into(),
-                                    t: None,
-                                    speech: Some(decision.external.clone()),
-                                    action: Some(action.clone()),
-                                    thought: Some(decision.internal.clone()),
-                                    agent_mode: Some(AgentMode::Operator),
-                                    macro_state: Some(macro_state.clone()),
-                                    tool_name: Some(decision.tool.clone()),
-                                });
-
-                                // --- ACT & VERIFY ---
-                                match action.clone() {
-                                    Action::Achievement { reason } => {
-                                        println!("🏁 TASK COMPLETE: {}", reason);
-                                        macro_state = MacroState::Done;
-                                        break;
-                                    }
-                                    Action::Ask { question } => {
-                                        println!("⏸️ AGENT PAUSED: Waiting for reply to: {}", question);
-                                        macro_state = MacroState::WaitingForUser;
-                                        let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
-                                        {
-                                            let mut ng = ask_notifier_agent.lock().await;
-                                            *ng = Some(tx_ask);
-                                        }
-                                        if let Some(reply) = rx_ask.recv().await {
-                                            println!("▶️ AGENT RESUMED: User replied: {}", reply);
-                                            last_action_res = format!("User answered: {}", reply);
-                                            macro_state = MacroState::ActOnSurface;
-                                        }
-                                    }
-                                    Action::StartReflex { micro_goal } => {
-                                        println!("🧠 DELEGATING TO SPINAL CORD: {}", micro_goal);
-                                        let reflex_brain = brain_agent.clone();
-                                        tokio::spawn(async move {
-                                            crate::reflex::start_spinal_cord(micro_goal, reflex_brain).await;
-                                        });
-                                        
-                                        // Give the reflex thread a moment to start
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                                        
-                                        // End the OODA loop since the spinal cord took over
-                                        last_action_res = "Spinal cord is executing.".into();
-                                        macro_state = MacroState::Done;
-                                        break;
-                                    }
-                                    Action::SpawnService { name, objective, headless } => {
-                                        println!("🧠 SPAWNING SERVICE: {} -> {}", name, objective);
-                                        let b_clone = brain_agent.clone();
-                                        let browser_clone = b_mu_agent.clone();
-                                        let tx_clone = tx_agent_clone.clone();
-                                        let handle = tokio::spawn(async move {
-                                            crate::services::run_service(b_clone, browser_clone, tx_clone, objective, headless).await;
-                                        });
-                                        service_manager_agent.lock().await.spawn_service(name, handle).await;
-                                        last_action_res = "Background service successfully spawned.".into();
-                                        macro_state = MacroState::Done;
-                                        break;
-                                    }
-                                    Action::KillService { name } => {
-                                        let killed = service_manager_agent.lock().await.kill_service(&name).await;
-                                        if killed {
-                                            last_action_res = format!("Service '{}' terminated.", name);
-                                        } else {
-                                            last_action_res = format!("Service '{}' not found.", name);
-                                        }
-                                        macro_state = MacroState::Done;
-                                        break;
-                                    }
-                                    Action::ListServices => {
-                                        let services = service_manager_agent.lock().await.list_services().await;
-                                        last_action_res = format!("Active Services: {:?}", services);
-                                        macro_state = MacroState::Planning;
-                                    }
-                                    _ => {
-                                        if b.page.is_none() {
-                                            if let Err(e) = b.ensure_launched().await {
-                                                println!("! Failed to launch: {}", e);
-                                                break;
-                                            }
-                                        }
-
-                                        match executor_agent.execute(&b, &action).await {
-                                            Ok(res) => {
-                                                println!("✅ EXEC: {}", res.summary);
-                                                let action_key = format!("{:?}", action);
-                                                let transition = evaluate_transition(&macro_state, &action, &res);
-                                                macro_state = transition.next_state.clone();
-
-                                                if matches!(action, Action::Wait { .. }) {
-                                                    consecutive_repeat_count = 0;
-                                                    last_action_key = action_key;
-                                                    last_action_res = res.summary.clone();
-                                                } else if res.verification_passed {
-                                                    consecutive_repeat_count = 0;
-                                                    last_action_key = action_key;
-                                                    last_action_res = res.summary.clone();
-                                                    if matches!(transition.next_state, MacroState::InspectSurface | MacroState::VerifyOutcome)
-                                                        && current_plan_step + 1 < plan.len()
-                                                    {
-                                                        current_plan_step += 1;
-                                                        println!("📋 Advancing to plan step {}: {}", 
-                                                            current_plan_step + 1,
-                                                            plan.get(current_plan_step).cloned().unwrap_or_default()
-                                                        );
-                                                    }
-                                                } else {
-                                                    if action_key == last_action_key {
-                                                        consecutive_repeat_count += 1;
-                                                    } else {
-                                                        consecutive_repeat_count = 0;
-                                                        last_action_key = action_key.clone();
-                                                    }
-
-                                                    if consecutive_repeat_count >= 2 {
-                                                        let question = "I keep hitting the same thing and the page isn't changing. Can you take a quick look or rephrase the task?".to_string();
-                                                        let _ = tx_agent_loop.send(WsResponse {
-                                                            msg_type: "action".into(),
-                                                            t: None,
-                                                            speech: Some(question.clone()),
-                                                            action: Some(Action::Ask { question }),
-                                                            thought: None,
-                                                            agent_mode: Some(AgentMode::Operator),
-                                                            macro_state: Some(MacroState::WaitingForUser),
-                                                            tool_name: Some(ToolName::Ask),
-                                                        });
-                                                        break;
-                                                    }
-
-                                                    if consecutive_repeat_count >= 1 {
-                                                        println!("🔁 LOOP DETECTED: same action repeated with no visible progress.");
-                                                        last_action_res = format!(
-                                                            "{} RECOVERY: {:?}. Choose a different legal tool for {:?} now.",
-                                                            res.summary,
-                                                            res.failure_class,
-                                                            MacroState::Recover
-                                                        );
-                                                        macro_state = MacroState::Recover;
-                                                    } else {
-                                                        last_action_res = format!(
-                                                            "{} Failure class: {:?}. No visible progress happened on the page.",
-                                                            res.summary,
-                                                            res.failure_class
-                                                        );
-                                                        macro_state = MacroState::VerifyOutcome;
-                                                    }
-                                                }
-                                            }
-                                            Err(e) => {
-                                                println!("⚠️ EXEC FAILED: {}. Retrying after 2s...", e);
-                                                last_action_res = format!("Action failed: {}. Try a different approach.", e);
-                                                consecutive_repeat_count = 0;
-                                                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                                            }
-                                        }
-                                    }
-                                }
-                                drop(b);
-                                tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
-                            }
-                            println!("🏁 Agent Loop Finished.");
                         });
                         *active_guard = Some(handle);
                     }
                 }
             }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::cancel_active_task;
-    use crate::types::Action;
-    use tokio::sync::{broadcast, mpsc, Mutex};
-    use std::sync::Arc;
-
-    #[tokio::test]
-    async fn cancel_active_task_clears_state_and_emits_cancelled() {
-        let active_task = Arc::new(Mutex::new(Some(tokio::spawn(async {
-            tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-        }))));
-        let ask_notifier = Arc::new(Mutex::new(Some(mpsc::channel::<String>(1).0)));
-        let (tx_agent, mut rx_agent) = broadcast::channel(8);
-
-        let cancelled = cancel_active_task(&active_task, &ask_notifier, &tx_agent).await;
-
-        assert!(cancelled);
-        assert!(active_task.lock().await.is_none());
-        assert!(ask_notifier.lock().await.is_none());
-
-        let response = rx_agent.recv().await.unwrap();
-        match response.action.unwrap() {
-            Action::Cancelled { reason } => assert_eq!(reason, "Stopped by user"),
-            other => panic!("expected cancelled action, got {:?}", other),
         }
     }
 }

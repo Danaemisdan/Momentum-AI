@@ -51,7 +51,7 @@ impl MomentumBrain {
 
         let operator_phrases = [
             "search", "google", "look up", "find me", "buy", "purchase",
-            "open a tab", "navigate to", "download"
+            "open a tab", "navigate to", "download", "play", "open", "run", "click", "start"
         ];
 
         if operator_phrases.iter().any(|phrase| normalized.contains(phrase)) {
@@ -751,13 +751,50 @@ HISTORY: {history}<|im_end|>
         Ok(speech.trim().to_string())
     }
 
+        pub async fn extract_sequence_args(&self, user_command: &str, _available_states: &[String]) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        let prompt = format!(
+            "<|im_start|>system
+You are a Semantic Planner. Convert the user's goal into a sequence of abstract steps.
+Respond ONLY with a JSON array.
+
+action_type can be 'OpenApp' or 'UI_Intent'.
+If UI_Intent, 'intent' must be one of: Search, Navigate, Confirm, Cancel, Communicate, MediaControl, Settings, Account.
+
+Example 1: \"Play Tum Ho\"
+Output:
+[
+  {{\"action_type\": \"OpenApp\", \"input\": \"spotify\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"Tum Ho\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"MediaControl\"}}
+]
+
+Example 2: \"Search Google for dogs\"
+Output:
+[
+  {{\"action_type\": \"OpenApp\", \"input\": \"chrome\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"dogs\"}}
+]
+<|im_end|>
+<|im_start|>user
+{user_command}
+<|im_end|>
+<|im_start|>assistant
+"
+        );
+        let completion = self.generate(&prompt, None).await?;
+        let speech = completion.split("<|im_end|>").next().unwrap_or(&completion).trim();
+        
+        let json_start = speech.find('[').unwrap_or(0);
+        let json_str = &speech[json_start..];
+        
+        let parsed: serde_json::Value = serde_json::from_str(json_str)?;
+        Ok(parsed)
+    }
+
     pub async fn build_chat_prompt(&self, message: &str, history: &str, needs_vision: bool) -> String {
         format!(
             "<|im_start|>system
-You are Momentum, an autonomous AI with a sharp, punchy conversational personality.
-RULES:
-1. Short casual message = short punchy reply. Real question = real answer.
-2. NEVER repeat sentences or use \"As an AI\".
+You are Momentum, a sharp and ultra-concise assistant. You always answer directly. You never apologize.
 <|im_end|>
 {}<|im_start|>user
 {}<|im_end|>
