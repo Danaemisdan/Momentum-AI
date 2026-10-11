@@ -152,20 +152,28 @@ impl AutonomousWebResearcher {
             }
         }
 
-        // 3. Proper nouns from titles (strict filter: alphabetic, capitalized, no dates/numbers)
+        // 3. Proper nouns from titles (strict filter: alphabetic, capitalized, no dates/numbers/stopwords)
         let banned_words = [
             "best", "top", "free", "how", "ways", "methods", "guide", "tools",
             "software", "online", "proven", "tactics", "agencies", "freelancers",
             "find", "make", "create", "build", "clients", "year", "years", "tips",
             "solutions", "platform", "platforms", "services", "results", "updated",
-            "what", "when", "where", "with", "from", "into", "over", "more", "help"
+            "what", "when", "where", "with", "from", "into", "over", "more", "help",
+            "are", "you", "your", "yours", "listening", "listen", "can", "could", "will",
+            "would", "shall", "should", "the", "this", "that", "these", "those", "is",
+            "am", "was", "were", "been", "being", "have", "has", "had", "does", "did",
+            "done", "about", "above", "after", "again", "all", "and", "any", "because",
+            "before", "both", "but", "down", "each", "few", "here", "there", "then",
+            "once", "only", "other", "some", "such", "than", "too", "very", "who", "whom",
+            "why", "just", "now", "not", "out", "off", "our", "ours", "get", "got", "know",
+            "see", "think", "come", "look", "tell", "podcast", "episode", "video", "article"
         ];
 
         for r in results {
             for word in r.title.split_whitespace() {
                 let clean_word: String = word.chars().filter(|c| c.is_alphabetic()).collect();
                 let lower = clean_word.to_lowercase();
-                if clean_word.len() >= 3 && clean_word.len() <= 20
+                if clean_word.len() >= 4 && clean_word.len() <= 20
                     && clean_word.chars().next().map_or(false, |c| c.is_uppercase())
                     && !clean_word.chars().all(|c| c.is_numeric())
                     && !banned_words.contains(&lower.as_str())
@@ -353,6 +361,14 @@ Entities: ",
     /// Dynamic local application discovery on macOS & Windows without hardcoded lists
     pub fn find_local_app(name: &str) -> Option<String> {
         let clean = name.to_lowercase();
+        let is_app_match = |app_name: &str| -> bool {
+            if app_name == clean { return true; }
+            if clean.len() >= 4 {
+                app_name.split(|c: char| !c.is_alphanumeric()).any(|w| w == clean)
+            } else {
+                false
+            }
+        };
 
         #[cfg(target_os = "macos")]
         {
@@ -370,7 +386,7 @@ Entities: ",
                         let path = entry.path();
                         if path.extension().map_or(false, |ext| ext == "app") {
                             let stem = path.file_stem().unwrap_or_default().to_string_lossy().to_lowercase();
-                            if stem == clean || (clean.len() >= 3 && stem.contains(&clean)) {
+                            if is_app_match(&stem) {
                                 return Some(path.to_string_lossy().to_string());
                             }
                         }
@@ -394,7 +410,7 @@ Entities: ",
                     for entry in entries.flatten() {
                         let path = entry.path();
                         let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
-                        if file_name == clean || (clean.len() >= 3 && file_name.contains(&clean)) {
+                        if is_app_match(&file_name) {
                             return Some(path.to_string_lossy().to_string());
                         }
                     }

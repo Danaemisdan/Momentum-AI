@@ -100,42 +100,119 @@ impl MomentumBrain {
             return Some(AgentMode::Chat);
         }
 
-        // Fast-path pure conversational intents
-        let conversational_phrases = [
-            "hi", "hello", "hey", "sup", "yo", "good morning", "good evening",
-            "how are you", "who are you", "what is your name", "what's your name",
-            "can you hear me", "are you there", "tell me a joke", "make me laugh",
-            "thank you", "thanks", "bye", "goodbye"
+        // 1. FAST-PATH PURE CONVERSATIONAL INTENTS (Chat in 0ms)
+        // Check-ins, greetings, audio checks, identity, remarks, Hindi/Hinglish chatter
+        let chat_exact_or_prefix = [
+            "are you listening", "are you there", "can you hear me", "can you hear", "do you hear me",
+            "you listening", "listening", "are you awake", "are you alive", "hello", "hi", "hey",
+            "sup", "yo", "what's up", "whats up", "good morning", "good evening", "good afternoon",
+            "good night", "how are you", "who are you", "what is your name", "what's your name",
+            "who made you", "tell me a joke", "make me laugh", "thank you", "thanks", "bye", "goodbye",
+            "what did you do", "what are you doing", "what was that", "why did you do that",
+            "what happened", "tell me what you did", "aapko hi bata", "kya kiya", "kya kar rahe ho",
+            "theek hai", "accha", "haan", "nahi", "cool", "nice", "awesome", "great", "ok", "okay",
+            "can you speak", "can you talk", "say something", "how's it going", "how are things"
         ];
-        if conversational_phrases.iter().any(|&p| normalized == p || normalized == format!("{} momentum", p)) {
+
+        for &p in &chat_exact_or_prefix {
+            if normalized == p 
+                || normalized == format!("{} momentum", p)
+                || normalized.starts_with(&format!("{} ", p))
+                || (normalized.starts_with(p) && p.len() >= 8)
+            {
+                return Some(AgentMode::Chat);
+            }
+        }
+
+        // Conversational question starters directed at the companion persona
+        if normalized.starts_with("are you ")
+            || normalized.starts_with("can you hear ")
+            || normalized.starts_with("do you hear ")
+            || normalized.starts_with("who are ")
+            || normalized.starts_with("how are ")
+            || normalized.starts_with("what are you ")
+            || normalized.starts_with("what did you ")
+            || normalized.starts_with("why did you ")
+            || normalized.starts_with("what do you think")
+        {
             return Some(AgentMode::Chat);
         }
 
-        let operator_phrases = [
-            // Creative & Generative & 3D
-            "make me a", "make a", "create a", "build a", "build me", "generate",
-            "model", "3d model", "3d", "mesh", "render", "design", "game asset",
-            "script", "code", "automate", "draft", "write a program",
-            // Search & Discovery & Outreach
-            "search", "google", "look up", "find me", "find clients", "clients",
-            "leads", "prospects", "outreach", "scrape", "extract", "gather",
-            "buy", "purchase", "download",
-            // OS & App Control
-            "open", "launch", "run", "start", "close", "quit", "pause", "resume", "stop",
-            "mute", "unmute", "click", "type", "press", "scroll", "copy", "paste",
-            // Media
-            "play", "music", "song", "spotify", "youtube", "listen",
-            "genre", "rock", "pop", "jazz", "hip hop", "metal", "rap", "lofi",
-            // Platforms & Navigation
-            "go to", "switch to", "visit", "bring up", "pull up", "show me", "take me to",
-            "linkedin", "twitter", "x.com", "github", "reddit", "whatsapp", "telegram",
-            "slack", "discord", "chrome", "safari", "browser", "sketchfab", "figma",
-            // Utilities
-            "calculator", "calc", "calculate", "solve", "math",
-            "terminal", "finder", "notes", "calendar", "mail", "email", "settings"
-        ];
+        // 2. FAST-PATH EXPLICIT OPERATOR ACTIONS (Concrete OS tasks in 0ms)
+        // App launches and process controls
+        if normalized.starts_with("open ") 
+            || normalized.starts_with("launch ") 
+            || normalized.starts_with("close ") 
+            || normalized.starts_with("quit ")
+        {
+            return Some(AgentMode::Operator);
+        }
 
-        if operator_phrases.iter().any(|phrase| normalized.contains(phrase)) {
+        // Web and platform navigation
+        if normalized.starts_with("go to ") 
+            || normalized.starts_with("navigate to ") 
+            || normalized.starts_with("visit ")
+            || normalized.starts_with("take me to ")
+            || normalized.starts_with("pull up ")
+        {
+            return Some(AgentMode::Operator);
+        }
+
+        // Media playback
+        if normalized.starts_with("play ") {
+            return Some(AgentMode::Operator);
+        }
+
+        // Math / Calculation
+        if normalized.starts_with("calculate ") 
+            || normalized.starts_with("calc ") 
+            || normalized.starts_with("solve ")
+            || (normalized.chars().any(|c| c.is_numeric()) && (normalized.contains('+') || normalized.contains('-') || normalized.contains('*') || normalized.contains('/') || normalized.contains('x')))
+        {
+            return Some(AgentMode::Operator);
+        }
+
+        // 3D / Creative Generation
+        if normalized.contains("3d model") 
+            || normalized.contains("3d asset") 
+            || normalized.contains("make me a 3d")
+            || normalized.contains("create a 3d")
+            || normalized.contains("model a ")
+            || normalized.contains("generate 3d")
+        {
+            return Some(AgentMode::Operator);
+        }
+
+        // Client acquisition & Business prospecting
+        if normalized.contains("client") 
+            || normalized.contains("leads") 
+            || normalized.contains("prospect")
+            || normalized.contains("freelance")
+        {
+            return Some(AgentMode::Operator);
+        }
+
+        // Explicit search requests
+        if normalized.starts_with("search for ") 
+            || normalized.starts_with("search on ") 
+            || normalized.starts_with("google for ")
+            || normalized.starts_with("look up ")
+            || normalized.starts_with("find me ")
+        {
+            return Some(AgentMode::Operator);
+        }
+
+        // Physical Scrolling
+        if normalized.starts_with("scroll down") || normalized.starts_with("scroll up") {
+            return Some(AgentMode::Operator);
+        }
+
+        // Known Web platform mentions with task intent
+        let platform_domains = [
+            "linkedin.com", "github.com", "youtube.com", "reddit.com", "amazon.com",
+            "twitter.com", "x.com", "spotify.com", "clutch.co", "fiverr.com", "upwork.com"
+        ];
+        if platform_domains.iter().any(|d| normalized.contains(d)) {
             return Some(AgentMode::Operator);
         }
 
