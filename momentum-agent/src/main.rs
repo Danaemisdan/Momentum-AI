@@ -430,33 +430,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         }
 
                         let handle = tokio::spawn(async move {
-                            // 1. Clarify Intent ONLY if genuinely missing critical non-inferrable parameters
-                            let refined_goal = match brain_agent.clarify_intent(&msg_clone, &history_str_agent).await {
-                                Ok(ClarificationResult::Ask { question }) => {
-                                    println!("❓ Clarification genuinely needed: {}", question);
-                                    let _ = tx_op_resp.send(WsResponse {
-                                        msg_type: "action".into(),
-                                        t: None,
-                                        speech: Some(question.clone()),
-                                        action: Some(Action::Ask { question: question.clone() }),
-                                        thought: None,
-                                        agent_mode: Some(AgentMode::Operator),
-                                        macro_state: Some(MacroState::WaitingForUser),
-                                        tool_name: Some(ToolName::Ask),
-                                    });
-                                    tokio::task::yield_now().await;
-                                    let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
-                                    {
-                                        let mut ng = ask_notifier_agent.lock().await;
-                                        *ng = Some(tx_ask);
+                            // 1. Clarify Intent ONLY if genuinely missing critical non-inferrable parameters (skip for clear 3+ word goals to save 10s CPU inference)
+                            let word_count = msg_clone.split_whitespace().count();
+                            let refined_goal = if word_count >= 3 {
+                                msg_clone.clone()
+                            } else {
+                                match brain_agent.clarify_intent(&msg_clone, &history_str_agent).await {
+                                    Ok(ClarificationResult::Ask { question }) => {
+                                        println!("❓ Clarification genuinely needed: {}", question);
+                                        let _ = tx_op_resp.send(WsResponse {
+                                            msg_type: "action".into(),
+                                            t: None,
+                                            speech: Some(question.clone()),
+                                            action: Some(Action::Ask { question: question.clone() }),
+                                            thought: None,
+                                            agent_mode: Some(AgentMode::Operator),
+                                            macro_state: Some(MacroState::WaitingForUser),
+                                            tool_name: Some(ToolName::Ask),
+                                        });
+                                        tokio::task::yield_now().await;
+                                        let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
+                                        {
+                                            let mut ng = ask_notifier_agent.lock().await;
+                                            *ng = Some(tx_ask);
+                                        }
+                                        match rx_ask.recv().await {
+                                            Some(reply) => format!("{} (Additional detail: {})", msg_clone, reply),
+                                            None => msg_clone.clone(),
+                                        }
                                     }
-                                    match rx_ask.recv().await {
-                                        Some(reply) => format!("{} (Additional detail: {})", msg_clone, reply),
-                                        None => msg_clone.clone(),
-                                    }
+                                    Ok(ClarificationResult::Proceed { refined_goal }) => refined_goal,
+                                    Err(_) => msg_clone.clone(),
                                 }
-                                Ok(ClarificationResult::Proceed { refined_goal }) => refined_goal,
-                                Err(_) => msg_clone.clone(),
                             };
 
                             println!("🎯 Proceeding with goal: {}", refined_goal);
@@ -498,7 +503,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                         tool_name: None,
                                     });
 
-                                    researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await
+                                    let researched_entry = researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await;
+                                    let top_names = researched_entry.platforms.iter().take(3).map(|p| p.name.clone()).collect::<Vec<_>>().join(", ");
+                                    if !top_names.is_empty() {
+                                        let update_speech = format!("Found {}. Setting up navigation now.", top_names);
+                                        let _ = tx_op_resp.send(WsResponse {
+                                            msg_type: "action".into(),
+                                            t: None,
+                                            speech: Some(update_speech.clone()),
+                                            action: Some(Action::Talk { speech: update_speech }),
+                                            thought: None,
+                                            agent_mode: Some(AgentMode::Operator),
+                                            macro_state: Some(MacroState::ActOnSurface),
+                                            tool_name: None,
+                                        });
+                                    }
+                                    researched_entry
                                 }
                             };
 

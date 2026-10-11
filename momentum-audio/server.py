@@ -64,9 +64,13 @@ def playback_worker():
                 )
                 
             samples_contiguous = np.ascontiguousarray(samples_t, dtype=np.float32)
+            app_state["is_speaking"] = True
             sd.play(samples_contiguous, samplerate=sample_rate)
             sd.wait()
+            if audio_playback_queue.empty():
+                app_state["is_speaking"] = False
         except Exception as e:
+            app_state["is_speaking"] = False
             print(f"🚨 Playback error: {e}")
             try:
                 sd.stop()
@@ -83,6 +87,7 @@ app_state = {
     "whisper": None,
     "recent_agent_speech": deque(maxlen=10),
     "current_generation": 0,
+    "is_speaking": False,
 }
 
 # ─── Sentence splitter ────────────────────────────────────────────────────────
@@ -203,7 +208,7 @@ async def lifespan(app: FastAPI):
                 # Prevent the microphone from hearing the agent's own speaker output
                 is_echo = False
                 for recent in app_state["recent_agent_speech"]:
-                    if difflib.SequenceMatcher(None, text.lower(), recent.lower()).ratio() > 0.6:
+                    if difflib.SequenceMatcher(None, text.lower(), recent.lower()).ratio() > 0.4:
                         is_echo = True
                         break
                 
@@ -211,12 +216,28 @@ async def lifespan(app: FastAPI):
                     print(f"🔇 AEC Filtered Echo: {text}", flush=True)
                     return
 
-                # INTERRUPT AUDIO! Only halt playback if user actually spoke words (not just a cough/laugh)
-                if not re.match(r'^\[.*\]$', text):
-                    app_state["current_generation"] += 1
-                    with audio_playback_queue.mutex:
-                        audio_playback_queue.queue.clear()
-                    sd.stop()
+                # Check if agent is currently speaking
+                is_speaking = app_state.get("is_speaking", False)
+                words = set(re.findall(r'\b[a-z]+\b', text.lower()))
+                interrupt_words = {"stop", "shut", "quiet", "silence", "pause", "wait", "cancel", "shh", "enough", "stfu", "momentum"}
+                has_interrupt = bool(words & interrupt_words)
+
+                if is_speaking:
+                    if has_interrupt:
+                        print(f"🛑 User interrupted agent: {text}", flush=True)
+                        app_state["current_generation"] += 1
+                        with audio_playback_queue.mutex:
+                            audio_playback_queue.queue.clear()
+                        sd.stop()
+                        app_state["is_speaking"] = False
+                    else:
+                        print(f"🔇 Ignored room chatter / speaker echo while speaking: {text}", flush=True)
+                        return
+                else:
+                    if has_interrupt:
+                        with audio_playback_queue.mutex:
+                            audio_playback_queue.queue.clear()
+                        sd.stop()
 
                 print(f"🎙️ STT Heard: {text}", flush=True)
                 # Broadcast to all connected UI clients

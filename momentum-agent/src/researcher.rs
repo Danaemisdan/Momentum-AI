@@ -183,6 +183,15 @@ impl AutonomousWebResearcher {
             return (vec![], format!("Ready to search for {}. Want me to proceed?", goal));
         }
 
+        // Fast-path: If we already have 2+ vetted candidate options from authoritative registry or snippets, pick them in 0ms!
+        if candidates.len() >= 2 {
+            let top_entities = candidates.iter().take(3).cloned().collect::<Vec<_>>();
+            let p = Self::build_platforms_from_entities(&top_entities, goal, results, &registry);
+            let q = Self::synthesize_default_question(goal, &p);
+            println!("⚡ [AutonomousWebResearcher] Fast-path distillation (0ms) selected: {}", top_entities.join(", "));
+            return (p, q);
+        }
+
         // Format dense snippet context for logging
         println!("📄 [AutonomousWebResearcher] Search Snippets:");
         for (i, r) in results.iter().take(5).enumerate() {

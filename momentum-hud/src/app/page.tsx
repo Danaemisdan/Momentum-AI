@@ -387,8 +387,11 @@ export default function Home() {
       // Wake Word Activation
       const wakeRegex = /^(?:hey\s+|yo\s+|ok\s+|okay\s+)?momentum\b[,.]?\s*(.*)$/i;
       const wakeMatch = transcript.match(wakeRegex);
+      const hasWakeWord = wakeMatch !== null || lower.includes("momentum");
 
-      if (!isVisibleRef.current && (wakeMatch !== null || lower.includes("momentum"))) {
+      if (!isVisibleRef.current) {
+          if (!hasWakeWord) return; // Do not wake up on ambient sounds
+
           setIsVisible(true);
           invoke("show_window_now");
           
@@ -408,7 +411,17 @@ export default function Home() {
 
       // Conversational Routing (Stream to LLM)
       if (isFinal) {
-          let finalTranscript = transcript;
+          let finalTranscript = transcript.trim();
+          if (!finalTranscript) return;
+
+          // If the phrase has no wake word and was not spoken in direct response to Momentum, ignore ambient talk
+          if (!hasWakeWord && currentDialogueRef.current.trim() === "" && chatHistoryRef.current.length === 0) {
+              return;
+          }
+
+          if (hasWakeWord && wakeMatch) {
+              finalTranscript = wakeMatch[1].trim() || finalTranscript;
+          }
           
           // On Interruption: clear active dialogue immediately to feel responsive
           if (currentDialogueRef.current.trim() !== "") {
