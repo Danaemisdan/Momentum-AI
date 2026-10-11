@@ -95,7 +95,15 @@ _SENT_RE = re.compile(r'(?<=[.!?…])\s+')
 
 def split_sentences(text: str) -> list[str]:
     """Split text into synthesizable chunks. Min 3 chars."""
-    chunks = _SENT_RE.split(text.strip())
+    clean = re.sub(r'<\|.*?\|>', '', text)
+    clean = re.sub(r'\[ACTION:[^\]]*\]', '', clean)
+    clean = re.sub(r'\[ACTIVE:[^\]]*\]', '', clean)
+    clean = re.sub(r'\[NOTE:[^\]]*\]', '', clean)
+    clean = re.sub(r'\[SYSTEM[^\]]*\]', '', clean, flags=re.IGNORECASE)
+    clean = clean.strip()
+    if not clean:
+        return []
+    chunks = _SENT_RE.split(clean)
     out = []
     buf = ""
     for chunk in chunks:
@@ -105,7 +113,7 @@ def split_sentences(text: str) -> list[str]:
             buf = ""
     if buf:
         out.append(buf)
-    return out or [text]
+    return out or [clean]
 
 from pedalboard import Pedalboard, Reverb, Compressor, HighpassFilter, PitchShift
 

@@ -318,17 +318,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             let needs_vision = msg_lower.contains("screen") || msg_lower.contains("see") || msg_lower.contains("look");
                             match brain_chat.decide_chat(&message, &history_str, &active_app, needs_vision, tx_chat_resp.clone()).await {
                                 Ok(mut speech) => {
-                                    // Extract and run [ACTION: OPEN_APP(...)]
-                                    if let Some(start_idx) = speech.find("[ACTION: OPEN_APP(") {
-                                        if let Some(end_idx) = speech[start_idx..].find(")]") {
-                                            let app_name = &speech[start_idx + 18..start_idx + end_idx];
-                                            println!("🚀 Opening application via driver: {}", app_name);
-                                            let _ = driver_chat.open_app(app_name);
-                                            // Strip it from speech
-                                            let mut clean = speech[..start_idx].to_string();
-                                            clean.push_str(&speech[start_idx + end_idx + 2..]);
-                                            speech = clean.trim().to_string();
+                                    // Strip any bracketed control tags or simulated actions from speech
+                                    while let Some(start_idx) = speech.find("[ACTION:") {
+                                        if let Some(end_idx) = speech[start_idx..].find(']') {
+                                            speech = format!("{} {}", speech[..start_idx].trim(), speech[start_idx + end_idx + 1..].trim()).trim().to_string();
+                                        } else {
+                                            break;
                                         }
+                                    }
+                                    while let Some(start_idx) = speech.find("[ACTIVE:") {
+                                        if let Some(end_idx) = speech[start_idx..].find(']') {
+                                            speech = format!("{} {}", speech[..start_idx].trim(), speech[start_idx + end_idx + 1..].trim()).trim().to_string();
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                    if let Some(idx) = speech.find("<|") {
+                                        speech = speech[..idx].trim().to_string();
                                     }
 
                                     let mut action_obj = Action::Talk { speech: speech.clone() };
@@ -467,99 +473,94 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             println!("🎯 Proceeding with goal: {}", refined_goal);
                             let active_app = get_frontmost_app();
 
-                            // 1.5. Consult Local Knowledge Graph (0ms Cache Lookup)
-                            let domain_opt = {
-                                let mut kg = kg_operator.lock().await;
-                                kg.find_domain(&refined_goal)
+                            // 1.5. Fast-Path Local Planning: Check deterministic OS/App sequences FIRST (0ms, no network delay)
+                            let local_sequence = match brain_agent.extract_sequence_args(
+                                &refined_goal, 
+                                &history_str_agent, 
+                                &active_app, 
+                                &driver_clone.get_installed_app_names()
+                            ).await {
+                                Ok(val) => val.as_array().cloned().unwrap_or_default(),
+                                Err(_) => Vec::new(),
                             };
 
-                            let domain = match domain_opt {
-                                Some(d) => {
-                                    println!("⚡ [KG HIT: 0ms] Recalled stored domain \"{}\" for: \"{}\"", d.domain_name, refined_goal);
-                                    let recall_speech = format!("I know the platforms for {}. Moving on that now.", d.domain_name);
-                                    let _ = tx_op_resp.send(WsResponse {
-                                        msg_type: "action".into(),
-                                        t: None,
-                                        speech: Some(recall_speech.clone()),
-                                        action: Some(Action::Talk { speech: recall_speech }),
-                                        thought: None,
-                                        agent_mode: Some(AgentMode::Operator),
-                                        macro_state: Some(MacroState::Planning),
-                                        tool_name: None,
-                                    });
-                                    d
-                                }
-                                None => {
-                                    println!("🔍 [KG MISS] Novel goal. Autonomous Web Researcher initiated for: \"{}\"", refined_goal);
-                                    let research_speech = "Hold on, let me research platforms for that real quick...".to_string();
-                                    let _ = tx_op_resp.send(WsResponse {
-                                        msg_type: "action".into(),
-                                        t: None,
-                                        speech: Some(research_speech.clone()),
-                                        action: Some(Action::Talk { speech: research_speech }),
-                                        thought: None,
-                                        agent_mode: Some(AgentMode::Operator),
-                                        macro_state: Some(MacroState::Planning),
-                                        tool_name: None,
-                                    });
+                            let steps: Vec<serde_json::Value> = if !local_sequence.is_empty() {
+                                println!("⚡ [0ms Fast Plan] Local cognitive sequence selected ({} steps)", local_sequence.len());
+                                local_sequence
+                            } else {
+                                // 2. External Web Research & Discovery: Only for prospecting or informational research goals
+                                let domain_opt = {
+                                    let mut kg = kg_operator.lock().await;
+                                    kg.find_domain(&refined_goal)
+                                };
 
-                                    let researched_entry = researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await;
-                                    let top_names = researched_entry.platforms.iter().take(3).map(|p| p.name.clone()).collect::<Vec<_>>().join(", ");
-                                    if !top_names.is_empty() {
-                                        let update_speech = format!("Found {}. Setting up navigation now.", top_names);
+                                let domain = match domain_opt {
+                                    Some(d) => {
+                                        println!("⚡ [KG HIT: 0ms] Recalled stored domain \"{}\" for: \"{}\"", d.domain_name, refined_goal);
+                                        let recall_speech = format!("I know the platforms for {}. Moving on that now.", d.domain_name);
                                         let _ = tx_op_resp.send(WsResponse {
                                             msg_type: "action".into(),
                                             t: None,
-                                            speech: Some(update_speech.clone()),
-                                            action: Some(Action::Talk { speech: update_speech }),
+                                            speech: Some(recall_speech.clone()),
+                                            action: Some(Action::Talk { speech: recall_speech }),
                                             thought: None,
                                             agent_mode: Some(AgentMode::Operator),
-                                            macro_state: Some(MacroState::ActOnSurface),
+                                            macro_state: Some(MacroState::Planning),
                                             tool_name: None,
                                         });
+                                        d
                                     }
-                                    researched_entry
-                                }
-                            };
+                                    None => {
+                                        println!("🔍 [KG MISS] Novel goal. Autonomous Web Researcher initiated for: \"{}\"", refined_goal);
+                                        let research_speech = "Hold on, let me research platforms for that real quick...".to_string();
+                                        let _ = tx_op_resp.send(WsResponse {
+                                            msg_type: "action".into(),
+                                            t: None,
+                                            speech: Some(research_speech.clone()),
+                                            action: Some(Action::Talk { speech: research_speech }),
+                                            thought: None,
+                                            agent_mode: Some(AgentMode::Operator),
+                                            macro_state: Some(MacroState::Planning),
+                                            tool_name: None,
+                                        });
 
-                            // 2. Strategic Cognitive Planning: 0ms fast-path using domain milestones directly if available
-                            let steps: Vec<serde_json::Value> = if !domain.platforms.is_empty() {
-                                let top_platform = domain.platforms.first().map(|p| p.name.clone()).unwrap_or_else(|| "Platform".to_string());
-                                println!("⚡ [0ms Fast Plan] Using researched domain milestones for \"{}\" (Platform: {})", domain.domain_name, top_platform);
-                                let nav_speech = format!("Opening {} for {}.", top_platform, domain.domain_name);
-                                let _ = tx_op_resp.send(WsResponse {
-                                    msg_type: "action".into(),
-                                    t: None,
-                                    speech: Some(nav_speech.clone()),
-                                    action: Some(Action::Talk { speech: nav_speech }),
-                                    thought: None,
-                                    agent_mode: Some(AgentMode::Operator),
-                                    macro_state: Some(MacroState::ActOnSurface),
-                                    tool_name: None,
-                                });
+                                        let researched_entry = researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await;
+                                        let top_names = researched_entry.platforms.iter().take(3).map(|p| p.name.clone()).collect::<Vec<_>>().join(", ");
+                                        if !top_names.is_empty() {
+                                            let update_speech = format!("Found {}. Setting up navigation now.", top_names);
+                                            let _ = tx_op_resp.send(WsResponse {
+                                                msg_type: "action".into(),
+                                                t: None,
+                                                speech: Some(update_speech.clone()),
+                                                action: Some(Action::Talk { speech: update_speech }),
+                                                thought: None,
+                                                agent_mode: Some(AgentMode::Operator),
+                                                macro_state: Some(MacroState::ActOnSurface),
+                                                tool_name: None,
+                                            });
+                                        }
+                                        researched_entry
+                                    }
+                                };
+
+                                if !domain.platforms.is_empty() {
+                                    let top_platform = domain.platforms.first().map(|p| p.name.clone()).unwrap_or_else(|| "Platform".to_string());
+                                    println!("⚡ [0ms Fast Plan] Using researched domain milestones for \"{}\" (Platform: {})", domain.domain_name, top_platform);
+                                    let nav_speech = format!("Opening {} for {}.", top_platform, domain.domain_name);
+                                    let _ = tx_op_resp.send(WsResponse {
+                                        msg_type: "action".into(),
+                                        t: None,
+                                        speech: Some(nav_speech.clone()),
+                                        action: Some(Action::Talk { speech: nav_speech }),
+                                        thought: None,
+                                        agent_mode: Some(AgentMode::Operator),
+                                        macro_state: Some(MacroState::ActOnSurface),
+                                        tool_name: None,
+                                    });
+                                }
                                 domain.to_milestones(None, &refined_goal).into_iter()
                                     .map(|s| serde_json::to_value(s).unwrap_or_default())
                                     .collect()
-                            } else {
-                                let sequence_steps = match brain_agent.extract_sequence_args(
-                                    &refined_goal, 
-                                    &history_str_agent, 
-                                    &active_app, 
-                                    &driver_clone.get_installed_app_names()
-                                ).await {
-                                    Ok(val) => val.as_array().cloned().unwrap_or_default(),
-                                    Err(_) => Vec::new(),
-                                };
-
-                                if !sequence_steps.is_empty() {
-                                    println!("⚡ Dynamic Cognitive Planner extracted {} sequence steps", sequence_steps.len());
-                                    sequence_steps
-                                } else {
-                                    let milestones = domain.to_milestones(None, &refined_goal);
-                                    milestones.into_iter()
-                                        .map(|s| serde_json::to_value(s).unwrap_or_default())
-                                        .collect()
-                                }
                             };
 
                             let mut execution_log = Vec::new();
@@ -596,17 +597,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                     let target_app = input_val.unwrap_or("browser");
                                                     if target_app.eq_ignore_ascii_case("browser") || target_app.eq_ignore_ascii_case("chrome") {
                                                         let mut b_guard = b_mu_op.lock().await;
-                                                        if let Err(e) = b_guard.ensure_launched().await {
-                                                            println!("⚠️ Browser launcher note: {}", e);
-                                                        }
+                                                        let launch_res = b_guard.ensure_launched().await;
                                                         drop(b_guard);
-                                                    }
-                                                    match driver_clone.open_app(target_app) {
-                                                        Ok(opened) => {
-                                                            milestone_outcome = format!("Opened {}", opened);
+                                                        if launch_res.is_ok() {
+                                                            milestone_outcome = "Browser launched and ready".to_string();
+                                                        } else {
+                                                            match driver_clone.open_app(target_app) {
+                                                                Ok(opened) => milestone_outcome = format!("Opened {}", opened),
+                                                                Err(e) => milestone_outcome = format!("Could not open {}: {}", target_app, e),
+                                                            }
                                                         }
-                                                        Err(e) => {
-                                                            milestone_outcome = format!("Could not open {}: {}", target_app, e);
+                                                    } else {
+                                                        match driver_clone.open_app(target_app) {
+                                                            Ok(opened) => {
+                                                                milestone_outcome = format!("Opened {}", opened);
+                                                            }
+                                                            Err(e) => {
+                                                                milestone_outcome = format!("Could not open {}: {}", target_app, e);
+                                                            }
                                                         }
                                                     }
                                                     tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
@@ -740,12 +748,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             let final_speech = match brain_agent.evaluate_and_narrate(&refined_goal, &summary_str).await {
                                 Ok(narration) if !narration.is_empty() => narration,
                                 _ => {
-                                    if let Some(top_p) = domain.platforms.first() {
-                                        format!("All set! I've opened up {} for {}.", top_p.name, domain.domain_name)
-                                    } else if !execution_log.is_empty() {
-                                        format!("Done. {}.", execution_log[0])
+                                    if !execution_log.is_empty() {
+                                        format!("All set! {}.", execution_log[0])
                                     } else {
-                                        "All done.".to_string()
+                                        format!("All set! Completed: {}.", refined_goal)
                                     }
                                 }
                             };

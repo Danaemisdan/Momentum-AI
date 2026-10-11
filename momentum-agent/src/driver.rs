@@ -61,7 +61,7 @@ impl ActionDriver {
         }
     }
 
-    /// Dynamic App Discovery: scans user and system directories without hardcoding
+    /// Dynamic App Discovery: scans user and system directories across Windows, macOS, and Linux
     pub fn discover_apps(os: &str) -> Vec<DiscoveredApp> {
         let mut apps = Vec::new();
 
@@ -98,27 +98,40 @@ impl ActionDriver {
                     }
                 }
             }
-        } else if os == "windows" {
-            let user_profile = std::env::var("USERPROFILE").unwrap_or_default();
-            let mut scan_dirs = vec![
-                r"C:\Program Files".to_string(),
-                r"C:\Program Files (x86)".to_string(),
-                r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs".to_string(),
-            ];
-            if !user_profile.is_empty() {
-                scan_dirs.push(format!(r"{}\AppData\Local\Programs", user_profile));
-                scan_dirs.push(format!(r"{}\AppData\Roaming\Microsoft\Windows\Start Menu\Programs", user_profile));
-            }
 
-            for dir in scan_dirs {
-                let path = Path::new(&dir);
-                if let Ok(entries) = fs::read_dir(path) {
+            let mac_builtins = [
+                ("Notes", "Notes", vec!["notes", "editor", "text"]),
+                ("Calculator", "Calculator", vec!["calculator", "math", "calc"]),
+                ("Terminal", "Terminal", vec!["terminal", "shell", "cmd"]),
+                ("Safari", "Safari", vec!["browser", "web"]),
+                ("Spotify", "Spotify", vec!["music", "media", "spotify"]),
+                ("Finder", "Finder", vec!["files", "explorer", "finder"]),
+            ];
+            for (name, path, cats) in mac_builtins {
+                if !apps.iter().any(|a| a.name.eq_ignore_ascii_case(name)) {
+                    apps.push(DiscoveredApp {
+                        name: name.into(),
+                        path: path.into(),
+                        categories: cats.into_iter().map(String::from).collect(),
+                    });
+                }
+            }
+        } else if os == "windows" {
+            fn scan_windows_dir(dir: &Path, depth: usize, max_depth: usize, apps: &mut Vec<DiscoveredApp>) {
+                if depth > max_depth { return; }
+                if let Ok(entries) = fs::read_dir(dir) {
                     for entry in entries.flatten() {
                         let p = entry.path();
-                        if p.is_dir() || p.extension().map_or(false, |ext| ext == "lnk" || ext == "exe") {
+                        if p.is_dir() {
+                            scan_windows_dir(&p, depth + 1, max_depth, apps);
+                        } else if p.extension().map_or(false, |ext| ext == "lnk" || ext == "exe") {
                             if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
                                 let name = stem.to_string();
-                                let categories = Self::categorize_app(&name);
+                                let lower = name.to_lowercase();
+                                if lower.contains("unins") || lower.contains("setup") || lower.contains("update") || lower.contains("crash") || lower.contains("helper") {
+                                    continue;
+                                }
+                                let categories = ActionDriver::categorize_app(&name);
                                 apps.push(DiscoveredApp {
                                     name,
                                     path: p.to_string_lossy().to_string(),
@@ -127,6 +140,97 @@ impl ActionDriver {
                             }
                         }
                     }
+                }
+            }
+
+            let user_profile = std::env::var("USERPROFILE").unwrap_or_default();
+            let start_menu_global = r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs".to_string();
+            let mut scan_dirs = vec![start_menu_global];
+            if !user_profile.is_empty() {
+                scan_dirs.push(format!(r"{}\AppData\Roaming\Microsoft\Windows\Start Menu\Programs", user_profile));
+                scan_dirs.push(format!(r"{}\AppData\Local\Programs", user_profile));
+            }
+
+            for dir in scan_dirs {
+                scan_windows_dir(Path::new(&dir), 0, 3, &mut apps);
+            }
+
+            // Built-in core Windows utilities & protocols
+            let win_builtins = [
+                ("Notepad", "notepad", vec!["notes", "editor", "text"]),
+                ("Calculator", "calc", vec!["calculator", "math", "calc"]),
+                ("Spotify", "spotify:", vec!["music", "media", "spotify"]),
+                ("Command Prompt", "cmd", vec!["terminal", "shell", "cmd"]),
+                ("PowerShell", "powershell", vec!["terminal", "shell", "powershell"]),
+                ("Windows Terminal", "wt", vec!["terminal", "shell"]),
+                ("Microsoft Edge", "msedge", vec!["browser", "web"]),
+                ("Google Chrome", "chrome", vec!["browser", "web", "chrome"]),
+                ("Paint", "mspaint", vec!["paint", "image", "draw"]),
+                ("File Explorer", "explorer", vec!["files", "explorer", "finder"]),
+            ];
+            for (name, path, cats) in win_builtins {
+                if !apps.iter().any(|a| a.name.eq_ignore_ascii_case(name)) {
+                    apps.push(DiscoveredApp {
+                        name: name.into(),
+                        path: path.into(),
+                        categories: cats.into_iter().map(String::from).collect(),
+                    });
+                }
+            }
+        } else {
+            // Linux dynamic desktop discovery
+            let linux_dirs = [
+                "/usr/share/applications",
+                "/usr/local/share/applications",
+            ];
+            for dir in linux_dirs {
+                let path = Path::new(dir);
+                if let Ok(entries) = fs::read_dir(path) {
+                    for entry in entries.flatten() {
+                        let p = entry.path();
+                        if p.extension().map_or(false, |ext| ext == "desktop") {
+                            if let Ok(content) = fs::read_to_string(&p) {
+                                let mut name = None;
+                                let mut exec = None;
+                                for line in content.lines() {
+                                    if line.starts_with("Name=") && name.is_none() {
+                                        name = Some(line.trim_start_matches("Name=").trim().to_string());
+                                    }
+                                    if line.starts_with("Exec=") && exec.is_none() {
+                                        let raw = line.trim_start_matches("Exec=").trim();
+                                        let clean = raw.split_whitespace().next().unwrap_or(raw).to_string();
+                                        exec = Some(clean);
+                                    }
+                                }
+                                if let (Some(app_name), Some(exec_path)) = (name, exec) {
+                                    let categories = Self::categorize_app(&app_name);
+                                    apps.push(DiscoveredApp {
+                                        name: app_name,
+                                        path: exec_path,
+                                        categories,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let linux_builtins = [
+                ("Text Editor", "gedit", vec!["notes", "editor", "text"]),
+                ("Calculator", "gnome-calculator", vec!["calculator", "math", "calc"]),
+                ("Terminal", "x-terminal-emulator", vec!["terminal", "shell", "cmd"]),
+                ("Web Browser", "google-chrome", vec!["browser", "web"]),
+                ("Spotify", "spotify", vec!["music", "media", "spotify"]),
+                ("Files", "xdg-open .", vec!["files", "explorer", "finder"]),
+            ];
+            for (name, path, cats) in linux_builtins {
+                if !apps.iter().any(|a| a.name.eq_ignore_ascii_case(name)) {
+                    apps.push(DiscoveredApp {
+                        name: name.into(),
+                        path: path.into(),
+                        categories: cats.into_iter().map(String::from).collect(),
+                    });
                 }
             }
         }
@@ -138,19 +242,28 @@ impl ActionDriver {
         let lower = name.to_lowercase();
         let mut cats = Vec::new();
 
-        if lower.contains("music") || lower.contains("spotify") || lower.contains("tidal") || lower.contains("vlc") || lower.contains("iina") || lower.contains("sound") || lower.contains("podcast") {
+        if lower.contains("music") || lower.contains("spotify") || lower.contains("tidal") || lower.contains("vlc") || lower.contains("iina") || lower.contains("sound") || lower.contains("podcast") || lower.contains("audio") {
             cats.push("music".into());
             cats.push("media".into());
+            cats.push("spotify".into());
         }
         if lower.contains("chrome") || lower.contains("safari") || lower.contains("firefox") || lower.contains("edge") || lower.contains("brave") || lower.contains("arc") || lower.contains("browser") {
             cats.push("browser".into());
             cats.push("web".into());
         }
-        if lower.contains("code") || lower.contains("cursor") || lower.contains("xcode") || lower.contains("sublime") || lower.contains("intellij") {
+        if lower.contains("notepad") || lower.contains("note") || lower.contains("notes") || lower.contains("text") || lower.contains("editor") || lower.contains("gedit") || lower.contains("word") {
+            cats.push("notes".into());
+            cats.push("editor".into());
+        }
+        if lower.contains("calc") || lower.contains("calculator") || lower.contains("math") {
+            cats.push("calculator".into());
+            cats.push("calc".into());
+        }
+        if lower.contains("code") || lower.contains("cursor") || lower.contains("xcode") || lower.contains("sublime") || lower.contains("intellij") || lower.contains("studio") {
             cats.push("editor".into());
             cats.push("developer".into());
         }
-        if lower.contains("terminal") || lower.contains("iterm") || lower.contains("warp") || lower.contains("alacritty") || lower.contains("cmd") || lower.contains("powershell") {
+        if lower.contains("terminal") || lower.contains("iterm") || lower.contains("warp") || lower.contains("alacritty") || lower.contains("cmd") || lower.contains("powershell") || lower.contains("wt") || lower.contains("shell") {
             cats.push("terminal".into());
             cats.push("shell".into());
         }
@@ -158,17 +271,31 @@ impl ActionDriver {
             cats.push("chat".into());
             cats.push("communication".into());
         }
+        if lower.contains("explorer") || lower.contains("finder") || lower.contains("files") || lower.contains("nautilus") {
+            cats.push("files".into());
+            cats.push("explorer".into());
+        }
 
         cats
     }
 
-    /// Finds an installed app by exact name, substring, or semantic category
+    /// Finds an installed app by exact name, semantic alias, or category
     pub fn find_app(&self, query: &str) -> Option<&DiscoveredApp> {
         let q_lower = query.trim().to_lowercase();
         if q_lower.is_empty() { return None; }
 
-        // 1. Category search (e.g. "music", "browser", "chat", "terminal")
-        if let Some(app) = self.installed_apps.iter().find(|a| a.categories.iter().any(|c| c == &q_lower)) {
+        let target_category = match q_lower.as_str() {
+            "notes" | "note" => "notes",
+            "calc" | "math" => "calculator",
+            "cmd" | "shell" | "bash" | "powershell" => "terminal",
+            "web" | "internet" => "browser",
+            "songs" | "song" | "music" => "music",
+            "files" | "folder" | "folders" => "files",
+            other => other,
+        };
+
+        // 1. Semantic category match
+        if let Some(app) = self.installed_apps.iter().find(|a| a.categories.iter().any(|c| c == target_category || c == &q_lower)) {
             return Some(app);
         }
 
@@ -177,48 +304,103 @@ impl ActionDriver {
             return Some(app);
         }
 
-        // 3. Substring match
-        if let Some(app) = self.installed_apps.iter().find(|a| a.name.to_lowercase().contains(&q_lower) || q_lower.contains(&a.name.to_lowercase())) {
+        // 3. Whole-token match
+        if let Some(app) = self.installed_apps.iter().find(|a| {
+            let app_name = a.name.to_lowercase();
+            app_name.split(|c: char| !c.is_alphanumeric()).any(|w| w == q_lower)
+        }) {
             return Some(app);
+        }
+
+        // 4. Substring match (min length 4 to prevent short stopword matching)
+        if q_lower.len() >= 4 {
+            if let Some(app) = self.installed_apps.iter().find(|a| a.name.to_lowercase().contains(&q_lower)) {
+                return Some(app);
+            }
         }
 
         None
     }
 
-    /// Dynamic app launcher that executes without hardcoding paths
+    /// Cross-platform dynamic app launcher for Windows, macOS, and Linux
     pub fn open_app(&self, app_or_category: &str) -> Result<String, String> {
         println!("💻 ActionDriver: Finding and launching '{}' on {}", app_or_category, self.current_os);
+        let target_lower = app_or_category.to_lowercase();
 
-        if let Some(app) = self.find_app(app_or_category) {
-            let app_name = app.name.clone();
-            println!("  🎯 Discovered matching app: {} ({})", app_name, app.path);
-
-            if self.current_os == "macos" {
-                let _ = std::process::Command::new("open")
-                    .arg("-a")
-                    .arg(&app_name)
-                    .spawn();
-            } else if self.current_os == "windows" {
-                let _ = std::process::Command::new("cmd")
-                    .arg("/c")
-                    .arg(format!("start \"\" \"{}\"", app.path))
-                    .spawn();
-            } else {
-                let _ = std::process::Command::new(&app_name).spawn();
+        if self.current_os == "windows" {
+            // High-priority native protocol & utility handlers on Windows
+            if target_lower.contains("spotify") || target_lower == "music" {
+                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", "spotify:"]).spawn();
+                return Ok("Spotify".to_string());
             }
-            return Ok(app_name);
-        }
+            if target_lower == "notes" || target_lower == "notepad" {
+                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", "notepad"]).spawn();
+                return Ok("Notepad".to_string());
+            }
+            if target_lower == "calculator" || target_lower == "calc" {
+                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", "calc"]).spawn();
+                return Ok("Calculator".to_string());
+            }
+            if target_lower == "terminal" || target_lower == "cmd" {
+                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", "wt"])
+                    .spawn()
+                    .or_else(|_| std::process::Command::new("cmd").args(&["/c", "start", "", "cmd"]).spawn());
+                return Ok("Terminal".to_string());
+            }
 
-        // Fallback: try raw system launch
-        if self.current_os == "macos" {
+            if let Some(app) = self.find_app(app_or_category) {
+                let app_name = app.name.clone();
+                println!("  🎯 Discovered matching app: {} ({})", app_name, app.path);
+                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", &app.path]).spawn();
+                return Ok(app_name);
+            }
+
+            // Fallback: system start
+            let _ = std::process::Command::new("cmd").args(&["/c", "start", "", app_or_category]).spawn();
+            return Ok(app_or_category.to_string());
+        } else if self.current_os == "macos" {
+            if target_lower.contains("spotify") || target_lower == "music" {
+                let _ = std::process::Command::new("open").arg("-a").arg("Spotify").spawn()
+                    .or_else(|_| std::process::Command::new("open").arg("-a").arg("Music").spawn());
+                return Ok("Spotify".to_string());
+            }
+            if let Some(app) = self.find_app(app_or_category) {
+                let app_name = app.name.clone();
+                println!("  🎯 Discovered matching app: {} ({})", app_name, app.path);
+                let _ = std::process::Command::new("open").arg("-a").arg(&app_name).spawn();
+                return Ok(app_name);
+            }
             let _ = std::process::Command::new("open").arg("-a").arg(app_or_category).spawn();
-        } else if self.current_os == "windows" {
-            let _ = std::process::Command::new("cmd").arg("/c").arg(format!("start {}", app_or_category)).spawn();
+            return Ok(app_or_category.to_string());
         } else {
-            let _ = std::process::Command::new(app_or_category).spawn();
-        }
+            // Linux
+            if target_lower.contains("spotify") || target_lower == "music" {
+                let _ = std::process::Command::new("spotify").spawn();
+                return Ok("Spotify".to_string());
+            }
+            if target_lower == "notes" || target_lower == "notepad" {
+                let _ = std::process::Command::new("gedit").spawn()
+                    .or_else(|_| std::process::Command::new("mousepad").spawn())
+                    .or_else(|_| std::process::Command::new("nano").spawn());
+                return Ok("Text Editor".to_string());
+            }
+            if target_lower == "calculator" || target_lower == "calc" {
+                let _ = std::process::Command::new("gnome-calculator").spawn()
+                    .or_else(|_| std::process::Command::new("kcalc").spawn());
+                return Ok("Calculator".to_string());
+            }
 
-        Ok(app_or_category.to_string())
+            if let Some(app) = self.find_app(app_or_category) {
+                let app_name = app.name.clone();
+                println!("  🎯 Discovered matching app: {} ({})", app_name, app.path);
+                let _ = std::process::Command::new(&app.path).spawn()
+                    .or_else(|_| std::process::Command::new("gtk-launch").arg(&app.name).spawn());
+                return Ok(app_name);
+            }
+            let _ = std::process::Command::new(app_or_category).spawn()
+                .or_else(|_| std::process::Command::new("xdg-open").arg(app_or_category).spawn());
+            return Ok(app_or_category.to_string());
+        }
     }
 
 
@@ -358,7 +540,7 @@ impl ActionDriver {
                 let _ = std::process::Command::new("open").arg(url).spawn();
             }
         } else if self.current_os == "windows" {
-            let _ = std::process::Command::new("cmd").arg("/c").arg(format!("start {}", url)).spawn();
+            let _ = std::process::Command::new("cmd").args(&["/c", "start", "", url]).spawn();
         } else {
             let _ = std::process::Command::new("xdg-open").arg(url).spawn();
         }

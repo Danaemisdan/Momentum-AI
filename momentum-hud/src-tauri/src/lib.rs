@@ -33,8 +33,13 @@ impl AppProcesses {
             }
         }
         // Belt-and-suspenders: kill by port to catch any orphans
+        #[cfg(not(windows))]
         let _ = Command::new("sh")
             .args(["-c", "lsof -ti :44444,8000,8001 | xargs kill -9 2>/dev/null || true"])
+            .status();
+        #[cfg(windows)]
+        let _ = Command::new("powershell")
+            .args(["-NoProfile", "-Command", "Get-NetTCPConnection -LocalPort 44444,8000,8001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
             .status();
     }
 }
@@ -70,8 +75,8 @@ fn project_path(rel: &str) -> PathBuf {
         }
     }
 
-    // Strategy 3: hardcoded fallback
-    PathBuf::from("/Users/sanjeevn/Downloads/Momentum AI").join(rel)
+    // Strategy 3: current dir fallback
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join(rel)
 }
 
 fn find_venv_binary(dir: &PathBuf, name: &str) -> PathBuf {
@@ -89,8 +94,13 @@ fn find_venv_binary(dir: &PathBuf, name: &str) -> PathBuf {
 
 /// Kill anything already running on our ports before we start
 fn clear_ports() {
+    #[cfg(not(windows))]
     let _ = Command::new("sh")
         .args(["-c", "lsof -ti :44444,8000,8001 | xargs kill -9 2>/dev/null || true"])
+        .status();
+    #[cfg(windows)]
+    let _ = Command::new("powershell")
+        .args(["-NoProfile", "-Command", "Get-NetTCPConnection -LocalPort 44444,8000,8001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
         .status();
     std::thread::sleep(std::time::Duration::from_millis(600));
 }

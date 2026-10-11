@@ -522,20 +522,33 @@ impl MomentumBrain {
             if self.model.is_eog_token(token) { break; }
             
             let piece = self.model.token_to_piece(token, &mut decoder, true, None)?;
+            
+            // Immediately terminate if the model produces special end-of-turn or prompt boundary markers
+            if piece.contains("<|im_end|>") || piece.contains("<|endoftext|>") || piece.contains("<|im_start|>") {
+                break;
+            }
+
             response.push_str(&piece);
             tokens_generated += 1;
+
+            if response.contains("<|im_end|>") || response.contains("<|endoftext|>") || response.contains("<|im_start|>") {
+                break;
+            }
             
             if let Some(tx) = &tx_token {
-                let _ = tx.send(WsResponse { 
-                    msg_type: "token".into(), 
-                    t: Some(piece.clone()), 
-                    speech: None, 
-                    action: None,
-                    thought: None,
-                    agent_mode: None,
-                    macro_state: None,
-                    tool_name: None,
-                });
+                // Ensure control tags and bracketed commands never leak to the HUD or TTS
+                if !piece.contains("<|") && !piece.contains("[ACTION:") && !piece.contains("[ACTIVE:") && !piece.contains("[NOTE:") {
+                    let _ = tx.send(WsResponse { 
+                        msg_type: "token".into(), 
+                        t: Some(piece.clone()), 
+                        speech: None, 
+                        action: None,
+                        thought: None,
+                        agent_mode: None,
+                        macro_state: None,
+                        tool_name: None,
+                    });
+                }
             }
 
             batch.clear();
@@ -544,7 +557,14 @@ impl MomentumBrain {
             n_cur += 1;
         }
 
-        Ok(response)
+        // Strip any trailing prompt markers if present
+        let clean_response = if let Some(idx) = response.find("<|") {
+            response[..idx].trim().to_string()
+        } else {
+            response.trim().to_string()
+        };
+
+        Ok(clean_response)
     }
 
     pub async fn classify_mode(&self, message: &str) -> Result<AgentMode, Box<dyn std::error::Error + Send + Sync>> {
@@ -931,12 +951,31 @@ HISTORY: {history}<|im_end|>
         let speech_prompt = self.build_chat_prompt(message, history, focused_app, needs_vision).await;
         
         let speech = self.generate(&speech_prompt, Some(tx_agent)).await?;
-        let clean = speech.lines()
+        let mut clean = speech.lines()
             .filter(|l| !l.trim().starts_with("[System Note:") && !l.trim().starts_with("System Note:"))
             .collect::<Vec<_>>()
             .join(" ")
             .trim()
             .to_string();
+
+        if let Some(idx) = clean.find("<|") {
+            clean = clean[..idx].trim().to_string();
+        }
+        while let Some(start) = clean.find("[ACTION:") {
+            if let Some(end) = clean[start..].find(']') {
+                clean = format!("{} {}", clean[..start].trim(), clean[start + end + 1..].trim()).trim().to_string();
+            } else {
+                break;
+            }
+        }
+        while let Some(start) = clean.find("[ACTIVE:") {
+            if let Some(end) = clean[start..].find(']') {
+                clean = format!("{} {}", clean[..start].trim(), clean[start + end + 1..].trim()).trim().to_string();
+            } else {
+                break;
+            }
+        }
+
         Ok(clean)
     }
 
@@ -968,7 +1007,7 @@ HISTORY: {history}<|im_end|>
 
         if cmd_lower.contains("music") || cmd_lower.contains("song") || cmd_lower.contains("spotify") {
             return Ok(serde_json::json!([
-                {"action_type": "OpenApp", "input": "music"},
+                {"action_type": "OpenApp", "input": "spotify"},
                 {"action_type": "UI_Intent", "intent": "Search", "input": user_command},
                 {"action_type": "UI_Intent", "intent": "Click", "input": "Play"}
             ]));
@@ -986,13 +1025,31 @@ HISTORY: {history}<|im_end|>
             ]));
         }
 
-        if cmd_lower.starts_with("open ") {
-            let app_name = cmd_lower.trim_start_matches("open ").trim();
+        if cmd_lower.starts_with("open ") || cmd_lower.starts_with("launch ") {
+            let app_name = if cmd_lower.starts_with("open ") {
+                cmd_lower.trim_start_matches("open ").trim()
+            } else {
+                cmd_lower.trim_start_matches("launch ").trim()
+            };
             if !app_name.is_empty() {
                 return Ok(serde_json::json!([
                     {"action_type": "OpenApp", "input": app_name}
                 ]));
             }
+        }
+
+        if cmd_lower.starts_with("go to ") || cmd_lower.starts_with("visit ") || cmd_lower.starts_with("navigate to ") {
+            let target = if cmd_lower.starts_with("go to ") {
+                cmd_lower.trim_start_matches("go to ").trim()
+            } else if cmd_lower.starts_with("visit ") {
+                cmd_lower.trim_start_matches("visit ").trim()
+            } else {
+                cmd_lower.trim_start_matches("navigate to ").trim()
+            };
+            return Ok(serde_json::json!([
+                {"action_type": "OpenApp", "input": "browser"},
+                {"action_type": "Navigate", "input": target}
+            ]));
         }
 
         let app_sample = if available_apps.is_empty() {
@@ -1097,13 +1154,10 @@ Outcome: {}\n<|im_end|>\n\
     pub async fn build_chat_prompt(&self, message: &str, history: &str, focused_app: &str, _needs_vision: bool) -> String {
         format!(
             "<|im_start|>system\n\
-You are Momentum, an ultra-fast, autonomous OS companion created by Danny. \
+You are Momentum, an ultra-fast, witty, and charismatic companion created by Danny. \
 Currently focused application: {}. \
-You are decisive, razor-sharp, and proactive. You never apologize and you never repeat yourself. \
-CRITICAL RULE: DO NOT ask endless clarifying questions. When the user asks for something, ACT IMMEDIATELY. \
-You have full control of their operating system. If they ask to play music, open apps, search, or check something, do it directly without stalling. \
-If you need to open an app, you can include [ACTION: OPEN_APP(app_name)]. \
-Keep your spoken responses under 2 sentences and completely natural. Never repeat system notes or say 'System Note'.\n\
+You are decisive, razor-sharp, and direct. You never apologize and you never repeat yourself. \
+CRITICAL RULE: Keep your spoken responses under 2 sentences and completely natural. Never repeat system notes or say 'System Note'.\n\
 <|im_end|>\n\
 {}<|im_start|>user\n\
 {}<|im_end|>\n\

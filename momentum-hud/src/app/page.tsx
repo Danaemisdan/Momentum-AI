@@ -278,6 +278,14 @@ export default function Home() {
                               setTimeout(() => invoke("hide_window_now"), 800);
                               chunk = chunk.replace("[ACTION: SLEEP]", "").replace("{SLEEP}", "").trim();
                           }
+
+                          // Clean out any bracketed system tags and special tokens
+                          chunk = chunk.replace(/<\|.*?\|>/g, "")
+                                       .replace(/\[ACTION:[^\]]*\]/g, "")
+                                       .replace(/\[ACTIVE:[^\]]*\]/g, "")
+                                       .replace(/\[NOTE:[^\]]*\]/g, "")
+                                       .replace(/\[SYSTEM[^\]]*\]/gi, "")
+                                       .trim();
                           
                           if (chunk.length > 0) {
                               chatHistoryRef.current.push({ role: "agent", text: chunk });
@@ -309,6 +317,13 @@ export default function Home() {
                           setTimeout(() => invoke("hide_window_now"), 800);
                           chunk = chunk.replace("[ACTION: SLEEP]", "").replace("{SLEEP}", "").trim();
                       }
+                      chunk = chunk.replace(/<\|.*?\|>/g, "")
+                                   .replace(/\[ACTION:[^\]]*\]/g, "")
+                                   .replace(/\[ACTIVE:[^\]]*\]/g, "")
+                                   .replace(/\[NOTE:[^\]]*\]/g, "")
+                                   .replace(/\[SYSTEM[^\]]*\]/gi, "")
+                                   .trim();
+
                       if (chunk.length > 0) {
                           chatHistoryRef.current.push({ role: "agent", text: chunk });
                           displayDialogue(chunk);

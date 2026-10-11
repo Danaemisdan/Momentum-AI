@@ -166,7 +166,9 @@ impl AutonomousWebResearcher {
             "before", "both", "but", "down", "each", "few", "here", "there", "then",
             "once", "only", "other", "some", "such", "than", "too", "very", "who", "whom",
             "why", "just", "now", "not", "out", "off", "our", "ours", "get", "got", "know",
-            "see", "think", "come", "look", "tell", "podcast", "episode", "video", "article"
+            "see", "think", "come", "look", "tell", "podcast", "episode", "video", "article",
+            "open", "opening", "play", "playing", "player", "support", "music", "song", "songs",
+            "audio", "click", "login", "sign", "home", "page", "using", "uses", "site", "web"
         ];
 
         for r in results {
