@@ -11,9 +11,12 @@ mod reflex;
 mod intent;
 mod services;
 mod driver;
+mod knowledge;
+mod researcher;
+mod authority;
 
 use crate::browser::MomentumBrowser;
-use crate::brain::MomentumBrain;
+use crate::brain::{MomentumBrain, StepReaction};
 use crate::executor::{ActionExecutor, ActionResult};
 use crate::perception::{perceive, perceive_summary};
 use crate::server::{start_server, ServerState};
@@ -55,6 +58,42 @@ async fn cancel_active_task(
     } else {
         false
     }
+}
+
+pub fn get_frontmost_app() -> String {
+    if cfg!(target_os = "macos") {
+        if let Ok(output) = std::process::Command::new("sh")
+            .arg("-c")
+            .arg("lsappinfo info -only name $(lsappinfo front)")
+            .output()
+        {
+            let text = String::from_utf8_lossy(&output.stdout);
+            if let Some(pos) = text.find("\"LSDisplayName\"=\"") {
+                let rest = &text[pos + 17..];
+                if let Some(end) = rest.find('"') {
+                    let app = rest[..end].trim();
+                    if !app.is_empty() {
+                        return app.to_string();
+                    }
+                }
+            }
+        }
+    } else if cfg!(target_os = "windows") {
+        if let Ok(output) = std::process::Command::new("powershell")
+            .args(&[
+                "-NoProfile",
+                "-Command",
+                "$w = Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow();' -Name Win32 -Namespace Win32Functions -PassThru; $h = $w::GetForegroundWindow(); (Get-Process | Where-Object { $_.MainWindowHandle -eq $h }).ProcessName"
+            ])
+            .output()
+        {
+            let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !text.is_empty() {
+                return text;
+            }
+        }
+    }
+    "Desktop".to_string()
 }
 
 fn infer_initial_macro_state(goal: &str) -> MacroState {
@@ -118,7 +157,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("🚀 Momentum Agent starting...");
 
     let model_path = env::var("MOMENTUM_MODEL_PATH")
-        .unwrap_or_else(|_| r"C:\Users\usha\Downloads\Momentum AI\momentum-agent\momentum-engine-0.5b.gguf".to_string());
+        .ok()
+        .filter(|p| std::path::Path::new(p).exists())
+        .unwrap_or_else(|| {
+            let candidates = [
+                "/Users/sanjeevn/Downloads/Momentum AI/momentum-engine-tiny-0.5b.gguf",
+                "../momentum-engine-tiny-0.5b.gguf",
+                "momentum-engine-tiny-0.5b.gguf",
+                "models/momentum-engine-tiny-0.5b.gguf",
+                "/Users/sanjeevn/Downloads/Momentum AI/momentum-engine-3b.gguf",
+                "../momentum-engine-3b.gguf",
+                "momentum-engine-3b.gguf",
+            ];
+            for c in candidates {
+                if std::path::Path::new(c).exists() {
+                    return c.to_string();
+                }
+            }
+            "momentum-engine-tiny-0.5b.gguf".to_string()
+        });
+    println!("🧠 Loaded Model: {}", model_path);
     
     // Channels & Shared State
     // 512-capacity broadcast: prevents dropping clarification/plan messages when prior chat tokens fill the buffer
@@ -141,7 +199,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 3. Init Core Modules (Lazy)
     let browser_mu = Arc::new(Mutex::new(MomentumBrowser::init()));
     let brain = Arc::new(MomentumBrain::init(&model_path)?);
-    let driver = Arc::new(crate::driver::ActionDriver::new("windows"));
+    let os_name = std::env::consts::OS;
+    let driver = Arc::new(crate::driver::ActionDriver::new(os_name));
     
     // Init Vision Stream Optic Nerve (Shared Memory)
     // We must keep the stream instance alive so the memory map doesn't get dropped!
@@ -173,6 +232,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let active_task: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>> = Arc::new(Mutex::new(None));
     let ask_notifier: Arc<Mutex<Option<tokio::sync::mpsc::Sender<String>>>> = Arc::new(Mutex::new(None));
     let service_manager = Arc::new(Mutex::new(crate::services::ServiceManager::new()));
+    let kg_store = Arc::new(Mutex::new(crate::knowledge::LocalKnowledgeGraph::load()));
+    let researcher = Arc::new(crate::researcher::AutonomousWebResearcher::new(kg_store.clone()));
 
     println!("✨ Momentum is ready! (Chrome only launches for web tasks)");
 
@@ -203,8 +264,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         let brain_prefill = brain.clone();
                         let text_clone = text.clone();
                         tokio::spawn(async move {
-                            // Skip needs_vision=true for interim to avoid 300ms latency penalty
-                            let prefill_prompt = brain_prefill.build_chat_prompt(&text_clone, &history_str, false).await;
+                            let active_app = get_frontmost_app();
+                            let prefill_prompt = brain_prefill.build_chat_prompt(&text_clone, &history_str, &active_app, false).await;
                             if let Err(e) = brain_prefill.prefill_context(&prefill_prompt).await {
                                 eprintln!("⚠️ Prefill error: {}", e);
                             }
@@ -248,29 +309,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         println!("🤖 Personality Mode (Chat)");
                         let tx_chat_resp = tx_agent.clone();
                         let brain_chat = brain.clone();
+                        let driver_chat = driver.clone();
                         let msg_lower = message.to_lowercase();
                         let b_mu_chat = browser_mu.clone();
                         
                         tokio::spawn(async move {
-                            let mut msg_with_vision = message.clone();
-                            
-                            // Instant contextual awareness of the active OS application (0ms latency)
-                            let active_app = "Windows Desktop".to_string();
-                            
-                            msg_with_vision = format!("[System Note: The user's currently focused application is '{}']\n{}", active_app, msg_with_vision);
-                            
+                            let active_app = get_frontmost_app();
                             let needs_vision = msg_lower.contains("screen") || msg_lower.contains("see") || msg_lower.contains("look");
-                            match brain_chat.decide_chat(&msg_with_vision, &history_str, needs_vision, tx_chat_resp.clone()).await {
+                            match brain_chat.decide_chat(&message, &history_str, &active_app, needs_vision, tx_chat_resp.clone()).await {
                                 Ok(mut speech) => {
                                     // Extract and run [ACTION: OPEN_APP(...)]
                                     if let Some(start_idx) = speech.find("[ACTION: OPEN_APP(") {
                                         if let Some(end_idx) = speech[start_idx..].find(")]") {
                                             let app_name = &speech[start_idx + 18..start_idx + end_idx];
-                                            println!("🚀 Opening application: {}", app_name);
-                                            let _ = std::process::Command::new("cmd")
-                                                .arg("/C")
-                                                .arg(format!("start {}", app_name))
-                                                .spawn();
+                                            println!("🚀 Opening application via driver: {}", app_name);
+                                            let _ = driver_chat.open_app(app_name);
                                             // Strip it from speech
                                             let mut clean = speech[..start_idx].to_string();
                                             clean.push_str(&speech[start_idx + end_idx + 2..]);
@@ -330,7 +383,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                         
                                         let follow_up_prompt = format!("[SYSTEM NOTE: The physical vision engine (Llava) just finished processing the screen for the user's previous request ('{}'). It sees: {}\n\nDOM tree sees: {}\n\nGive a quick follow up response providing this new visual information to the user.]", message, vision_res, ui_context);
                                         
-                                        if let Ok(mut follow_up_speech) = brain_chat.decide_chat(&follow_up_prompt, &history_str, false, tx_chat_resp.clone()).await {
+                                        let active_app = get_frontmost_app();
+                                        if let Ok(mut follow_up_speech) = brain_chat.decide_chat(&follow_up_prompt, &history_str, &active_app, false, tx_chat_resp.clone()).await {
                                             // Strip IGNORE if present
                                             if let Some(start_idx) = follow_up_speech.find("[ACTION: IGNORE]") {
                                                 let mut clean = follow_up_speech[..start_idx].to_string();
@@ -357,80 +411,334 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         });
                     }
                     AgentMode::Operator => {
-                        println!("🦾 Operator Mode (Semantic UI Traversal)");
-                        println!("🧠 Generating Semantic Plan for: {}", message);
+                        println!("🦾 Operator Mode (Hierarchical Cognitive Planner + Algorithmic Execution)");
+                        println!("🧠 Processing Goal: {}", message);
 
                         let brain_agent = brain.clone();
                         let driver_clone = driver.clone();
                         let msg_clone = message.clone();
-                        
+                        let history_str_agent = history_str.clone();
+                        let tx_op_resp = tx_agent.clone();
+                        let b_mu_op = browser_mu.clone();
+                        let ask_notifier_agent = ask_notifier.clone();
+                        let kg_operator = kg_store.clone();
+                        let researcher_operator = researcher.clone();
+
                         let mut active_guard = active_task.lock().await;
                         if let Some(handle) = active_guard.take() {
                             handle.abort();
                         }
 
                         let handle = tokio::spawn(async move {
-                            match brain_agent.extract_sequence_args(&msg_clone, &[]).await {
-                                Ok(plan_json) => {
-                                    if let Some(steps) = plan_json.as_array() {
-                                        println!("🗺️ Semantic Plan generated ({} steps)", steps.len());
-                                        for step in steps {
-                                            let action_type = step.get("action_type").and_then(|v| v.as_str()).unwrap_or("");
-                                            let intent = step.get("intent").and_then(|v| v.as_str());
-                                            let input_val = step.get("input").and_then(|v| v.as_str());
-                                            
-                                            println!("➡️ Executing step: {} (Intent: {:?})", action_type, intent);
-                                            
-                                            match action_type {
-                                                "OpenApp" => {
-                                                    if let Some(app) = input_val {
-                                                        println!("    💻 Launching: {}", app);
-                                                        let _ = std::process::Command::new("cmd")
-                                                            .arg("/C").arg(format!("start {}", app))
-                                                            .spawn();
-                                                        tokio::time::sleep(tokio::time::Duration::from_millis(3000)).await;
-                                                    }
-                                                },
-                                                "UI_Intent" => {
-                                                    if let Some(target_intent) = intent {
-                                                        println!("    🔍 Scanning Live UI for semantic intent: {}", target_intent);
-                                                        
-                                                        // Fallback heuristic execution for desktop apps until Windows UIAutomation bridge is connected
-                                                        use enigo::{Direction::{Click}, Enigo, Key, Keyboard, Settings};
-                                                        let mut enigo = Enigo::new(&Settings::default()).unwrap();
-                                                        
-                                                        match target_intent {
-                                                            "Search" => {
-                                                                let _ = enigo.key(Key::Tab, Click);
-                                                                let _ = enigo.key(Key::Tab, Click);
-                                                                if let Some(text) = input_val {
-                                                                    println!("    ⌨️ Found Search Node! Typing: {}", text);
-                                                                    let _ = enigo.text(text);
-                                                                    let _ = enigo.key(Key::Return, Click);
-                                                                }
-                                                            },
-                                                            "MediaControl" => {
-                                                                let _ = enigo.key(Key::Tab, Click);
-                                                                println!("    🖱️ Found Media Control Node! Clicking Play...");
-                                                                let _ = enigo.key(Key::Return, Click);
-                                                            },
-                                                            _ => {
-                                                                println!("    ⚠️ No node matching intent {} found on current screen.", target_intent);
-                                                            }
-                                                        }
-                                                        tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-                                                    }
-                                                },
-                                                _ => println!("    ⚠️ Unknown semantic action_type"),
-                                            }
-                                        }
-                                        println!("✅ Semantic Plan Completed!");
-                                    } else {
-                                        println!("❌ LLM failed to output a JSON array.");
+                            // 1. Clarify Intent ONLY if genuinely missing critical non-inferrable parameters
+                            let refined_goal = match brain_agent.clarify_intent(&msg_clone, &history_str_agent).await {
+                                Ok(ClarificationResult::Ask { question }) => {
+                                    println!("❓ Clarification genuinely needed: {}", question);
+                                    let _ = tx_op_resp.send(WsResponse {
+                                        msg_type: "action".into(),
+                                        t: None,
+                                        speech: Some(question.clone()),
+                                        action: Some(Action::Ask { question: question.clone() }),
+                                        thought: None,
+                                        agent_mode: Some(AgentMode::Operator),
+                                        macro_state: Some(MacroState::WaitingForUser),
+                                        tool_name: Some(ToolName::Ask),
+                                    });
+                                    tokio::task::yield_now().await;
+                                    let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
+                                    {
+                                        let mut ng = ask_notifier_agent.lock().await;
+                                        *ng = Some(tx_ask);
+                                    }
+                                    match rx_ask.recv().await {
+                                        Some(reply) => format!("{} (Additional detail: {})", msg_clone, reply),
+                                        None => msg_clone.clone(),
                                     }
                                 }
-                                Err(e) => println!("❌ Extractor failed: {}", e),
-                            }
+                                Ok(ClarificationResult::Proceed { refined_goal }) => refined_goal,
+                                Err(_) => msg_clone.clone(),
+                            };
+
+                            println!("🎯 Proceeding with goal: {}", refined_goal);
+                            let active_app = get_frontmost_app();
+
+                            // 1.5. Consult Local Knowledge Graph (0ms Cache Lookup)
+                            let domain_opt = {
+                                let mut kg = kg_operator.lock().await;
+                                kg.find_domain(&refined_goal)
+                            };
+
+                            let domain = match domain_opt {
+                                Some(d) => {
+                                    println!("⚡ [KG HIT: 0ms] Recalled stored domain \"{}\" for: \"{}\"", d.domain_name, refined_goal);
+                                    let recall_speech = format!("I know the platforms for {}. Moving on that now.", d.domain_name);
+                                    let _ = tx_op_resp.send(WsResponse {
+                                        msg_type: "action".into(),
+                                        t: None,
+                                        speech: Some(recall_speech.clone()),
+                                        action: Some(Action::Talk { speech: recall_speech }),
+                                        thought: None,
+                                        agent_mode: Some(AgentMode::Operator),
+                                        macro_state: Some(MacroState::Planning),
+                                        tool_name: None,
+                                    });
+                                    d
+                                }
+                                None => {
+                                    println!("🔍 [KG MISS] Novel goal. Autonomous Web Researcher initiated for: \"{}\"", refined_goal);
+                                    let research_speech = "Hold on, let me research platforms for that real quick...".to_string();
+                                    let _ = tx_op_resp.send(WsResponse {
+                                        msg_type: "action".into(),
+                                        t: None,
+                                        speech: Some(research_speech.clone()),
+                                        action: Some(Action::Talk { speech: research_speech }),
+                                        thought: None,
+                                        agent_mode: Some(AgentMode::Operator),
+                                        macro_state: Some(MacroState::Planning),
+                                        tool_name: None,
+                                    });
+
+                                    researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await
+                                }
+                            };
+
+                            // 2. Strategic Cognitive Planning: extract sequence or use domain milestones
+                            let sequence_steps = match brain_agent.extract_sequence_args(
+                                &refined_goal, 
+                                &history_str_agent, 
+                                &active_app, 
+                                &driver_clone.get_installed_app_names()
+                            ).await {
+                                Ok(val) => val.as_array().cloned().unwrap_or_default(),
+                                Err(_) => Vec::new(),
+                            };
+
+                            let steps: Vec<serde_json::Value> = if !sequence_steps.is_empty() {
+                                println!("⚡ Dynamic Cognitive Planner extracted {} sequence steps", sequence_steps.len());
+                                sequence_steps
+                            } else {
+                                let milestones = domain.to_milestones(None, &refined_goal);
+                                milestones.into_iter()
+                                    .map(|s| serde_json::to_value(s).unwrap_or_default())
+                                    .collect()
+                            };
+
+                            let mut execution_log = Vec::new();
+
+                            if !steps.is_empty() {
+                                println!("🗺️ Strategic Milestones executing: {} steps", steps.len());
+                                
+                                for (step_idx, step) in steps.iter().enumerate() {
+                                            let action_type = step.get("action_type").and_then(|v| v.as_str()).unwrap_or("");
+                                            let intent = step.get("intent").and_then(|v| v.as_str()).unwrap_or("");
+                                            let input_val = step.get("input").and_then(|v| v.as_str());
+
+                                            println!("  [Milestone {}/{}] {} (Intent: {}, Target: {:?})", step_idx + 1, steps.len(), action_type, intent, input_val);
+
+                                            let milestone_desc = format!("{}: {} {:?}", action_type, intent, input_val);
+                                            let mut milestone_outcome = String::new();
+
+                                            // 3. Algorithmic Execution: Deterministic algorithm uses UI map and app catalog
+                                            match action_type {
+                                                "InspectEnvironment" => {
+                                                    let count = driver_clone.installed_apps.len();
+                                                    milestone_outcome = format!("Discovered {} system applications; active environment: {}", count, active_app);
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                                                },
+                                                "GenerateAsset" => {
+                                                    let spec = input_val.unwrap_or(&refined_goal);
+                                                    match driver_clone.generate_3d_asset(spec) {
+                                                        Ok(res) => milestone_outcome = res,
+                                                        Err(e) => milestone_outcome = format!("Asset generation note: {}", e),
+                                                    }
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                                },
+                                                "OpenApp" => {
+                                                    let target_app = input_val.unwrap_or("browser");
+                                                    if target_app.eq_ignore_ascii_case("browser") || target_app.eq_ignore_ascii_case("chrome") {
+                                                        let mut b_guard = b_mu_op.lock().await;
+                                                        if let Err(e) = b_guard.ensure_launched().await {
+                                                            println!("⚠️ Browser launcher note: {}", e);
+                                                        }
+                                                        drop(b_guard);
+                                                    }
+                                                    match driver_clone.open_app(target_app) {
+                                                        Ok(opened) => {
+                                                            milestone_outcome = format!("Opened {}", opened);
+                                                        }
+                                                        Err(e) => {
+                                                            milestone_outcome = format!("Could not open {}: {}", target_app, e);
+                                                        }
+                                                    }
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                                                },
+                                                "Navigate" => {
+                                                    let target = input_val.unwrap_or(&refined_goal);
+                                                    let resolved_url = driver_clone.resolve_target_url(target);
+                                                    println!("🧭 Navigating directly to: {}", resolved_url);
+
+                                                    let mut navigated = false;
+                                                    let mut b_guard = b_mu_op.lock().await;
+                                                    if let Ok(_) = b_guard.ensure_launched().await {
+                                                        if let Some(page) = b_guard.page.as_ref() {
+                                                            if let Ok(_) = page.goto(&resolved_url).await {
+                                                                 let _ = page.wait_for_navigation().await;
+                                                                navigated = true;
+                                                            }
+                                                        }
+                                                    }
+                                                    drop(b_guard);
+
+                                                    if !navigated {
+                                                        driver_clone.open_url(&resolved_url);
+                                                    }
+                                                    milestone_outcome = format!("Navigated to {}", resolved_url);
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+                                                },
+                                                "Scroll" => {
+                                                    let direction = input_val.unwrap_or("down");
+                                                    let mut scrolled_browser = false;
+                                                    let b_guard = b_mu_op.lock().await;
+                                                    if let Some(page) = b_guard.page.as_ref() {
+                                                        let scroll_js = if direction.eq_ignore_ascii_case("up") { "window.scrollBy(0, -500)" } else { "window.scrollBy(0, 500)" };
+                                                        let _ = page.evaluate(scroll_js).await;
+                                                        scrolled_browser = true;
+                                                    }
+                                                    drop(b_guard);
+                                                    if !scrolled_browser {
+                                                        let _ = driver_clone.scroll(direction);
+                                                    }
+                                                    milestone_outcome = format!("Scrolled {} to reveal more surface content", direction);
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
+                                                },
+                                                "UI_Intent" => {
+                                                    // Human UI Closed Loop: Perceive -> Act -> If Offscreen, Scroll to Discover -> Re-perceive -> Complete
+                                                    let mut attempts = 0;
+                                                    loop {
+                                                        attempts += 1;
+                                                        let mut ui_list = Vec::new();
+                                                        let b_guard = b_mu_op.lock().await;
+                                                        if let Some(page) = b_guard.page.as_ref() {
+                                                            if let Ok(els) = crate::perception::perceive(page).await {
+                                                                ui_list = els;
+                                                            }
+                                                        }
+                                                        drop(b_guard);
+
+                                                        // Fallback to native OS accessibility tree if browser has no elements
+                                                        if ui_list.is_empty() {
+                                                            if let Ok(native_els) = crate::perception::perceive_native().await {
+                                                                ui_list = native_els;
+                                                            }
+                                                        }
+
+                                                        // Universal Algorithmic UI interaction
+                                                        match driver_clone.execute_ui_intent(intent, input_val, &ui_list) {
+                                                            Ok(detail) => {
+                                                                milestone_outcome = detail.clone();
+                                                                // Human Scroll-to-Discover: if element was offscreen and we scrolled down, re-perceive!
+                                                                if detail.contains("Scrolled down to discover") && attempts < 3 {
+                                                                    println!("  📜 [Scroll-to-Discover] Scrolled viewport. Re-perceiving in 400ms (Attempt {}/3)...", attempts);
+                                                                    tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
+                                                                    continue;
+                                                                }
+                                                                break;
+                                                            }
+                                                            Err(e) => {
+                                                                milestone_outcome = format!("UI intent note: {}", e);
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                                },
+                                                "Search" => {
+                                                    let query = input_val.unwrap_or(&refined_goal);
+                                                    driver_clone.search_web(query);
+                                                    milestone_outcome = format!("Searched web for {}", query);
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                                                },
+                                                _ => {
+                                                    println!("  ⚠️ Unknown action_type: {}", action_type);
+                                                    milestone_outcome = format!("Completed {}", action_type);
+                                                }
+                                            }
+
+                                            execution_log.push(milestone_outcome.clone());
+
+                                            // Stream-notify LLM at every step for live reactions, observations, or clarifying questions
+                                            if let Ok(reaction) = brain_agent.step_reaction(&refined_goal, &milestone_desc, &milestone_outcome).await {
+                                                match reaction {
+                                                    StepReaction::Speak { text } => {
+                                                        println!("🗣️ Step reaction: {}", text);
+                                                        let _ = tx_op_resp.send(WsResponse {
+                                                            msg_type: "action".into(),
+                                                            t: None,
+                                                            speech: Some(text.clone()),
+                                                            action: Some(Action::Talk { speech: text }),
+                                                            thought: None,
+                                                            agent_mode: Some(AgentMode::Operator),
+                                                            macro_state: Some(MacroState::ActOnSurface),
+                                                            tool_name: None,
+                                                        });
+                                                    }
+                                                    StepReaction::Ask { question } => {
+                                                        println!("❓ Step question asked by LLM: {}", question);
+                                                        let _ = tx_op_resp.send(WsResponse {
+                                                            msg_type: "action".into(),
+                                                            t: None,
+                                                            speech: Some(question.clone()),
+                                                            action: Some(Action::Ask { question: question.clone() }),
+                                                            thought: None,
+                                                            agent_mode: Some(AgentMode::Operator),
+                                                            macro_state: Some(MacroState::WaitingForUser),
+                                                            tool_name: Some(ToolName::Ask),
+                                                        });
+                                                        tokio::task::yield_now().await;
+                                                        let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
+                                                        {
+                                                            let mut ng = ask_notifier_agent.lock().await;
+                                                            *ng = Some(tx_ask);
+                                                        }
+                                                        if let Some(user_reply) = rx_ask.recv().await {
+                                                            println!("💬 User clarified: {}", user_reply);
+                                                            execution_log.push(format!("User clarified: {}", user_reply));
+                                                        }
+                                                    }
+                                                    StepReaction::Silent => {}
+                                                }
+                                            }
+                                }
+                            } else {
+                                    let resolved = driver_clone.resolve_target_url(&refined_goal);
+                                    driver_clone.open_url(&resolved);
+                                    execution_log.push(format!("Navigated to {}", resolved));
+                                }
+
+                            // 4. Algorithm notifies LLM of outcome for final conversational narration
+                            let summary_str = execution_log.join(". ");
+                            let final_speech = match brain_agent.evaluate_and_narrate(&refined_goal, &summary_str).await {
+                                Ok(narration) if !narration.is_empty() => narration,
+                                _ => {
+                                    if !execution_log.is_empty() {
+                                        format!("Done. {}.", execution_log[0])
+                                    } else {
+                                        "All done.".to_string()
+                                    }
+                                }
+                            };
+
+                            println!("🗣️ Momentum Final Response: {}", final_speech);
+                            let _ = tx_op_resp.send(WsResponse {
+                                msg_type: "action".into(),
+                                t: None,
+                                speech: Some(final_speech.clone()),
+                                action: Some(Action::Talk { speech: final_speech }),
+                                thought: None,
+                                agent_mode: Some(AgentMode::Operator),
+                                macro_state: Some(MacroState::Done),
+                                tool_name: None,
+                            });
                         });
                         *active_guard = Some(handle);
                     }

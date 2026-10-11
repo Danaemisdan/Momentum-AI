@@ -2,6 +2,55 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::time::{Instant, Duration};
 use tauri::{Manager, Emitter};
 
+pub fn start_notch_hover_listener(app_handle: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        let mut was_hovered = false;
+        loop {
+            std::thread::sleep(Duration::from_millis(40));
+            
+            #[cfg(target_os = "macos")]
+            let (x, y) = {
+                use core_graphics::event::CGEvent;
+                use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+                if let Ok(source) = CGEventSource::new(CGEventSourceStateID::CombinedSessionState) {
+                    if let Ok(event) = CGEvent::new(source) {
+                        let loc = event.location();
+                        (loc.x, loc.y)
+                    } else {
+                        (0.0, 1000.0)
+                    }
+                } else {
+                    (0.0, 1000.0)
+                }
+            };
+            #[cfg(not(target_os = "macos"))]
+            let (x, y) = (0.0, 1000.0);
+
+            if let Some(window) = app_handle.get_webview_window("main") {
+                if let Ok(Some(monitor)) = window.current_monitor() {
+                    let screen_w = monitor.size().width as f64 / monitor.scale_factor();
+                    let notch_center = screen_w / 2.0;
+                    let notch_left = notch_center - 160.0;
+                    let notch_right = notch_center + 160.0;
+
+                    let in_notch_zone = y <= 35.0 && x >= notch_left && x <= notch_right;
+                    let in_expanded_zone = y <= 160.0 && x >= (notch_left - 100.0) && x <= (notch_right + 100.0);
+
+                    let is_hovered = if was_hovered { in_expanded_zone } else { in_notch_zone };
+
+                    if is_hovered != was_hovered {
+                        was_hovered = is_hovered;
+                        let _ = window.emit("notch-hover", is_hovered);
+                        if is_hovered {
+                            let _ = window.set_focus();
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 pub fn start_knock_listener(app_handle: tauri::AppHandle) {
     std::thread::spawn(move || {
         let host = cpal::default_host();

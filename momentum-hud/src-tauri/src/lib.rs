@@ -102,9 +102,16 @@ fn launch_processes() -> AppProcesses {
     // ── 1. Momentum Rust Agent (port 44444) ───────────────────────────────
     let agent_dir = project_path("momentum-agent");
     #[cfg(target_os = "windows")]
-    let agent_bin = agent_dir.join("target").join("release").join("momentum-agent.exe");
+    let mut agent_bin = agent_dir.join("target").join("release").join("momentum-agent.exe");
     #[cfg(not(target_os = "windows"))]
-    let agent_bin = agent_dir.join("target").join("release").join("momentum-agent");
+    let mut agent_bin = agent_dir.join("target").join("release").join("momentum-agent");
+
+    if !agent_bin.exists() {
+        #[cfg(target_os = "windows")]
+        { agent_bin = agent_dir.join("target").join("debug").join("momentum-agent.exe"); }
+        #[cfg(not(target_os = "windows"))]
+        { agent_bin = agent_dir.join("target").join("debug").join("momentum-agent"); }
+    }
     println!("🚀 Launching Agent: {:?}", agent_bin);
     match Command::new(&agent_bin).current_dir(&agent_dir).spawn() {
         Ok(child) => { println!("✅ Agent pid {}", child.id()); procs.agent = Some(child); }
@@ -181,24 +188,18 @@ pub fn run() {
             use tauri::menu::{Menu, MenuItem};
 
             if let Some(window) = app.get_webview_window("main") {
-                // Start hidden!
-                let _ = window.hide();
+                let _ = window.show();
                 
                 if let Ok(Some(monitor)) = window.current_monitor() {
                     let screen_size = monitor.size();
                     let window_size = window.outer_size().unwrap_or_default();
-                    #[cfg(target_os = "macos")]
-                    {
-                        let x = (screen_size.width as i32 - window_size.width as i32) / 2;
-                        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y: 40 }));
-                    }
-                    #[cfg(target_os = "windows")]
-                    {
-                        let x = (screen_size.width as i32 - window_size.width as i32) / 2;
-                        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y: 0 }));
-                    }
+                    let x = (screen_size.width as i32 - window_size.width as i32) / 2;
+                    let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y: 0 }));
                 }
             }
+
+            // Start native global notch cursor tracker (0 clicks required to summon)
+            crate::sensor::start_notch_hover_listener(app.handle().clone());
 
             // Build Tray Icon
             let toggle_i = MenuItem::with_id(app, "toggle", "Show/Hide Momentum", true, None::<&str>)?;

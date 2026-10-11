@@ -87,4 +87,56 @@ impl SkillLoader {
             pk
         )
     }
+
+    pub fn get_human_ui_prompt() -> String {
+        let paths = [
+            Path::new("skills/core/human_ui_intelligence.yaml"),
+            Path::new("momentum-agent/skills/core/human_ui_intelligence.yaml"),
+            Path::new("../momentum-agent/skills/core/human_ui_intelligence.yaml"),
+        ];
+
+        for path in &paths {
+            if let Ok(content) = fs::read_to_string(path) {
+                return format!(
+                    "\n### 🧠 UNIVERSAL HUMAN UI INTELLIGENCE PRINCIPLES (HOW HUMANS USE UI):\n\
+                    - SURFACE ACQUISITION FIRST: If target app/page is not focused or open, acquire it first (launch or navigate). Never send clicks into the void.\n\
+                    - FOCUS BEFORE TYPING: Always click into an input, text area, or search field to place caret focus before typing.\n\
+                    - SEARCH-FIRST LAW: Never manually scan 1,000 items if a search bar, filter, or shortcut exists. Search directly for what you need.\n\
+                    - SCROLL-TO-DISCOVER: If target element, button, or result is not in current visible viewport, SCROLL DOWN (or up) to discover it! Never guess offscreen coordinates. After scrolling, observe newly visible elements.\n\
+                    - MODAL & POPUP DISMISSAL: Clear blocking dialogs, cookie consent banners, or overlays first (click 'Accept', 'X', 'Close', or press Esc).\n\
+                    - CLOSED-LOOP DELTA VERIFICATION (OODA): Look at what changed after every action. If a click/keystroke had no effect, do not repeat blindly; scroll, refocus, or adapt.\n\
+                    - SUBMIT ON ENTER: Press Return/Enter to submit searches and messages after typing.\n\
+                    - CONFIRM ACHIEVEMENT: Look for visual confirmation (e.g. 'Playing', 'Message sent', results list) before declaring success.\n\n\
+                    [Loaded from {}]\n\n{}\n",
+                    path.display(),
+                    content
+                );
+            }
+        }
+
+        "\n### 🧠 UNIVERSAL HUMAN UI INTELLIGENCE PRINCIPLES (HOW HUMANS USE UI):\n\
+        - SURFACE ACQUISITION FIRST: Acquire target app/browser surface first.\n\
+        - FOCUS BEFORE TYPING: Click input field before typing.\n\
+        - SEARCH-FIRST LAW: Use search bar/filter instead of scanning long lists.\n\
+        - SCROLL-TO-DISCOVER: Scroll viewport down/up to find offscreen targets; re-perceive after scrolling.\n\
+        - MODAL DISMISSAL: Clear popups/banners first.\n\
+        - CLOSED-LOOP VERIFICATION: Verify delta after every action.\n\
+        - SUBMIT ON ENTER: Press Return after search queries.\n".to_string()
+    }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_human_ui_prompt_contains_core_principles() {
+        let prompt = SkillLoader::get_human_ui_prompt();
+        assert!(prompt.contains("SURFACE ACQUISITION FIRST"));
+        assert!(prompt.contains("FOCUS BEFORE TYPING"));
+        assert!(prompt.contains("SEARCH-FIRST LAW"));
+        assert!(prompt.contains("SCROLL-TO-DISCOVER"));
+        assert!(prompt.contains("CLOSED-LOOP DELTA VERIFICATION"));
+    }
+}
+

@@ -22,6 +22,47 @@ impl MomentumBrowser {
         Self { browser: None, page: None }
     }
 
+    pub fn find_chrome_executable() -> Option<String> {
+        if let Ok(path) = env::var("MOMENTUM_CHROME_PATH") {
+            if Path::new(&path).exists() { return Some(path); }
+        }
+
+        let candidates = [
+            // macOS
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            // Windows
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            // Linux
+            "/usr/bin/google-chrome",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+        ];
+
+        for c in &candidates {
+            if Path::new(c).exists() {
+                return Some(c.to_string());
+            }
+        }
+
+        if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+            let win_chrome = format!(r"{}\Google\Chrome\Application\chrome.exe", local_app_data);
+            if Path::new(&win_chrome).exists() {
+                return Some(win_chrome);
+            }
+            let win_edge = format!(r"{}\Microsoft\Edge\Application\msedge.exe", local_app_data);
+            if Path::new(&win_edge).exists() {
+                return Some(win_edge);
+            }
+        }
+
+        None
+    }
+
     pub async fn ensure_launched(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let is_dead = if let Some(b) = &self.browser {
             b.version().await.is_err()
@@ -40,18 +81,24 @@ impl MomentumBrowser {
         }
 
         println!("🌐 Launching Stealth Chrome...");
-        let profile_path = "/Users/sanjeevn/.momentum/chrome-profile";
-        let chrome_bin = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+        let home_dir = dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| ".".into());
+        let profile_path = format!("{}/.momentum/chrome-profile", home_dir);
+        let chrome_bin = Self::find_chrome_executable()
+            .ok_or_else(|| "Google Chrome or compatible browser not found. Please install Chrome or set MOMENTUM_CHROME_PATH.".to_string())?;
         let headless = env::var("MOMENTUM_HEADLESS")
-            .map(|value| !matches!(value.trim().to_lowercase().as_str(), "0" | "false" | "no"))
-            .unwrap_or(true);
+            .map(|value| matches!(value.trim().to_lowercase().as_str(), "1" | "true" | "yes"))
+            .unwrap_or(false);
         let start_url = Self::default_search_url();
-        
-        if !Path::new(chrome_bin).exists() {
-            return Err("Google Chrome not found at /Applications/Google Chrome.app/".into());
-        }
 
-        std::fs::create_dir_all(profile_path).ok();
+        let user_agent = if cfg!(target_os = "windows") {
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        } else {
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        };
+
+        std::fs::create_dir_all(&profile_path).ok();
         // Clean up stale Chrome singleton locks from crashed previous sessions.
         // Without this, Chrome refuses to start if it didn't exit cleanly.
         for lock_file in &["SingletonLock", "SingletonSocket", "SingletonCookie"] {
@@ -64,8 +111,8 @@ impl MomentumBrowser {
 
         let (browser, mut handler) = Browser::launch(
             BrowserConfig::builder()
-                .chrome_executable(chrome_bin)
-                .user_data_dir(profile_path)
+                .chrome_executable(&chrome_bin)
+                .user_data_dir(&profile_path)
                 // ─── STEALTH CONFIG ─────────────────────────────────────────────────────
                 // Headful mode is the most human-like. Headless can be re-enabled with
                 // MOMENTUM_HEADLESS=1 for environments where a visible browser is impossible.
@@ -76,10 +123,9 @@ impl MomentumBrowser {
                 .arg("--disable-blink-features=AutomationControlled")
                 .arg("--exclude-switches=enable-automation")
                 .arg("--disable-infobars")
-                // Window size matching a real 1080p Mac screen
+                // Window size matching a real 1080p screen
                 .arg("--window-size=1920,1080")
-                // Real Mac Chrome user-agent (not Headless)
-                .arg("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+                .arg(format!("--user-agent={}", user_agent))
                 // GPU / rendering flags for stability on macOS
                 .arg("--disable-gpu-sandbox")
                 .arg("--no-first-run")

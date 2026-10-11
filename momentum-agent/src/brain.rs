@@ -1,8 +1,7 @@
 use llama_cpp_2::{
     llama_backend::LlamaBackend,
     context::params::LlamaContextParams,
-    model::{params::LlamaModelParams, LlamaModel, AddBos},
-    llama_batch::LlamaBatch,
+    model::{params::LlamaModelParams, LlamaModel},
     sampling::LlamaSampler,
 };
 use crate::types::{
@@ -12,10 +11,55 @@ use crate::types::{
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum StepReaction {
+    Speak { text: String },
+    Ask { question: String },
+    Silent,
+}
+
 // LlamaContext is not Send by default, but we can safely send it between threads 
 // as long as we don't use it concurrently. Axum/Tokio require Send for state.
-pub struct SendContext(llama_cpp_2::context::LlamaContext<'static>);
+pub struct SendContext(pub Option<llama_cpp_2::context::LlamaContext<'static>>);
 unsafe impl Send for SendContext {}
+
+impl Drop for SendContext {
+    fn drop(&mut self) {
+        let _silence = StderrSilence::new();
+        drop(self.0.take());
+    }
+}
+
+pub struct StderrSilence {
+    orig_stderr: i32,
+}
+
+impl StderrSilence {
+    pub fn new() -> Option<Self> {
+        unsafe {
+            let orig = libc::dup(libc::STDERR_FILENO);
+            if orig < 0 { return None; }
+            let dev_null = libc::open(b"/dev/null\0".as_ptr() as *const libc::c_char, libc::O_WRONLY);
+            if dev_null < 0 {
+                libc::close(orig);
+                return None;
+            }
+            libc::dup2(dev_null, libc::STDERR_FILENO);
+            libc::close(dev_null);
+            Some(Self { orig_stderr: orig })
+        }
+    }
+}
+
+impl Drop for StderrSilence {
+    fn drop(&mut self) {
+        unsafe {
+            libc::dup2(self.orig_stderr, libc::STDERR_FILENO);
+            libc::close(self.orig_stderr);
+        }
+    }
+}
 
 pub struct MomentumBrain {
     model: &'static LlamaModel,
@@ -49,17 +93,47 @@ impl MomentumBrain {
             return Some(AgentMode::Chat);
         }
 
+        // Fast-path pure conversational intents
+        let conversational_phrases = [
+            "hi", "hello", "hey", "sup", "yo", "good morning", "good evening",
+            "how are you", "who are you", "what is your name", "what's your name",
+            "can you hear me", "are you there", "tell me a joke", "make me laugh",
+            "thank you", "thanks", "bye", "goodbye"
+        ];
+        if conversational_phrases.iter().any(|&p| normalized == p || normalized == format!("{} momentum", p)) {
+            return Some(AgentMode::Chat);
+        }
+
         let operator_phrases = [
-            "search", "google", "look up", "find me", "buy", "purchase",
-            "open a tab", "navigate to", "download", "play", "open", "run", "click", "start"
+            // Creative & Generative & 3D
+            "make me a", "make a", "create a", "build a", "build me", "generate",
+            "model", "3d model", "3d", "mesh", "render", "design", "game asset",
+            "script", "code", "automate", "draft", "write a program",
+            // Search & Discovery & Outreach
+            "search", "google", "look up", "find me", "find clients", "clients",
+            "leads", "prospects", "outreach", "scrape", "extract", "gather",
+            "buy", "purchase", "download",
+            // OS & App Control
+            "open", "launch", "run", "start", "close", "quit", "pause", "resume", "stop",
+            "mute", "unmute", "click", "type", "press", "scroll", "copy", "paste",
+            // Media
+            "play", "music", "song", "spotify", "youtube", "listen",
+            "genre", "rock", "pop", "jazz", "hip hop", "metal", "rap", "lofi",
+            // Platforms & Navigation
+            "go to", "switch to", "visit", "bring up", "pull up", "show me", "take me to",
+            "linkedin", "twitter", "x.com", "github", "reddit", "whatsapp", "telegram",
+            "slack", "discord", "chrome", "safari", "browser", "sketchfab", "figma",
+            // Utilities
+            "calculator", "calc", "calculate", "solve", "math",
+            "terminal", "finder", "notes", "calendar", "mail", "email", "settings"
         ];
 
         if operator_phrases.iter().any(|phrase| normalized.contains(phrase)) {
             return Some(AgentMode::Operator);
         }
 
-        // Default to Chat for fast conversational latency (skips slow LLM classification)
-        Some(AgentMode::Chat)
+        // Return None so the cognitive classifier can make the nuanced decision
+        None
     }
 
     pub fn tool_specs() -> Vec<ToolSpec> {
@@ -221,6 +295,7 @@ impl MomentumBrain {
     }
 
     pub fn init(model_path: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let silence = StderrSilence::new();
         let backend = Box::leak(Box::new(LlamaBackend::init()?));
         let model_params = LlamaModelParams::default();
         let model = Box::leak(Box::new(LlamaModel::load_from_file(backend, model_path, &model_params)?));
@@ -230,10 +305,11 @@ impl MomentumBrain {
             .with_n_batch(4096); 
         
         let ctx = model.new_context(backend, ctx_params)?;
+        drop(silence);
         
         Ok(Self {
             model,
-            context: Arc::new(Mutex::new(SendContext(ctx))),
+            context: Arc::new(Mutex::new(SendContext(Some(ctx)))),
             prefilled_text: Arc::new(Mutex::new(String::new())),
             prefilled_tokens: Arc::new(Mutex::new(0)),
         })
@@ -245,7 +321,7 @@ impl MomentumBrain {
         let mut p_text = self.prefilled_text.lock().await;
         let mut p_tokens = self.prefilled_tokens.lock().await;
         let mut ctx_lock = self.context.lock().await;
-        let ctx = &mut ctx_lock.0;
+        let ctx = ctx_lock.0.as_mut().unwrap();
 
         let delta = if full_prompt.starts_with(&*p_text) && !p_text.is_empty() {
             &full_prompt[p_text.len()..]
@@ -286,7 +362,7 @@ impl MomentumBrain {
         let mut p_text = self.prefilled_text.lock().await;
         let mut p_tokens = self.prefilled_tokens.lock().await;
         let mut ctx_lock = self.context.lock().await;
-        let ctx = &mut ctx_lock.0;
+        let ctx = ctx_lock.0.as_mut().unwrap();
         
         let delta = if prompt.starts_with(&*p_text) && !p_text.is_empty() {
             &prompt[p_text.len()..]
@@ -325,6 +401,7 @@ impl MomentumBrain {
             batch.add(*token, (n_cur + i) as i32, &[0], i == tokens.len() - 1)?;
         }
         
+        let _silence = StderrSilence::new();
         if !tokens.is_empty() {
             ctx.decode(&mut batch).map_err(|e| format!("Initial decode failed: {}", e))?;
             n_cur += tokens.len();
@@ -383,18 +460,19 @@ impl MomentumBrain {
             "<|im_start|>system
 
 Classify the user's message into one of two categories:
-1. OPERATOR: The user explicitly wants to search the public internet or browse websites (e.g., search google, look up recipes, find hotels).
-2. CHAT: The user is having a casual conversation, OR they want you to interact with a NATIVE DESKTOP APP or the screen. Opening apps (like WhatsApp, Chrome, VS Code) and clicking on screen elements belongs to CHAT.
+1. OPERATOR: The user wants to perform a concrete action, create an asset, open an app, search, navigate, calculate, automate, find clients, model 3D assets, or interact with their operating system.
+2. CHAT: The user is having a casual conversation, asking about your identity, or exchanging pleasantries (e.g., 'hi', 'how are you', 'who are you', 'tell me a joke', 'can you hear me').
 
 CRITICAL EXAMPLES:
-- 'open whatsapp' -> CHAT
-- 'can you open up chrome' -> CHAT
-- 'click on the submit button' -> CHAT
-- 'type hello into the search bar' -> CHAT
+- 'make me a 3d model of a gun for a game' -> OPERATOR
+- 'find me clients on linkedin' -> OPERATOR
+- 'open whatsapp' -> OPERATOR
+- 'open up chrome' -> OPERATOR
+- 'calculate 25 * 4' -> OPERATOR
+- 'play some music' -> OPERATOR
 - 'hi' -> CHAT
-- 'find me the best iPhone on the web' -> OPERATOR
-- 'search for AI jobs' -> OPERATOR
-- 'go to youtube' -> OPERATOR
+- 'can you hear me' -> CHAT
+- 'tell me a joke' -> CHAT
 
 Output ONLY the word 'OPERATOR' or 'CHAT'. Nothing else.<|im_end|>
 <|im_start|>user
@@ -418,18 +496,17 @@ Output ONLY the word 'OPERATOR' or 'CHAT'. Nothing else.<|im_end|>
     /// Returns ClarificationResult::Proceed with refined goal, or ClarificationResult::Ask with one question.
     pub async fn clarify_intent(&self, goal: &str, history: &str) -> Result<ClarificationResult, Box<dyn std::error::Error + Send + Sync>> {
         let proceed_example = r#"{"action":"proceed","refined_goal":"<complete goal>"}"#;
-        let ask_example = r#"{"action":"ask","question":"Okay, great, what kind of job? You didn't give me any details."}"#;
+        let ask_example = r#"{"action":"ask","question":"Dude, that makes zero sense bro! Say something that actually makes sense so I can do it for you."}"#;
         let prompt = format!(
             "<|im_start|>system
 \n\
-You are Momentum's intent clarifier — a sharp, brutally honest, sarcastic AI agent created by Danny.\n\
-Decide if the user's task is specific enough to begin, or if you need one clarifying question first.\n\
-If you ask a question, ask it directly and casually, with a hint of sarcasm or impatience. No robotic filler words.\n\
+You are Momentum — Danny's sharp, witty, and charismatic AI companion.\n\
+Decide if the user's task makes sense and is actionable, or if you need to ask a question first.\n\
 \n\
 Rules:\n\
-- If the goal mentions a specific website, search query, or target -> PROCEED.\n\
-- If the goal is vague (find me clients, search jobs, get leads) -> ASK one short direct question.\n\
-- Never ask more than one question. Never ask what they already said.\n\
+- If the task is actionable (e.g. 'find me clients on linkedin', 'make me a 3d model of a sword', 'play music', 'calculate math') -> PROCEED immediately with a refined_goal.\n\
+- If what the user said is completely nonsensical, stupid, or impossible to decipher: don't be a boring robot! Call it out with funny, playful personality and ask them nicely to clarify what they actually mean (e.g. 'Dude, that makes zero sense bro! What are you actually trying to do?', 'Love the enthusiasm, but give me something that actually makes sense!').\n\
+- Keep questions punchy, natural, and entertaining. No robotic boilerplate.\n\
 \n\
 Output ONLY a JSON object starting with {{.\n\
 For proceeding: {proceed}\n\
@@ -448,20 +525,30 @@ USER GOAL: {goal}<|im_end|>
         );
 
         let raw = self.generate(&prompt, None).await?;
-        let with_brace = format!("{{{}", raw.trim());
-        let candidates = [with_brace.as_str(), raw.trim()];
-        
-        for candidate in &candidates {
-            let clean = candidate.trim()
-                .trim_start_matches("```json")
-                .trim_start_matches("```")
-                .trim_end_matches("```")
-                .trim();
+        let clean = raw.trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+
+        // 1. Try finding complete JSON {"action": ...}
+        if let Some(start) = clean.find('{') {
             if let Some(end) = clean.rfind('}') {
-                let sliced = &clean[..=end];
-                if let Ok(result) = serde_json::from_str::<ClarificationResult>(sliced) {
-                    return Ok(result);
+                if end > start {
+                    let slice = &clean[start..=end];
+                    if let Ok(result) = serde_json::from_str::<ClarificationResult>(slice) {
+                        return Ok(result);
+                    }
                 }
+            }
+        }
+
+        // 2. Try prepending "{" if model output omitted the opening brace
+        let prepended = format!("{{{}", clean.trim_start_matches('.').trim_start_matches('{'));
+        if let Some(end) = prepended.rfind('}') {
+            let slice = &prepended[..=end];
+            if let Ok(result) = serde_json::from_str::<ClarificationResult>(slice) {
+                return Ok(result);
             }
         }
         
@@ -741,45 +828,103 @@ HISTORY: {history}<|im_end|>
         &self, 
         message: &str, 
         history: &str,
+        focused_app: &str,
         needs_vision: bool,
         tx_agent: broadcast::Sender<WsResponse>
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        let speech_prompt = self.build_chat_prompt(message, history, needs_vision).await;
+        let speech_prompt = self.build_chat_prompt(message, history, focused_app, needs_vision).await;
         
-        // Use generated speech_prompt...
         let speech = self.generate(&speech_prompt, Some(tx_agent)).await?;
-        Ok(speech.trim().to_string())
+        let clean = speech.lines()
+            .filter(|l| !l.trim().starts_with("[System Note:") && !l.trim().starts_with("System Note:"))
+            .collect::<Vec<_>>()
+            .join(" ")
+            .trim()
+            .to_string();
+        Ok(clean)
     }
 
-        pub async fn extract_sequence_args(&self, user_command: &str, _available_states: &[String]) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn extract_sequence_args(
+        &self, 
+        user_command: &str, 
+        history: &str,
+        focused_app: &str,
+        available_apps: &[String]
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        let app_sample = if available_apps.is_empty() {
+            "browser, calculator, terminal, notes".to_string()
+        } else {
+            available_apps.iter().take(15).cloned().collect::<Vec<_>>().join(", ")
+        };
+
         let prompt = format!(
             "<|im_start|>system
-You are a Semantic Planner. Convert the user's goal into a sequence of abstract steps.
+You are Momentum's Strategic Cognitive Planner. Break the user's high-level goal into clear, target milestones for the deterministic execution algorithm.
+Currently active OS application: {}.
+Known Installed Apps on this system: [{}].
 Respond ONLY with a JSON array.
 
-action_type can be 'OpenApp' or 'UI_Intent'.
-If UI_Intent, 'intent' must be one of: Search, Navigate, Confirm, Cancel, Communicate, MediaControl, Settings, Account.
+Milestone action_types:
+- 'InspectEnvironment': 'input' is the context to check (e.g. '3D software', 'local files', 'browser state').
+- 'OpenApp': 'input' is the target app name ('browser', 'calculator', 'terminal', 'whatsapp', 'music', 'spotify', etc.).
+- 'Navigate': 'input' is the target URL or platform ('https://www.linkedin.com', 'https://www.youtube.com', 'https://github.com', etc.).
+- 'UI_Intent': 'intent' can be 'Search', 'Filter', 'Click', 'Type', 'Scroll', 'Extract', 'Calculate'. 'input' is the target value.
+- 'Scroll': 'input' can be 'down' or 'up'.
+- 'GenerateAsset': 'input' is the asset specification (e.g. 'low-poly 3D gun mesh', 'python script').
 
-Example 1: \"Play Tum Ho\"
+Example 1: \"Calculate 20 X 10\"
 Output:
 [
-  {{\"action_type\": \"OpenApp\", \"input\": \"spotify\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"Tum Ho\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"MediaControl\"}}
+  {{\"action_type\": \"OpenApp\", \"input\": \"calculator\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Calculate\", \"input\": \"20 * 10\"}}
 ]
 
-Example 2: \"Search Google for dogs\"
+Example 2: \"Make me a 3D model of a gun for a game\"
 Output:
 [
-  {{\"action_type\": \"OpenApp\", \"input\": \"chrome\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"dogs\"}}
+  {{\"action_type\": \"InspectEnvironment\", \"input\": \"3D modeling tools and game engine\"}},
+  {{\"action_type\": \"GenerateAsset\", \"input\": \"game-ready low-poly firearm 3D model\"}},
+  {{\"action_type\": \"OpenApp\", \"input\": \"blender\"}}
+]
+
+Example 3: \"Find me clients on LinkedIn\"
+Output:
+[
+  {{\"action_type\": \"OpenApp\", \"input\": \"browser\"}},
+  {{\"action_type\": \"Navigate\", \"input\": \"https://www.linkedin.com\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"clients\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Filter\", \"input\": \"People\"}}
+]
+
+Example 4: \"Play some rock music\"
+Output:
+[
+  {{\"action_type\": \"OpenApp\", \"input\": \"music\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"rock music\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Click\", \"input\": \"Play\"}}
+]
+
+Example 5: \"Message John on WhatsApp saying hello\"
+Output:
+[
+  {{\"action_type\": \"OpenApp\", \"input\": \"whatsapp\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"John\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Click\", \"input\": \"John\"}},
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Type\", \"input\": \"hello\"}}
+]
+
+Example 6: \"Scroll down to see more\"
+Output:
+[
+  {{\"action_type\": \"Scroll\", \"input\": \"down\"}}
 ]
 <|im_end|>
-<|im_start|>user
-{user_command}
+{}<|im_start|>user
+{}
 <|im_end|>
 <|im_start|>assistant
-"
+",
+            focused_app, app_sample, history, user_command
         );
         let completion = self.generate(&prompt, None).await?;
         let speech = completion.split("<|im_end|>").next().unwrap_or(&completion).trim();
@@ -791,15 +936,80 @@ Output:
         Ok(parsed)
     }
 
-    pub async fn build_chat_prompt(&self, message: &str, history: &str, needs_vision: bool) -> String {
+    pub async fn evaluate_and_narrate(&self, goal: &str, outcome_summary: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        let prompt = format!(
+            "<|im_start|>system\n\
+You are Momentum, Danny's lightning-fast autonomous OS companion. \
+The algorithm just executed the user's requested task on the system. \
+Tell the user what was done in 1-2 punchy, direct, conversational sentences. No robotic fluff.\n\
+<|im_end|>\n\
+<|im_start|>user\n\
+Goal: {}\n\
+Execution Result: {}\n<|im_end|>\n\
+<|im_start|>assistant\n",
+            goal, outcome_summary
+        );
+        let completion = self.generate(&prompt, None).await?;
+        let clean = completion.split("<|im_end|>").next().unwrap_or(&completion).trim();
+        Ok(clean.to_string())
+    }
+
+    pub async fn step_reaction(&self, goal: &str, milestone: &str, outcome: &str) -> Result<StepReaction, Box<dyn std::error::Error + Send + Sync>> {
+        let prompt = format!(
+            "<|im_start|>system\n\
+You are Momentum — Danny's vocal, witty, and charismatic OS companion. \
+The algorithm just completed a milestone step on the system. \
+Decide if you should:
+1. Speak a live reaction, observation, or funny comment (1 punchy, conversational sentence, e.g. 'Whoa, we got a sea of clients here, filtering the real ones now.', 'Alright, asset geometry generated and sitting in your downloads.', 'Chrome is locked and loaded.').
+2. Ask a question with personality if you hit multiple choices or forks (e.g. 'Got two directions here bro: do you want low-poly mobile style or high-poly realistic?').
+3. Stay silent if it was just a routine intermediate step.
+
+Output ONLY valid JSON:
+{{\"type\": \"speak\", \"text\": \"...\"}} OR
+{{\"type\": \"ask\", \"question\": \"...\"}} OR
+{{\"type\": \"silent\"}}\n\
+<|im_end|>\n\
+<|im_start|>user\n\
+Goal: {}\n\
+Milestone: {}\n\
+Outcome: {}\n<|im_end|>\n\
+<|im_start|>assistant\n\
+{{",
+            goal, milestone, outcome
+        );
+
+        let raw = self.generate(&prompt, None).await?;
+        let with_brace = format!("{{{}", raw.trim());
+        let clean = with_brace.trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+
+        if let Some(end) = clean.rfind('}') {
+            let sliced = &clean[..=end];
+            if let Ok(reaction) = serde_json::from_str::<StepReaction>(sliced) {
+                return Ok(reaction);
+            }
+        }
+
+        Ok(StepReaction::Silent)
+    }
+
+    pub async fn build_chat_prompt(&self, message: &str, history: &str, focused_app: &str, _needs_vision: bool) -> String {
         format!(
-            "<|im_start|>system
-You are Momentum, a sharp and ultra-concise assistant. You always answer directly. You never apologize.
-<|im_end|>
-{}<|im_start|>user
-{}<|im_end|>
-<|im_start|>assistant
-", history, message)
+            "<|im_start|>system\n\
+You are Momentum, an ultra-fast, autonomous OS companion created by Danny. \
+Currently focused application: {}. \
+You are decisive, razor-sharp, and proactive. You never apologize and you never repeat yourself. \
+CRITICAL RULE: DO NOT ask endless clarifying questions. When the user asks for something, ACT IMMEDIATELY. \
+You have full control of their operating system. If they ask to play music, open apps, search, or check something, do it directly without stalling. \
+If you need to open an app, you can include [ACTION: OPEN_APP(app_name)]. \
+Keep your spoken responses under 2 sentences and completely natural. Never repeat system notes or say 'System Note'.\n\
+<|im_end|>\n\
+{}<|im_start|>user\n\
+{}<|im_end|>\n\
+<|im_start|>assistant\n", focused_app, history, message)
     }
 
     pub async fn decide_agent(
@@ -874,6 +1084,9 @@ You are Momentum, a sharp and ultra-concise assistant. You always answer directl
         let role_skill = crate::skills::SkillLoader::load_role_skill(goal);
         
         let mut extra_prompt = String::new();
+        // Core Human UI Intelligence baseline
+        extra_prompt.push_str(&crate::skills::SkillLoader::get_human_ui_prompt());
+
         if let Some(ps) = &plat_skill {
             extra_prompt.push_str(&crate::skills::SkillLoader::get_platform_prompt(ps));
         }
@@ -1024,6 +1237,7 @@ mod tests {
             is_input_like: true,
             frame_id: None,
             semantic_intent: Some("Search".into()),
+            spatial_zone: Some("Main Content".into()),
         }]
     }
 

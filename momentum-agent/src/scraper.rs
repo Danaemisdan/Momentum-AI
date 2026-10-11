@@ -52,6 +52,7 @@ fn load_cookies() -> CookieStore {
     CookieStore::default()
 }
 
+#[allow(dead_code)]
 fn save_cookies(new_cookies: &[StoredCookie], existing: &CookieStore) {
     let p = cookie_path();
     if let Some(parent) = p.parent() {
@@ -74,6 +75,7 @@ fn save_cookies(new_cookies: &[StoredCookie], existing: &CookieStore) {
     }
 }
 
+#[allow(dead_code)]
 fn parse_set_cookie_header(headers: &reqwest::header::HeaderMap) -> Vec<StoredCookie> {
     let mut out = Vec::new();
     for val in headers.get_all("set-cookie") {
@@ -99,15 +101,10 @@ fn parse_set_cookie_header(headers: &reqwest::header::HeaderMap) -> Vec<StoredCo
 }
 
 fn build_ddg_cookie_header(store: &CookieStore) -> String {
-    // Core DDG HTML preference cookies — make us look like a returning human user
+    // Core DDG HTML preference cookies
     let mut parts = vec![
-        "p=1".to_string(),        // preferences accepted
         "kl=wt-wt".to_string(),   // worldwide region
-        "s=0".to_string(),        // session signal
-        "o=json".to_string(),     // output hint
         "kp=-2".to_string(),      // safe search off
-        "kz=-1".to_string(),      // instant answers on
-        "kf=-1".to_string(),      // site links on
     ];
     for c in &store.cookies {
         if c.domain.contains("duckduckgo") {
@@ -151,12 +148,109 @@ fn strip_tags(s: &str) -> String {
        .replace("&#39;", "'")
 }
 
-/// Find text between two string markers, returning an owned String
-fn between(haystack: &str, start: &str, end: &str) -> Option<String> {
-    let i = haystack.find(start)? + start.len();
-    let rest = &haystack[i..];
-    let j = rest.find(end)?;
-    Some(rest[..j].to_string())
+// ─── DuckDuckGo Instant Knowledge API ──────────────────────────────────────
+
+#[derive(Debug, Deserialize, Default)]
+struct DdgApiResponse {
+    #[serde(default, rename = "Heading")]
+    heading: String,
+    #[serde(default, rename = "AbstractText")]
+    abstract_text: String,
+    #[serde(default, rename = "AbstractURL")]
+    abstract_url: String,
+    #[serde(default, rename = "RelatedTopics")]
+    related_topics: Vec<DdgApiTopic>,
+    #[serde(default, rename = "Results")]
+    results: Vec<DdgApiResult>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct DdgApiTopic {
+    #[serde(default, rename = "Text")]
+    text: String,
+    #[serde(default, rename = "FirstURL")]
+    first_url: String,
+    #[serde(default, rename = "Topics")]
+    topics: Vec<DdgApiTopic>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct DdgApiResult {
+    #[serde(default, rename = "Text")]
+    text: String,
+    #[serde(default, rename = "FirstURL")]
+    first_url: String,
+}
+
+pub async fn query_ddg_knowledge_api(query: &str, max: usize) -> Vec<SearchResult> {
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(6))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+
+    let url = format!("https://api.duckduckgo.com/?q={}&format=json&no_html=1&skip_disambig=0", urlenc(query));
+    let resp = match client.get(&url).send().await {
+        Ok(r) => r,
+        Err(_) => return vec![],
+    };
+
+    let data: DdgApiResponse = match resp.json().await {
+        Ok(d) => d,
+        Err(_) => return vec![],
+    };
+
+    let mut results = Vec::new();
+
+    // Direct Abstract Definition
+    if !data.heading.is_empty() && !data.abstract_text.is_empty() {
+        results.push(SearchResult {
+            title: data.heading.clone(),
+            url: if data.abstract_url.is_empty() { format!("https://duckduckgo.com/?q={}", urlenc(&data.heading)) } else { data.abstract_url },
+            snippet: data.abstract_text,
+        });
+    }
+
+    // Direct Results
+    for r in data.results {
+        if results.len() >= max { break; }
+        if !r.text.is_empty() {
+            let title = r.text.split(" - ").next().unwrap_or(&r.text).trim().to_string();
+            results.push(SearchResult {
+                title,
+                url: r.first_url,
+                snippet: r.text,
+            });
+        }
+    }
+
+    // Related Topics
+    fn extract_topics(topics: Vec<DdgApiTopic>, out: &mut Vec<SearchResult>, max: usize) {
+        for t in topics {
+            if out.len() >= max { break; }
+            if !t.text.is_empty() && !t.first_url.is_empty() {
+                let title = t.text.split(" - ").next().unwrap_or(&t.text).trim().to_string();
+                let snippet = if let Some(pos) = t.text.find(" - ") {
+                    t.text[pos + 3..].trim().to_string()
+                } else {
+                    t.text.clone()
+                };
+                out.push(SearchResult {
+                    title,
+                    url: t.first_url,
+                    snippet,
+                });
+            }
+            if !t.topics.is_empty() {
+                extract_topics(t.topics, out, max);
+            }
+        }
+    }
+    extract_topics(data.related_topics, &mut results, max);
+
+    results
 }
 
 // ─── DuckDuckGo HTML scraper ───────────────────────────────────────────────
@@ -164,6 +258,12 @@ fn between(haystack: &str, start: &str, end: &str) -> Option<String> {
 /// Fetch top `max` results from DuckDuckGo HTML endpoint.
 /// Uses persistent cookies so DDG sees a returning user, not a new bot.
 pub async fn search_duckduckgo(query: &str, max: usize) -> Vec<SearchResult> {
+    // 1. First try DuckDuckGo Instant Knowledge API (pure structured JSON, zero blog spam)
+    let knowledge_hits = query_ddg_knowledge_api(query, max).await;
+    if !knowledge_hits.is_empty() {
+        return knowledge_hits;
+    }
+
     let store = load_cookies();
     let cookie_str = build_ddg_cookie_header(&store);
     let ua = pick_user_agent();
@@ -178,94 +278,419 @@ pub async fn search_duckduckgo(query: &str, max: usize) -> Vec<SearchResult> {
         Err(e) => { println!("⚠️ Scraper: client build failed: {}", e); return vec![]; }
     };
 
-    // DDG HTML form POST — same as pressing Enter on the homepage
-    // We send the body manually as application/x-www-form-urlencoded
-    let body = format!("q={}&b=&kl=wt-wt", urlenc(query));
+    // 2. Try DuckDuckGo HTML GET directly
+    let ddg_get_url = format!("https://html.duckduckgo.com/html/?q={}", urlenc(query));
+    if let Ok(resp) = client.get(&ddg_get_url)
+        .header("Cookie", &cookie_str)
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .header("Referer", "https://html.duckduckgo.com/")
+        .header("Sec-Fetch-Dest", "document")
+        .header("Sec-Fetch-Mode", "navigate")
+        .header("Sec-Fetch-Site", "same-origin")
+        .header("Sec-Fetch-User", "?1")
+        .header("Upgrade-Insecure-Requests", "1")
+        .send()
+        .await
+    {
+        if let Ok(html) = resp.text().await {
+            let res = parse_ddg_results(&html, max);
+            if !res.is_empty() {
+                return res;
+            }
+        }
+    }
 
-    let resp = match client
-        .post("https://lite.duckduckgo.com/lite/")
-        .header("Cookie", cookie_str)
+    // 2. Try DuckDuckGo Lite POST
+    let body = format!("q={}&b=&kl=wt-wt", urlenc(query));
+    if let Ok(resp) = client.post("https://lite.duckduckgo.com/lite/")
+        .header("Cookie", &cookie_str)
         .header("Content-Type", "application/x-www-form-urlencoded")
         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-        .header("Accept-Language", "en-US,en;q=0.9")
         .header("Origin", "https://duckduckgo.com")
         .header("Referer", "https://duckduckgo.com/")
-        .header("DNT", "1")
         .body(body)
         .send()
         .await
     {
-        Ok(r) => r,
-        Err(e) => { println!("⚠️ Scraper: DDG request failed: {}", e); return vec![]; }
+        if let Ok(html) = resp.text().await {
+            let res = parse_ddg_results(&html, max);
+            if !res.is_empty() {
+                return res;
+            }
+        }
+    }
+
+    // 3. Try Yahoo Search (extremely reliable, zero bot traps)
+    println!("ℹ️ Scraper: Trying Yahoo Search engine...");
+    let yahoo_res = search_yahoo(query, max).await;
+    if !yahoo_res.is_empty() {
+        return yahoo_res;
+    }
+
+    // 4. Try Bing Search as final fallback
+    println!("ℹ️ Scraper: Trying Bing Search engine...");
+    search_bing(query, max).await
+}
+
+/// Fetch top `max` results from Yahoo Search
+pub async fn search_yahoo(query: &str, max: usize) -> Vec<SearchResult> {
+    let ua = pick_user_agent();
+    let client = match reqwest::Client::builder()
+        .user_agent(ua)
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return vec![],
     };
 
-    // Persist any new cookies DDG set
-    let new_cookies = parse_set_cookie_header(resp.headers());
-    if !new_cookies.is_empty() {
-        save_cookies(&new_cookies, &store);
-    }
+    let url = format!("https://search.yahoo.com/search?p={}&ei=UTF-8", urlenc(query));
+    let resp = match client.get(&url)
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return vec![],
+    };
 
     let html = match resp.text().await {
         Ok(h) => h,
-        Err(e) => { println!("⚠️ Scraper: DDG body read failed: {}", e); return vec![]; }
+        Err(_) => return vec![],
     };
 
-    parse_ddg_results(&html, max)
+    parse_yahoo_results(&html, max)
 }
 
-fn parse_ddg_results(html: &str, max: usize) -> Vec<SearchResult> {
+fn parse_yahoo_results(html: &str, max: usize) -> Vec<SearchResult> {
     let mut results = Vec::new();
-    
-    // In lite.duckduckgo.com, results are table rows
-    // The title/url row has class="result-snippet" inside a <td>?
-    // Actually, in lite DDG, the anchor tag for the title has class='result-snippet'
-    // Let's split by "class='result-snippet'"
-    
-    // Safely deal with different quote types
-    let html_normalized = html.replace("class=\"result-snippet\"", "class='result-snippet'");
-    let blocks: Vec<&str> = html_normalized.split("class='result-snippet'").collect();
+    let split_token = if html.contains("class=\"algo") {
+        "class=\"algo"
+    } else {
+        "class=\"compTitle"
+    };
+
+    let blocks: Vec<&str> = html.split(split_token).collect();
 
     for block in blocks.iter().skip(1) {
         if results.len() >= max { break; }
 
-        // It starts right after "class='result-snippet'>"
-        let title_and_url_raw = if let Some(close_tag) = block.find("</a>") {
-            &block[..close_tag]
+        let (url, title) = if let Some(h3_idx) = block.find("<h3") {
+            let h3_part = &block[h3_idx..];
+            let h3_end = h3_part.find("</h3>").unwrap_or(h3_part.len());
+            let h3_content = &h3_part[..h3_end];
+
+            let u = if let Some(href_idx) = h3_content.find("href=\"") {
+                let rest = &h3_content[href_idx + 6..];
+                let end = rest.find('"').unwrap_or(rest.len());
+                let raw = &rest[..end];
+                if let Some(ru_idx) = raw.find("/RU=") {
+                    let after_ru = &raw[ru_idx + 4..];
+                    let ru_end = after_ru.find('/').unwrap_or(after_ru.len());
+                    urldecode(&after_ru[..ru_end])
+                } else {
+                    raw.to_string()
+                }
+            } else {
+                continue;
+            };
+
+            let t = if let Some(open) = h3_content.find('>') {
+                strip_tags(&h3_content[open + 1..]).trim().to_string()
+            } else {
+                String::new()
+            };
+
+            (u, t)
         } else {
             continue;
         };
 
-        let title = strip_tags(title_and_url_raw).trim().to_string();
-        
-        // Find URL in href="... " before class
-        // wait, the block is what comes AFTER class='result-snippet'
-        // Let's fallback to just a best-effort text extraction if URL is hard to grab
-        // For lite DDG, the snippet text is usually in the next table row `class='result-snippet'` (wait, snippet has class 'result-snippet' too)
-        
-        let snippet_raw = between(block, "class=\"result-snippet\">", "</td>").unwrap_or_default();
-        let _snippet = strip_tags(&snippet_raw).trim().to_string();
+        let snippet = if let Some(p_idx) = block.find("<p class=\"lh-16").or_else(|| block.find("<div class=\"compText")).or_else(|| block.find("<span class=\" fz-ms")) {
+            let rest = &block[p_idx..];
+            if let Some(open) = rest.find('>') {
+                let after = &rest[open + 1..];
+                let end = after.find("</p>")
+                    .or_else(|| after.find("</div>"))
+                    .or_else(|| after.find("</span>"))
+                    .unwrap_or(after.len().min(300));
+                strip_tags(&after[..end]).trim().to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
 
-        results.push(SearchResult {
-            title: title.chars().take(80).collect(),
-            url: "https://duckduckgo.com".to_string(), // URL extraction is less critical than content
-            snippet: strip_tags(block).chars().take(250).collect(), // Just grab the next raw text
-        });
+        if !title.is_empty() && !url.is_empty() {
+            results.push(SearchResult {
+                title: title.chars().take(120).collect(),
+                url,
+                snippet: snippet.chars().take(300).collect(),
+            });
+        }
     }
 
-    // Try a simpler block separation logic: split by class="result-link" to get titles/links, then find snippet.
-    if results.is_empty() {
-        let blocks2: Vec<&str> = html.split("class='result-link'").collect();
-        for b in blocks2.iter().skip(1) {
-             if results.len() >= max { break; }
-             let title = between(b, ">", "</a>").unwrap_or_default();
-             let snip = between(b, "class='result-snippet'>", "</td>").unwrap_or_default();
-             if !title.is_empty() {
-                 results.push(SearchResult {
-                     title: strip_tags(&title).trim().to_string(),
-                     url: "Search Result".to_string(),
-                     snippet: strip_tags(&snip).chars().take(250).collect(),
-                 });
-             }
+    results
+}
+
+/// Fetch top `max` results from Bing search as an alternate live engine
+pub async fn search_bing(query: &str, max: usize) -> Vec<SearchResult> {
+    let ua = pick_user_agent();
+    let client = match reqwest::Client::builder()
+        .user_agent(ua)
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+
+    let url = format!("https://www.bing.com/search?q={}", urlenc(query));
+    let resp = match client.get(&url)
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return vec![],
+    };
+
+    let html = match resp.text().await {
+        Ok(h) => h,
+        Err(_) => return vec![],
+    };
+
+    parse_bing_results(&html, max)
+}
+
+fn parse_bing_results(html: &str, max: usize) -> Vec<SearchResult> {
+    let mut results = Vec::new();
+    let blocks: Vec<&str> = html.split("<li class=\"b_algo\"").collect();
+
+    for block in blocks.iter().skip(1) {
+        if results.len() >= max { break; }
+
+        let url = if let Some(h2_idx) = block.find("<h2>") {
+            let h2_block = &block[h2_idx..];
+            if let Some(href_idx) = h2_block.find("href=\"") {
+                let rest = &h2_block[href_idx + 6..];
+                let end = rest.find('"').unwrap_or(rest.len());
+                rest[..end].to_string()
+            } else {
+                continue;
+            }
+        } else {
+            continue;
+        };
+
+        let title = if let Some(h2_idx) = block.find("<h2>") {
+            let h2_block = &block[h2_idx..];
+            if let Some(open) = h2_block.find('>') {
+                let after_open = &h2_block[open + 1..];
+                if let Some(close) = after_open.find("</h2>") {
+                    strip_tags(&after_open[..close]).trim().to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        let snippet = if let Some(p_idx) = block.find("<p") {
+            let p_block = &block[p_idx..];
+            if let Some(open) = p_block.find('>') {
+                let after_open = &p_block[open + 1..];
+                if let Some(close) = after_open.find("</p>") {
+                    strip_tags(&after_open[..close]).trim().to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        if !title.is_empty() && !url.is_empty() {
+            results.push(SearchResult {
+                title: title.chars().take(100).collect(),
+                url,
+                snippet: snippet.chars().take(300).collect(),
+            });
+        }
+    }
+
+    results
+}
+
+fn urldecode(s: &str) -> String {
+    let mut out = Vec::new();
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(b) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                out.push(b);
+                i += 3;
+                continue;
+            }
+        } else if bytes[i] == b'+' {
+            out.push(b' ');
+            i += 1;
+            continue;
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).to_string()
+}
+
+fn extract_real_url(html_tag: &str) -> Option<String> {
+    if let Some(pos) = html_tag.find("uddg=") {
+        let rest = &html_tag[pos + 5..];
+        let end = rest.find('&')
+            .or_else(|| rest.find('"'))
+            .or_else(|| rest.find('\''))
+            .unwrap_or(rest.len());
+        let raw = &rest[..end];
+        let decoded = urldecode(raw);
+        if decoded.starts_with("http") && !decoded.contains("duckduckgo.com") {
+            return Some(decoded);
+        }
+    }
+
+    if let Some(href_idx) = html_tag.find("href=\"").or_else(|| html_tag.find("href='")) {
+        let rest = &html_tag[href_idx + 6..];
+        let end = rest.find('"').or_else(|| rest.find('\'')).unwrap_or(rest.len());
+        let candidate = &rest[..end];
+        if candidate.starts_with("http") && !candidate.contains("duckduckgo.com") {
+            return Some(candidate.to_string());
+        }
+    }
+
+    None
+}
+
+fn parse_ddg_results(html: &str, max: usize) -> Vec<SearchResult> {
+    let mut results = Vec::new();
+
+    // 1. Modern html.duckduckgo.com format (result__body / result__a)
+    if html.contains("result__body") || html.contains("result__a") {
+        let chunks: Vec<&str> = html.split("result__body").collect();
+        for chunk in chunks.iter().skip(1) {
+            if results.len() >= max { break; }
+
+            // Extract title and URL from <a ... class="result__a" ...>Title</a>
+            let mut url = None;
+            let mut title = String::new();
+
+            if let Some(a_idx) = chunk.find("<a ") {
+                let rest_a = &chunk[a_idx..];
+                if let Some(tag_end) = rest_a.find('>') {
+                    let tag = &rest_a[..tag_end + 1];
+                    url = extract_real_url(tag);
+
+                    let after_tag = &rest_a[tag_end + 1..];
+                    if let Some(close) = after_tag.find("</a>") {
+                        title = strip_tags(&after_tag[..close]).trim().to_string();
+                    }
+                }
+            }
+
+            // Extract snippet from class="result__snippet"
+            let snippet = if let Some(snip_idx) = chunk.find("result__snippet") {
+                let rest = &chunk[snip_idx..];
+                if let Some(open) = rest.find('>') {
+                    let after = &rest[open + 1..];
+                    let end = after.find("</a>")
+                        .or_else(|| after.find("</div>"))
+                        .unwrap_or(after.len().min(300));
+                    strip_tags(&after[..end]).trim().to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+
+            if !title.is_empty() {
+                let final_url = url.unwrap_or_else(|| "https://duckduckgo.com".to_string());
+                results.push(SearchResult {
+                    title: title.chars().take(120).collect(),
+                    url: final_url,
+                    snippet: snippet.chars().take(300).collect(),
+                });
+            }
+        }
+    }
+
+    if !results.is_empty() {
+        return results;
+    }
+
+    // 2. Fallback: lite.duckduckgo.com format (class="result-link" and class="result-snippet")
+    let html_norm = html.replace("class=\"result-link\"", "class='result-link'")
+                        .replace("class=\"result-snippet\"", "class='result-snippet'");
+
+    let link_blocks: Vec<&str> = html_norm.split("class='result-link'").collect();
+
+    for (i, block) in link_blocks.iter().enumerate().skip(1) {
+        if results.len() >= max { break; }
+
+        let mut real_url = None;
+        if let Some(start_a) = block.rfind("<a ") {
+            let tag_part = &block[start_a..];
+            real_url = extract_real_url(tag_part);
+        }
+        if real_url.is_none() && i > 0 {
+            let prev = link_blocks[i - 1];
+            if let Some(start_a) = prev.rfind("<a ") {
+                real_url = extract_real_url(&prev[start_a..]);
+            }
+        }
+
+        let title = if let Some(open) = block.find('>') {
+            let after_open = &block[open + 1..];
+            if let Some(close) = after_open.find("</a>") {
+                strip_tags(&after_open[..close]).trim().to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        let snippet = if let Some(snip_pos) = block.find("class='result-snippet'") {
+            let snip_rest = &block[snip_pos..];
+            if let Some(snip_open) = snip_rest.find('>') {
+                let snip_body = &snip_rest[snip_open + 1..];
+                if let Some(snip_close) = snip_body.find("</td>") {
+                    strip_tags(&snip_body[..snip_close]).trim().to_string()
+                } else {
+                    strip_tags(snip_body).chars().take(250).collect()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        if !title.is_empty() {
+            let url = real_url.unwrap_or_else(|| "https://duckduckgo.com".to_string());
+            results.push(SearchResult {
+                title: title.chars().take(120).collect(),
+                url,
+                snippet: snippet.chars().take(300).collect(),
+            });
         }
     }
 

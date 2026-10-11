@@ -1,65 +1,57 @@
 {
   "states": [
     "Desktop",
-    "Spotify_Home",
-    "Spotify_Search",
-    "Spotify_Playing",
-    "Chrome_Home",
-    "Chrome_Search_Results"
+    "Music_Player_Open",
+    "Music_Search",
+    "Music_Playing",
+    "Browser_Home",
+    "Browser_Search_Results",
+    "Spotlight_Search",
+    "Finder_Home",
+    "Menu_Bar_Focus",
+    "Mission_Control"
   ],
   "transitions": [
     {
       "from": "Desktop",
-      "to": "Spotify_Home",
+      "to": "Music_Player_Open",
       "actions": [
         {
           "action": "shell",
-          "command": "cmd /c start spotify:",
-          "timeout_ms": 3000
+          "timeout_ms": 2000,
+          "command_macos": "open -a Music 2>/dev/null || open -a Spotify 2>/dev/null",
+          "command_windows": "cmd /c start spotify: 2>nul || cmd /c start wmplayer"
+        }
+      ]
+    },
+    {
+      "from": "Music_Player_Open",
+      "to": "Music_Playing",
+      "actions": [
+        {
+          "action": "shell",
+          "timeout_ms": 1000,
+          "command_macos": "osascript -e 'tell application \"Music\" to play' 2>/dev/null || osascript -e 'tell application \"Spotify\" to play' 2>/dev/null",
+          "command_windows": "powershell -c \"[System.Windows.Forms.SendKeys]::SendWait('{MEDIA_PLAY_PAUSE}')\" 2>nul"
         }
       ]
     },
     {
       "from": "Desktop",
-      "to": "Spotify_Search",
+      "to": "Browser_Home",
       "actions": [
         {
           "action": "shell",
-          "command": "cmd /c start spotify:search:{song_name}",
-          "timeout_ms": 3000
+          "timeout_ms": 2000,
+          "command_macos": "open -a 'Google Chrome' 2>/dev/null || open -a Safari",
+          "command_windows": "cmd /c start chrome 2>nul || cmd /c start msedge"
         }
       ]
     },
     {
-      "from": "Spotify_Home",
-      "to": "Spotify_Search",
+      "from": "Browser_Home",
+      "to": "Browser_Search_Results",
       "actions": [
-        {
-          "action": "press_key",
-          "key": "tab",
-          "timeout_ms": 500
-        }
-      ]
-    },
-    {
-      "from": "Spotify_Search",
-      "to": "Spotify_Playing",
-      "actions": [
-        {
-          "action": "press_key",
-          "key": "tab",
-          "timeout_ms": 500
-        },
-        {
-          "action": "press_key",
-          "key": "tab",
-          "timeout_ms": 500
-        },
-        {
-          "action": "press_key",
-          "key": "tab",
-          "timeout_ms": 500
-        },
         {
           "action": "press_key",
           "key": "enter",
@@ -69,12 +61,48 @@
     },
     {
       "from": "Desktop",
-      "to": "Chrome_Home",
+      "to": "Spotlight_Search",
       "actions": [
         {
           "action": "shell",
-          "command": "cmd /c start chrome",
-          "timeout_ms": 2000
+          "command_macos": "osascript -e 'tell application \"System Events\" to keystroke space using command down'",
+          "command_windows": "powershell -command \"(New-Object -ComObject shell.application).FileRun()\"",
+          "timeout_ms": 500
+        }
+      ]
+    },
+    {
+      "from": "Spotlight_Search",
+      "to": "Desktop",
+      "actions": [
+        {
+          "action": "press_key",
+          "key": "escape",
+          "timeout_ms": 200
+        }
+      ]
+    },
+    {
+      "from": "Desktop",
+      "to": "Finder_Home",
+      "actions": [
+        {
+          "action": "shell",
+          "command_macos": "open ~",
+          "command_windows": "explorer",
+          "timeout_ms": 1000
+        }
+      ]
+    },
+    {
+      "from": "Desktop",
+      "to": "Mission_Control",
+      "actions": [
+        {
+          "action": "shell",
+          "command_macos": "open -a 'Mission Control'",
+          "command_windows": "explorer shell:::{3080F90E-D7AD-11D9-BD98-0000947B0257}",
+          "timeout_ms": 1000
         }
       ]
     }

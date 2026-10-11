@@ -63,10 +63,15 @@ def playback_worker():
                     app_state["loop"]
                 )
                 
-            sd.play(samples_t, sample_rate)
+            samples_contiguous = np.ascontiguousarray(samples_t, dtype=np.float32)
+            sd.play(samples_contiguous, samplerate=sample_rate)
             sd.wait()
         except Exception as e:
             print(f"🚨 Playback error: {e}")
+            try:
+                sd.stop()
+            except Exception:
+                pass
 
 
 app_state = {
@@ -116,8 +121,8 @@ def synth_chunk(kokoro, text: str, voice: str):
     processed_samples = vocal_board(samples, sample_rate)
     
     buf = io.BytesIO()
-    sf.write(buf, processed_samples, sample_rate, format='WAV', subtype='FLOAT')
-    return buf.getvalue(), processed_samples.T, sample_rate
+    samples_out = np.ascontiguousarray(processed_samples.T, dtype=np.float32)
+    return buf.getvalue(), samples_out, sample_rate
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -136,21 +141,44 @@ async def lifespan(app: FastAPI):
     print("⚡ [3/3] Initializing Global STT Engine (faster-whisper)...")
     app_state["whisper"] = WhisperModel("base", device="cpu", compute_type="int8")
     r = sr.Recognizer()
-    r.pause_threshold = 0.6
+    r.pause_threshold = 1.0
     r.non_speaking_duration = 0.5
+    r.dynamic_energy_threshold = True
     
     try:
         mic = sr.Microphone()
-    except OSError:
-        mic = sr.Microphone(device_index=None)
+        with mic as source:
+            print("🎙️ Calibrating microphone for ambient room noise...", flush=True)
+            r.adjust_for_ambient_noise(source, duration=0.8)
+            print(f"🎙️ Microphone calibrated! Threshold: {r.energy_threshold:.1f}", flush=True)
+    except Exception as e:
+        print(f"⚠️ Mic init: {e}")
+        try:
+            mic = sr.Microphone(device_index=None)
+        except Exception:
+            mic = None
 
     loop = asyncio.get_event_loop()
     app_state["loop"] = loop
 
     def stt_callback(recognizer, audio):
         try:
-            # Transcribe with Google Web Speech API (Free, super fast, high accuracy)
-            text = recognizer.recognize_google(audio).strip()
+            text = ""
+            try:
+                # Transcribe with Google Web Speech API (Free, ultra-fast, zero hallucination)
+                text = recognizer.recognize_google(audio).strip()
+            except sr.UnknownValueError:
+                return
+            except Exception as err:
+                if app_state.get("whisper"):
+                    try:
+                        audio_np = np.frombuffer(audio.get_raw_data(convert_rate=16000, convert_width=2), np.int16).astype(np.float32) / 32768.0
+                        segments, _ = app_state["whisper"].transcribe(audio_np, beam_size=1, vad_filter=True)
+                        text = " ".join([s.text for s in segments]).strip()
+                    except Exception:
+                        return
+                else:
+                    return
             
             if text:
                 # Filter out notorious Whisper hallucinations on silence
@@ -200,7 +228,10 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    stop_listening = r.listen_in_background(mic, stt_callback, phrase_time_limit=5)
+    if mic is not None:
+        stop_listening = r.listen_in_background(mic, stt_callback, phrase_time_limit=15)
+    else:
+        def stop_listening(wait_for_stop=False): pass
     
     yield
     print("Shutting down core systems...")

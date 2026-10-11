@@ -1,0 +1,94 @@
+name: "Human UI Intelligence Layer"
+skill_id: "human_ui_intelligence"
+version: "1.0.0"
+description: "Universal operational principles defining how human beings perceive, navigate, explore, and interact with graphical user interfaces across native desktop applications and modern web applications."
+
+universal_laws:
+  - id: "surface_acquisition_first"
+    name: "Surface Acquisition Law"
+    rule: "Always acquire and focus the target surface before attempting UI interactions."
+    human_behavior: |
+      A human never types or clicks randomly into whatever window happens to be in front of them if it is not the application they intend to use.
+      If the app is closed, they launch it (via Spotlight, Dock, or terminal). If it is in the background, they bring it to the front.
+      If a web platform is needed, they open the browser and navigate to that platform before searching for elements.
+    actions:
+      - "Check if target application is the active frontmost window."
+      - "If not frontmost or not open, launch or focus via OS launcher: open -a '<App>'."
+      - "Wait briefly for window to render and become responsive before emitting input."
+
+  - id: "focus_before_typing"
+    name: "Focus-Before-Typing Law"
+    rule: "Ensure target input field has caret focus before typing."
+    human_behavior: |
+      Humans never start typing blindly into empty space. They click or tab into a text field, search box, or message input to place the active text caret inside before typing characters.
+    actions:
+      - "Identify the target text input or search bar."
+      - "Click the input coordinates to establish focus and activate the caret."
+      - "Type text cleanly, followed by Return/Enter if submitting a query or message."
+
+  - id: "search_first_law"
+    name: "Search-First Efficiency Law"
+    rule: "Prioritize search and filter affordances over exhaustive visual scanning."
+    human_behavior: |
+      When looking for a specific item, contact, song, lead, or file among hundreds of options, a human never scans every individual row.
+      They immediately look for a search field, filter bar, or use standard shortcuts (Cmd+F, Cmd+K, '/') to find it in milliseconds.
+    actions:
+      - "Look for search boxes (input fields with role/placeholder 'Search', 'Find', or magnifying glass)."
+      - "Type query directly into the search bar and press Enter to filter results."
+      - "Only inspect filtered results, not the entire catalog."
+
+  - id: "scroll_to_discover"
+    name: "Scroll-to-Discover Law"
+    rule: "Scroll the viewport when target content is offscreen; never guess offscreen elements."
+    human_behavior: |
+      If an item, contact, post, song, or button is not in the visible viewport, a human does not assume it does not exist.
+      They scroll down smoothly using the mouse wheel, trackpad, or Page Down key to reveal offscreen content.
+      After scrolling, they pause briefly to perceive the newly visible elements, then act.
+    actions:
+      - "If target element is not found in visible UI elements, execute Scroll Down."
+      - "Re-perceive the newly revealed UI state."
+      - "Locate the target in the fresh viewport and act."
+      - "Never click or interact with offscreen coordinates."
+
+  - id: "dismiss_modals_first"
+    name: "Modal and Distraction Dismissal Law"
+    rule: "Clear blocking modals, cookie consent banners, and popups before acting."
+    human_behavior: |
+      If a cookie banner, modal dialog, notification popup, or overlay blocks the view, a human immediately clears it first by clicking 'Accept', 'Close', 'Dismiss', 'X', or pressing Escape.
+    actions:
+      - "Check for high-z-index overlays, modal dialogs, or consent banners."
+      - "Click the dismissive button or press Escape."
+      - "Verify overlay is gone before interacting with underlying elements."
+
+  - id: "closed_loop_delta_verification"
+    name: "Action-Verification Closed Loop Law (OODA Delta)"
+    rule: "Verify screen delta after every single action; never execute open-loop blindly."
+    human_behavior: |
+      After every click or keystroke, human eyes watch the screen to confirm the result.
+      Did the dropdown open? Did the URL change? Did the button change state? Did results appear?
+      If an action produced zero effect, humans do not repeat the exact same failed action blindly.
+      They re-verify cursor position, scroll, or try an alternative affordance.
+    actions:
+      - "Capture before and after UI fingerprints/snapshots."
+      - "Verify delta: page URL change, DOM change, scroll change, or visual change."
+      - "If action had no effect, trigger recovery: scroll to adjust view, re-click, or try keyboard accelerator."
+
+  - id: "natural_keyboard_navigation"
+    name: "Keyboard Navigation and Submission Law"
+    rule: "Use natural keyboard submission and navigation patterns."
+    human_behavior: |
+      Humans naturally press Return/Enter to submit search queries or send messages.
+      They press Tab to jump between form fields and Escape to cancel or close menus.
+    actions:
+      - "After typing search text or messages, send Return key."
+      - "Use Tab for sequential field entry."
+      - "Use Escape to cancel or close popovers."
+
+  - id: "goal_achievement_confirmation"
+    name: "Goal Achievement Confirmation Law"
+    rule: "Confirm visual indicators of success before declaring completion."
+    human_behavior: |
+      Humans visually verify that their intended outcome occurred (e.g. 'Playing' indicator on Spotify, 'Message sent' checkmark, search results rendered) before concluding the task.
+    actions:
+      - "Check for completion indicators in UI elements or page summary."
+      - "Declare Achievement only when evidence is visible on screen."

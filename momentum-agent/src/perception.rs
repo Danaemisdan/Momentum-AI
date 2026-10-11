@@ -1,7 +1,6 @@
 use crate::types::UIElement;
 use chromiumoxide::Page;
 use serde_json::Value;
-use std::process::Command;
 
 /// Robust perception engine that extracts interactive elements from the main page.
 pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
@@ -103,18 +102,35 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
     Ok(all_elements)
 }
 
-/// Robust perception engine that extracts native interactive elements from the macOS Accessibility API.
+/// Robust perception engine that extracts native interactive elements from OS Accessibility APIs (macOS AX and Windows UIAutomation).
 pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
     let mut all_elements = Vec::new();
     
-    // Execute the compiled Swift script `mac_ax` asynchronously so we don't block the Tokio executor thread
-    let output = tokio::process::Command::new("./scripts/mac_ax")
-        .current_dir(std::env::current_dir()?)
-        .output()
-        .await?;
+    let output = if cfg!(target_os = "macos") {
+        let mac_ax_candidates = ["./scripts/mac_ax", "scripts/mac_ax", "momentum-agent/scripts/mac_ax"];
+        let script = mac_ax_candidates.iter().find(|p| std::path::Path::new(p).exists()).unwrap_or(&"./scripts/mac_ax");
+        tokio::process::Command::new(script)
+            .current_dir(std::env::current_dir()?)
+            .output()
+            .await?
+    } else if cfg!(target_os = "windows") {
+        let win_ax_candidates = ["./scripts/win_ax.ps1", "scripts/win_ax.ps1", "momentum-agent/scripts/win_ax.ps1"];
+        let script = win_ax_candidates.iter().find(|p| std::path::Path::new(p).exists()).unwrap_or(&"./scripts/win_ax.ps1");
+        tokio::process::Command::new("powershell")
+            .arg("-NoProfile")
+            .arg("-ExecutionPolicy")
+            .arg("Bypass")
+            .arg("-File")
+            .arg(script)
+            .current_dir(std::env::current_dir()?)
+            .output()
+            .await?
+    } else {
+        return Ok(vec![]);
+    };
         
     if !output.status.success() {
-        return Err("Failed to extract native UI tree from macOS Accessibility API".into());
+        return Err("Failed to extract native UI tree from OS Accessibility API".into());
     }
     
     let json_str = String::from_utf8_lossy(&output.stdout);
@@ -127,7 +143,7 @@ pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Err
             let role = v["role"].as_str().unwrap_or("").to_string();
             let text = v["title"].as_str().unwrap_or("").to_string();
             let title_desc = v["description"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
-            let is_input_like = v["role"].as_str().unwrap_or("") == "AXTextField" || v["role"].as_str().unwrap_or("") == "AXTextArea";
+            let is_input_like = role == "AXTextField" || role == "AXTextArea" || role == "Edit" || role.to_lowercase().contains("text") || role.to_lowercase().contains("edit");
             let semantic_intent = crate::intent::infer_intent(&role, &text, title_desc.as_deref(), None);
 
             all_elements.push(UIElement {

@@ -1,6 +1,6 @@
 $env:Path = "C:\Users\usha\AppData\Local\Programs\Python\Python311;C:\Users\usha\AppData\Local\Programs\Python\Python311\Scripts;" + $env:Path
 $env:PYTHONIOENCODING = "utf-8"
-$env:MOMENTUM_MODEL_PATH = "C:\Users\usha\Downloads\Momentum AI\momentum-agent\momentum-engine-0.5b.gguf"
+$env:MOMENTUM_MODEL_PATH = "$PSScriptRoot\momentum-agent\momentum-engine-0.5b.gguf"
 $ErrorActionPreference = "SilentlyContinue"
 
 Write-Host "Cleaning up any old processes..."

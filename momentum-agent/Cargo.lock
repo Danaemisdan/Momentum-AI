@@ -1841,6 +1841,7 @@ dependencies = [
  "encoding_rs",
  "enigo",
  "futures",
+ "libc",
  "llama-cpp-2",
  "rand 0.8.5",
  "regex",
