@@ -3,7 +3,8 @@ import re
 import asyncio
 import numpy as np
 import soundfile as sf
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
+from starlette.websockets import WebSocketDisconnect, WebSocketDisconnected, WebSocketState
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from kokoro_onnx import Kokoro
@@ -19,25 +20,48 @@ from faster_whisper import WhisperModel
 
 audio_playback_queue = queue.Queue()
 
+async def broadcast_caption(sentence: str):
+    dead_ws = set()
+    for ws in list(app_state["tts_websockets"]):
+        try:
+            if ws.client_state == WebSocketState.CONNECTED and ws.application_state == WebSocketState.CONNECTED:
+                await ws.send_text(json.dumps({"type": "caption", "text": sentence}))
+            else:
+                dead_ws.add(ws)
+        except Exception:
+            dead_ws.add(ws)
+    app_state["tts_websockets"].difference_update(dead_ws)
+
+async def broadcast_stt(data: dict):
+    dead_ws = set()
+    for ws in list(app_state["stt_websockets"]):
+        try:
+            if ws.client_state == WebSocketState.CONNECTED and ws.application_state == WebSocketState.CONNECTED:
+                await ws.send_text(json.dumps(data))
+            else:
+                dead_ws.add(ws)
+        except Exception:
+            dead_ws.add(ws)
+    app_state["stt_websockets"].difference_update(dead_ws)
+
 def playback_worker():
     while True:
         data = audio_playback_queue.get()
         if data is None:
             break
-        samples_t, sample_rate, sentence = data
+        samples_t, sample_rate, sentence, gen_id = data
+        
+        # Discard chunk if user interrupted while it was queued
+        if gen_id != app_state["current_generation"]:
+            continue
+
         try:
             # Broadcast caption before native playback
-            if app_state["loop"] is not None:
-                dead_ws = set()
-                for ws in list(app_state["tts_websockets"]):
-                    try:
-                        asyncio.run_coroutine_threadsafe(
-                            ws.send_text(json.dumps({"type": "caption", "text": sentence})),
-                            app_state["loop"]
-                        )
-                    except Exception:
-                        dead_ws.add(ws)
-                app_state["tts_websockets"].difference_update(dead_ws)
+            if app_state["loop"] is not None and app_state["loop"].is_running():
+                asyncio.run_coroutine_threadsafe(
+                    broadcast_caption(sentence),
+                    app_state["loop"]
+                )
                 
             sd.play(samples_t, sample_rate)
             sd.wait()
@@ -53,6 +77,7 @@ app_state = {
     "loop": None,
     "whisper": None,
     "recent_agent_speech": deque(maxlen=10),
+    "current_generation": 0,
 }
 
 # ─── Sentence splitter ────────────────────────────────────────────────────────
@@ -160,22 +185,18 @@ async def lifespan(app: FastAPI):
 
                 # INTERRUPT AUDIO! Only halt playback if user actually spoke words (not just a cough/laugh)
                 if not re.match(r'^\[.*\]$', text):
+                    app_state["current_generation"] += 1
                     with audio_playback_queue.mutex:
                         audio_playback_queue.queue.clear()
                     sd.stop()
 
                 print(f"🎙️ STT Heard: {text}", flush=True)
                 # Broadcast to all connected UI clients
-                dead_ws = set()
-                for ws in list(app_state["stt_websockets"]):
-                    try:
-                        asyncio.run_coroutine_threadsafe(
-                            ws.send_text(json.dumps({"transcript": text, "isFinal": True})), 
-                            loop
-                        )
-                    except Exception:
-                        dead_ws.add(ws)
-                app_state["stt_websockets"].difference_update(dead_ws)
+                if loop is not None and loop.is_running():
+                    asyncio.run_coroutine_threadsafe(
+                        broadcast_stt({"transcript": text, "isFinal": True}), 
+                        loop
+                    )
         except Exception:
             pass
 
@@ -201,7 +222,6 @@ async def audio_stream(websocket: WebSocket):
     app_state["tts_websockets"].add(websocket)
 
     voice_name = "af_heart"
-    loop = asyncio.get_event_loop()
     kokoro = app_state["kokoro"]
     executor = app_state["executor"]
 
@@ -211,6 +231,7 @@ async def audio_stream(websocket: WebSocket):
             if not text_data.strip():
                 continue
 
+            my_gen = app_state["current_generation"]
             # Split into sentences for streaming synthesis
             sentences = split_sentences(text_data)
             print(f"🎙️ Synth {len(sentences)} chunk(s): {text_data[:60]}...", flush=True)
@@ -218,29 +239,56 @@ async def audio_stream(websocket: WebSocket):
             for sentence in sentences:
                 app_state["recent_agent_speech"].append(sentence)
 
-            # Synthesize the FIRST sentence immediately (blocking in thread)
-            # then fire subsequent ones as they finish — ultra-low first-audio latency
+            # Synthesize sentences
             for i, sentence in enumerate(sentences):
                 if not sentence.strip():
                     continue
+                if app_state["current_generation"] != my_gen:
+                    print("⚡ Synthesis aborted due to interruption.")
+                    break
+
                 try:
-                    wav_bytes, samples_t, sample_rate = await loop.run_in_executor(
+                    wav_bytes, samples_t, sample_rate = await asyncio.get_event_loop().run_in_executor(
                         executor,
                         synth_chunk,
                         kokoro, sentence, voice_name
                     )
+                    if app_state["current_generation"] != my_gen:
+                        print("⚡ Synthesis aborted due to interruption.")
+                        break
+
                     if samples_t is not None:
-                        audio_playback_queue.put((samples_t, sample_rate, sentence))
-                    await websocket.send_bytes(wav_bytes)
+                        audio_playback_queue.put((samples_t, sample_rate, sentence, my_gen))
+
+                    if websocket.client_state == WebSocketState.CONNECTED and websocket.application_state == WebSocketState.CONNECTED:
+                        await websocket.send_bytes(wav_bytes)
+                except (WebSocketDisconnect, WebSocketDisconnected):
+                    print(f"🔌 UI Audio Stream Terminated during chunk {i}.")
+                    return
+                except RuntimeError as e:
+                    if "not connected" in str(e).lower() or "disconnect" in str(e).lower() or "close" in str(e).lower():
+                        print(f"🔌 UI Audio Stream Terminated during chunk {i}.")
+                        return
+                    print(f"🚨 Synthesis fault on chunk {i}: {e}")
                 except Exception as e:
                     print(f"🚨 Synthesis fault on chunk {i}: {e}")
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, WebSocketDisconnected):
         print("🔌 UI Audio Stream Terminated.")
+    except RuntimeError as e:
+        if "not connected" in str(e).lower() or "disconnect" in str(e).lower() or "close" in str(e).lower():
+            print("🔌 UI Audio Stream Terminated.")
+        else:
+            print(f"🚨 WebSocket error: {e}")
     except Exception as e:
         print(f"🚨 WebSocket error: {e}")
     finally:
         app_state["tts_websockets"].discard(websocket)
+        try:
+            if websocket.client_state == WebSocketState.CONNECTED:
+                await websocket.close()
+        except Exception:
+            pass
 
 @app.websocket("/stt")
 async def stt_stream(websocket: WebSocket):
@@ -250,7 +298,19 @@ async def stt_stream(websocket: WebSocket):
     try:
         while True:
             await websocket.receive_text()
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, WebSocketDisconnected):
         pass
+    except RuntimeError as e:
+        if "not connected" in str(e).lower() or "disconnect" in str(e).lower() or "close" in str(e).lower():
+            pass
+        else:
+            print(f"🚨 STT WebSocket error: {e}")
+    except Exception as e:
+        print(f"🚨 STT WebSocket error: {e}")
     finally:
         app_state["stt_websockets"].discard(websocket)
+        try:
+            if websocket.client_state == WebSocketState.CONNECTED:
+                await websocket.close()
+        except Exception:
+            pass

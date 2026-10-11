@@ -62,9 +62,11 @@ export default function Home() {
       ws = new WebSocket("ws://127.0.0.1:8000/tts");
       ws.onmessage = async (event) => {
         try {
-            const data = JSON.parse(event.data);
-            if (data.type === "caption") {
-                displayDialogue(data.text);
+            if (typeof event.data === "string") {
+                const data = JSON.parse(event.data);
+                if (data.type === "caption") {
+                    displayDialogue(data.text);
+                }
             }
         } catch(e) {}
       };
