@@ -32,11 +32,13 @@ impl Drop for SendContext {
 }
 
 pub struct StderrSilence {
+    #[allow(dead_code)]
     orig_stderr: i32,
 }
 
 impl StderrSilence {
     pub fn new() -> Option<Self> {
+        #[cfg(unix)]
         unsafe {
             let orig = libc::dup(libc::STDERR_FILENO);
             if orig < 0 { return None; }
@@ -49,11 +51,16 @@ impl StderrSilence {
             libc::close(dev_null);
             Some(Self { orig_stderr: orig })
         }
+        #[cfg(not(unix))]
+        {
+            None
+        }
     }
 }
 
 impl Drop for StderrSilence {
     fn drop(&mut self) {
+        #[cfg(unix)]
         unsafe {
             libc::dup2(self.orig_stderr, libc::STDERR_FILENO);
             libc::close(self.orig_stderr);
