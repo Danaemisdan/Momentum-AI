@@ -366,6 +366,16 @@ impl MomentumBrain {
 
     /// Internal helper to generate text from a prompt
     pub async fn generate(&self, prompt: &str, tx_token: Option<broadcast::Sender<WsResponse>>) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        self.generate_with_limit(prompt, 96, tx_token).await
+    }
+
+    /// Token-bounded CPU generation: guarantees response terminates within max_tokens to prevent CPU freezes
+    pub async fn generate_with_limit(
+        &self, 
+        prompt: &str, 
+        max_tokens: usize,
+        tx_token: Option<broadcast::Sender<WsResponse>>
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let mut p_text = self.prefilled_text.lock().await;
         let mut p_tokens = self.prefilled_tokens.lock().await;
         let mut ctx_lock = self.context.lock().await;
@@ -402,7 +412,7 @@ impl MomentumBrain {
              return Err(format!("Prompt too large. Max 4096.").into());
         }
 
-        println!("🧠 Generator: delta_tokens={} batch_cap=4096, prefilled={}", tokens.len(), n_cur);
+        println!("🧠 Generator: delta_tokens={} batch_cap=4096, prefilled={}, max_new_tokens={}", tokens.len(), n_cur, max_tokens);
 
         for (i, token) in tokens.iter().enumerate() {
             batch.add(*token, (n_cur + i) as i32, &[0], i == tokens.len() - 1)?;
@@ -428,13 +438,15 @@ impl MomentumBrain {
         ]);
         let mut decoder = encoding_rs::UTF_8.new_decoder();
 
-        while n_cur < 4096 {
+        let mut tokens_generated = 0;
+        while n_cur < 4096 && tokens_generated < max_tokens {
             let token = sampler.sample(ctx, batch.n_tokens() - 1);
             sampler.accept(token);
             if self.model.is_eog_token(token) { break; }
             
             let piece = self.model.token_to_piece(token, &mut decoder, true, None)?;
             response.push_str(&piece);
+            tokens_generated += 1;
             
             if let Some(tx) = &tx_token {
                 let _ = tx.send(WsResponse { 
@@ -490,7 +502,7 @@ Output ONLY the word 'OPERATOR' or 'CHAT'. Nothing else.<|im_end|>
 ", message
         );
         
-        let response = self.generate(&prompt, None).await?;
+        let response = self.generate_with_limit(&prompt, 8, None).await?;
         let upper = response.trim().to_uppercase();
         if upper.starts_with("OPERATOR") {
             Ok(AgentMode::Operator)
@@ -531,7 +543,7 @@ USER GOAL: {goal}<|im_end|>
             goal = goal
         );
 
-        let raw = self.generate(&prompt, None).await?;
+        let raw = self.generate_with_limit(&prompt, 48, None).await?;
         let clean = raw.trim()
             .trim_start_matches("```json")
             .trim_start_matches("```")
@@ -592,7 +604,7 @@ HISTORY: {history}<|im_end|>
             history = history
         );
 
-        let raw = self.generate(&prompt, None).await?;
+        let raw = self.generate_with_limit(&prompt, 64, None).await?;
         let with_bracket = format!("[{}", raw.trim());
         let candidates = [with_bracket.as_str(), raw.trim()];
         
@@ -854,101 +866,110 @@ HISTORY: {history}<|im_end|>
     pub async fn extract_sequence_args(
         &self, 
         user_command: &str, 
-        history: &str,
+        _history: &str,
         focused_app: &str,
         available_apps: &[String]
     ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        let cmd_lower = user_command.to_lowercase();
+        
+        // 0. Fast-Path Heuristic Planning (0ms execution, bypasses CPU LLM completely)
+        if cmd_lower.contains("calculate") || cmd_lower.contains("math") || cmd_lower.starts_with("calc")
+            || (cmd_lower.chars().any(|c| c.is_numeric()) && (cmd_lower.contains('+') || cmd_lower.contains('-') || cmd_lower.contains('*') || cmd_lower.contains('/') || cmd_lower.contains('x'))) {
+            return Ok(serde_json::json!([
+                {"action_type": "OpenApp", "input": "calculator"},
+                {"action_type": "UI_Intent", "intent": "Calculate", "input": user_command}
+            ]));
+        }
+
+        if cmd_lower.contains("3d model") || cmd_lower.contains("3d asset") || cmd_lower.contains("mesh") {
+            return Ok(serde_json::json!([
+                {"action_type": "InspectEnvironment", "input": "3D software"},
+                {"action_type": "GenerateAsset", "input": user_command},
+                {"action_type": "OpenApp", "input": "blender"}
+            ]));
+        }
+
+        if cmd_lower.contains("music") || cmd_lower.contains("song") || cmd_lower.contains("spotify") {
+            return Ok(serde_json::json!([
+                {"action_type": "OpenApp", "input": "music"},
+                {"action_type": "UI_Intent", "intent": "Search", "input": user_command},
+                {"action_type": "UI_Intent", "intent": "Click", "input": "Play"}
+            ]));
+        }
+
+        if cmd_lower.starts_with("scroll down") || cmd_lower == "down" {
+            return Ok(serde_json::json!([
+                {"action_type": "Scroll", "input": "down"}
+            ]));
+        }
+
+        if cmd_lower.starts_with("scroll up") || cmd_lower == "up" {
+            return Ok(serde_json::json!([
+                {"action_type": "Scroll", "input": "up"}
+            ]));
+        }
+
+        if cmd_lower.starts_with("open ") {
+            let app_name = cmd_lower.trim_start_matches("open ").trim();
+            if !app_name.is_empty() {
+                return Ok(serde_json::json!([
+                    {"action_type": "OpenApp", "input": app_name}
+                ]));
+            }
+        }
+
         let app_sample = if available_apps.is_empty() {
             "browser, calculator, terminal, notes".to_string()
         } else {
-            available_apps.iter().take(15).cloned().collect::<Vec<_>>().join(", ")
+            available_apps.iter().take(8).cloned().collect::<Vec<_>>().join(", ")
         };
 
         let prompt = format!(
             "<|im_start|>system
-You are Momentum's Strategic Cognitive Planner. Break the user's high-level goal into clear, target milestones for the deterministic execution algorithm.
-Currently active OS application: {}.
-Known Installed Apps on this system: [{}].
-Respond ONLY with a JSON array.
+You are Momentum's Fast Cognitive Planner. Break the goal into milestones.
+Apps: [{}]. Focused: {}.
+Output ONLY a JSON array.
+Milestone action_types: 'InspectEnvironment', 'OpenApp', 'Navigate', 'UI_Intent', 'Scroll', 'GenerateAsset'.
 
-Milestone action_types:
-- 'InspectEnvironment': 'input' is the context to check (e.g. '3D software', 'local files', 'browser state').
-- 'OpenApp': 'input' is the target app name ('browser', 'calculator', 'terminal', 'whatsapp', 'music', 'spotify', etc.).
-- 'Navigate': 'input' is the target URL or platform ('https://www.linkedin.com', 'https://www.youtube.com', 'https://github.com', etc.).
-- 'UI_Intent': 'intent' can be 'Search', 'Filter', 'Click', 'Type', 'Scroll', 'Extract', 'Calculate'. 'input' is the target value.
-- 'Scroll': 'input' can be 'down' or 'up'.
-- 'GenerateAsset': 'input' is the asset specification (e.g. 'low-poly 3D gun mesh', 'python script').
-
-Example 1: \"Calculate 20 X 10\"
-Output:
-[
-  {{\"action_type\": \"OpenApp\", \"input\": \"calculator\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Calculate\", \"input\": \"20 * 10\"}}
-]
-
-Example 2: \"Make me a 3D model of a gun for a game\"
-Output:
-[
-  {{\"action_type\": \"InspectEnvironment\", \"input\": \"3D modeling tools and game engine\"}},
-  {{\"action_type\": \"GenerateAsset\", \"input\": \"game-ready low-poly firearm 3D model\"}},
-  {{\"action_type\": \"OpenApp\", \"input\": \"blender\"}}
-]
-
-Example 3: \"Find me clients on LinkedIn\"
+Example: \"Find me clients on LinkedIn\"
 Output:
 [
   {{\"action_type\": \"OpenApp\", \"input\": \"browser\"}},
   {{\"action_type\": \"Navigate\", \"input\": \"https://www.linkedin.com\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"clients\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Filter\", \"input\": \"People\"}}
-]
-
-Example 4: \"Play some rock music\"
-Output:
-[
-  {{\"action_type\": \"OpenApp\", \"input\": \"music\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"rock music\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Click\", \"input\": \"Play\"}}
-]
-
-Example 5: \"Message John on WhatsApp saying hello\"
-Output:
-[
-  {{\"action_type\": \"OpenApp\", \"input\": \"whatsapp\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"John\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Click\", \"input\": \"John\"}},
-  {{\"action_type\": \"UI_Intent\", \"intent\": \"Type\", \"input\": \"hello\"}}
-]
-
-Example 6: \"Scroll down to see more\"
-Output:
-[
-  {{\"action_type\": \"Scroll\", \"input\": \"down\"}}
-]
-<|im_end|>
-{}<|im_start|>user
-{}
-<|im_end|>
+  {{\"action_type\": \"UI_Intent\", \"intent\": \"Search\", \"input\": \"clients\"}}
+]<|im_end|>
+<|im_start|>user
+{}<|im_end|>
 <|im_start|>assistant
+[
 ",
-            focused_app, app_sample, history, user_command
+            app_sample, focused_app, user_command
         );
-        let completion = self.generate(&prompt, None).await?;
-        let speech = completion.split("<|im_end|>").next().unwrap_or(&completion).trim();
+        let completion = self.generate_with_limit(&prompt, 64, None).await?;
+        let full = format!("[{}", completion);
+        if let Some(start) = full.find('[') {
+            if let Some(end) = full.rfind(']') {
+                if end > start {
+                    let slice = &full[start..=end];
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(slice) {
+                        return Ok(parsed);
+                    }
+                }
+            }
+        }
         
-        let json_start = speech.find('[').unwrap_or(0);
-        let json_str = &speech[json_start..];
-        
-        let parsed: serde_json::Value = serde_json::from_str(json_str)?;
-        Ok(parsed)
+        // Fast fallback
+        Ok(serde_json::json!([
+            {"action_type": "OpenApp", "input": "browser"},
+            {"action_type": "Navigate", "input": format!("https://duckduckgo.com/?q={}", user_command.replace(' ', "+"))}
+        ]))
     }
 
     pub async fn evaluate_and_narrate(&self, goal: &str, outcome_summary: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let prompt = format!(
             "<|im_start|>system\n\
 You are Momentum, Danny's lightning-fast autonomous OS companion. \
-The algorithm just executed the user's requested task on the system. \
-Tell the user what was done in 1-2 punchy, direct, conversational sentences. No robotic fluff.\n\
+Tell the user what was done in 1 punchy sentence. No robotic fluff.\n\
 <|im_end|>\n\
 <|im_start|>user\n\
 Goal: {}\n\
@@ -956,7 +977,7 @@ Execution Result: {}\n<|im_end|>\n\
 <|im_start|>assistant\n",
             goal, outcome_summary
         );
-        let completion = self.generate(&prompt, None).await?;
+        let completion = self.generate_with_limit(&prompt, 36, None).await?;
         let clean = completion.split("<|im_end|>").next().unwrap_or(&completion).trim();
         Ok(clean.to_string())
     }
@@ -964,17 +985,10 @@ Execution Result: {}\n<|im_end|>\n\
     pub async fn step_reaction(&self, goal: &str, milestone: &str, outcome: &str) -> Result<StepReaction, Box<dyn std::error::Error + Send + Sync>> {
         let prompt = format!(
             "<|im_start|>system\n\
-You are Momentum — Danny's vocal, witty, and charismatic OS companion. \
-The algorithm just completed a milestone step on the system. \
-Decide if you should:
-1. Speak a live reaction, observation, or funny comment (1 punchy, conversational sentence, e.g. 'Whoa, we got a sea of clients here, filtering the real ones now.', 'Alright, asset geometry generated and sitting in your downloads.', 'Chrome is locked and loaded.').
-2. Ask a question with personality if you hit multiple choices or forks (e.g. 'Got two directions here bro: do you want low-poly mobile style or high-poly realistic?').
-3. Stay silent if it was just a routine intermediate step.
-
+You are Momentum — Danny's vocal OS companion. \
+React to this milestone in 1 punchy sentence or stay silent. \
 Output ONLY valid JSON:
-{{\"type\": \"speak\", \"text\": \"...\"}} OR
-{{\"type\": \"ask\", \"question\": \"...\"}} OR
-{{\"type\": \"silent\"}}\n\
+{{\"type\": \"speak\", \"text\": \"...\"}} OR {{\"type\": \"silent\"}}\n\
 <|im_end|>\n\
 <|im_start|>user\n\
 Goal: {}\n\
@@ -985,7 +999,7 @@ Outcome: {}\n<|im_end|>\n\
             goal, milestone, outcome
         );
 
-        let raw = self.generate(&prompt, None).await?;
+        let raw = self.generate_with_limit(&prompt, 32, None).await?;
         let with_brace = format!("{{{}", raw.trim());
         let clean = with_brace.trim()
             .trim_start_matches("```json")
@@ -994,8 +1008,8 @@ Outcome: {}\n<|im_end|>\n\
             .trim();
 
         if let Some(end) = clean.rfind('}') {
-            let sliced = &clean[..=end];
-            if let Ok(reaction) = serde_json::from_str::<StepReaction>(sliced) {
+            let slice = &clean[..=end];
+            if let Ok(reaction) = serde_json::from_str::<StepReaction>(slice) {
                 return Ok(reaction);
             }
         }

@@ -522,25 +522,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                 }
                             };
 
-                            // 2. Strategic Cognitive Planning: extract sequence or use domain milestones
-                            let sequence_steps = match brain_agent.extract_sequence_args(
-                                &refined_goal, 
-                                &history_str_agent, 
-                                &active_app, 
-                                &driver_clone.get_installed_app_names()
-                            ).await {
-                                Ok(val) => val.as_array().cloned().unwrap_or_default(),
-                                Err(_) => Vec::new(),
-                            };
-
-                            let steps: Vec<serde_json::Value> = if !sequence_steps.is_empty() {
-                                println!("⚡ Dynamic Cognitive Planner extracted {} sequence steps", sequence_steps.len());
-                                sequence_steps
-                            } else {
-                                let milestones = domain.to_milestones(None, &refined_goal);
-                                milestones.into_iter()
+                            // 2. Strategic Cognitive Planning: 0ms fast-path using domain milestones directly if available
+                            let steps: Vec<serde_json::Value> = if !domain.platforms.is_empty() {
+                                let top_platform = domain.platforms.first().map(|p| p.name.clone()).unwrap_or_else(|| "Platform".to_string());
+                                println!("⚡ [0ms Fast Plan] Using researched domain milestones for \"{}\" (Platform: {})", domain.domain_name, top_platform);
+                                let nav_speech = format!("Opening {} for {}.", top_platform, domain.domain_name);
+                                let _ = tx_op_resp.send(WsResponse {
+                                    msg_type: "action".into(),
+                                    t: None,
+                                    speech: Some(nav_speech.clone()),
+                                    action: Some(Action::Talk { speech: nav_speech }),
+                                    thought: None,
+                                    agent_mode: Some(AgentMode::Operator),
+                                    macro_state: Some(MacroState::ActOnSurface),
+                                    tool_name: None,
+                                });
+                                domain.to_milestones(None, &refined_goal).into_iter()
                                     .map(|s| serde_json::to_value(s).unwrap_or_default())
                                     .collect()
+                            } else {
+                                let sequence_steps = match brain_agent.extract_sequence_args(
+                                    &refined_goal, 
+                                    &history_str_agent, 
+                                    &active_app, 
+                                    &driver_clone.get_installed_app_names()
+                                ).await {
+                                    Ok(val) => val.as_array().cloned().unwrap_or_default(),
+                                    Err(_) => Vec::new(),
+                                };
+
+                                if !sequence_steps.is_empty() {
+                                    println!("⚡ Dynamic Cognitive Planner extracted {} sequence steps", sequence_steps.len());
+                                    sequence_steps
+                                } else {
+                                    let milestones = domain.to_milestones(None, &refined_goal);
+                                    milestones.into_iter()
+                                        .map(|s| serde_json::to_value(s).unwrap_or_default())
+                                        .collect()
+                                }
                             };
 
                             let mut execution_log = Vec::new();
@@ -686,12 +705,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                                             execution_log.push(milestone_outcome.clone());
 
-                                            // Stream-notify LLM at every step for live reactions, observations, or clarifying questions
-                                            if let Ok(reaction) = brain_agent.step_reaction(&refined_goal, &milestone_desc, &milestone_outcome).await {
-                                                match reaction {
-                                                    StepReaction::Speak { text } => {
+                                            // Non-blocking step reaction: runs in background so physical execution continues at full speed
+                                            let brain_react = brain_agent.clone();
+                                            let tx_react = tx_op_resp.clone();
+                                            let goal_react = refined_goal.clone();
+                                            let desc_react = milestone_desc.clone();
+                                            let out_react = milestone_outcome.clone();
+                                            tokio::spawn(async move {
+                                                if let Ok(reaction) = brain_react.step_reaction(&goal_react, &desc_react, &out_react).await {
+                                                    if let StepReaction::Speak { text } = reaction {
                                                         println!("🗣️ Step reaction: {}", text);
-                                                        let _ = tx_op_resp.send(WsResponse {
+                                                        let _ = tx_react.send(WsResponse {
                                                             msg_type: "action".into(),
                                                             t: None,
                                                             speech: Some(text.clone()),
@@ -702,32 +726,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                             tool_name: None,
                                                         });
                                                     }
-                                                    StepReaction::Ask { question } => {
-                                                        println!("❓ Step question asked by LLM: {}", question);
-                                                        let _ = tx_op_resp.send(WsResponse {
-                                                            msg_type: "action".into(),
-                                                            t: None,
-                                                            speech: Some(question.clone()),
-                                                            action: Some(Action::Ask { question: question.clone() }),
-                                                            thought: None,
-                                                            agent_mode: Some(AgentMode::Operator),
-                                                            macro_state: Some(MacroState::WaitingForUser),
-                                                            tool_name: Some(ToolName::Ask),
-                                                        });
-                                                        tokio::task::yield_now().await;
-                                                        let (tx_ask, mut rx_ask) = tokio::sync::mpsc::channel(1);
-                                                        {
-                                                            let mut ng = ask_notifier_agent.lock().await;
-                                                            *ng = Some(tx_ask);
-                                                        }
-                                                        if let Some(user_reply) = rx_ask.recv().await {
-                                                            println!("💬 User clarified: {}", user_reply);
-                                                            execution_log.push(format!("User clarified: {}", user_reply));
-                                                        }
-                                                    }
-                                                    StepReaction::Silent => {}
                                                 }
-                                            }
+                                            });
                                 }
                             } else {
                                     let resolved = driver_clone.resolve_target_url(&refined_goal);
@@ -740,7 +740,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             let final_speech = match brain_agent.evaluate_and_narrate(&refined_goal, &summary_str).await {
                                 Ok(narration) if !narration.is_empty() => narration,
                                 _ => {
-                                    if !execution_log.is_empty() {
+                                    if let Some(top_p) = domain.platforms.first() {
+                                        format!("All set! I've opened up {} for {}.", top_p.name, domain.domain_name)
+                                    } else if !execution_log.is_empty() {
                                         format!("Done. {}.", execution_log[0])
                                     } else {
                                         "All done.".to_string()
