@@ -436,9 +436,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         }
 
                         let handle = tokio::spawn(async move {
-                            // 1. Clarify Intent ONLY if genuinely missing critical non-inferrable parameters (skip for clear 3+ word goals to save 10s CPU inference)
+                            // 1. Clarify Intent ONLY if genuinely missing critical non-inferrable parameters (skip for clear 3+ word goals or concrete app commands to save 10s CPU inference)
                             let word_count = msg_clone.split_whitespace().count();
-                            let refined_goal = if word_count >= 3 {
+                            let msg_lower = msg_clone.to_lowercase();
+                            let refined_goal = if word_count >= 3 
+                                || msg_lower.starts_with("open ") 
+                                || msg_lower.starts_with("launch ") 
+                                || msg_lower.starts_with("calc") 
+                                || msg_lower.starts_with("play ") 
+                                || msg_lower.starts_with("close ") {
                                 msg_clone.clone()
                             } else {
                                 match brain_agent.clarify_intent(&msg_clone, &history_str_agent).await {

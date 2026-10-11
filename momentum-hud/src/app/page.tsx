@@ -80,12 +80,36 @@ export default function Home() {
   const speechBufferRef = useRef("");
   const streamedTokensCountRef = useRef(0);
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingMessagesRef = useRef<string[]>([]);
+  const connectAgentWsRef = useRef<() => void>(() => {});
 
   const resetInactivityTimer = useCallback(() => {
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
       inactivityTimerRef.current = setTimeout(() => {
           setIsVisible(false);
-      }, 10000); // 10 second inactivity timeout
+      }, 60000); // 60 second inactivity timeout
+  }, []);
+
+  const sendToAgent = useCallback((message: string) => {
+    const trimmed = message.trim();
+    if (!trimmed) return;
+
+    chatHistoryRef.current.push({ role: "user", text: trimmed });
+    const payload = JSON.stringify({
+      history: chatHistoryRef.current,
+      message: trimmed
+    });
+
+    if (agentWsRef.current && agentWsRef.current.readyState === WebSocket.OPEN) {
+      console.log("📤 Sending message to Agent:", trimmed);
+      agentWsRef.current.send(payload);
+    } else {
+      console.log("⏳ Agent WS not ready (state=" + agentWsRef.current?.readyState + "), queueing:", trimmed);
+      pendingMessagesRef.current.push(payload);
+      if (connectAgentWsRef.current) {
+        connectAgentWsRef.current();
+      }
+    }
   }, []);
 
   const handleSubmitText = useCallback((e?: React.FormEvent) => {
@@ -108,22 +132,8 @@ export default function Home() {
     setIsVisible(true);
     resetInactivityTimer();
 
-    chatHistoryRef.current.push({ role: "user", text: query });
-    const payload = JSON.stringify({
-        history: chatHistoryRef.current,
-        message: query
-    });
-
-    if (agentWsRef.current?.readyState === WebSocket.OPEN) {
-        agentWsRef.current.send(payload);
-    } else {
-        try {
-            const ws = new WebSocket("ws://127.0.0.1:44444/chat");
-            ws.onopen = () => ws.send(payload);
-            agentWsRef.current = ws;
-        } catch(e) {}
-    }
-  }, [inputText, resetInactivityTimer]);
+    sendToAgent(query);
+  }, [inputText, resetInactivityTimer, sendToAgent]);
 
   const handleMouseEnterBar = useCallback(() => {
     if (closeTimeoutRef.current) {
@@ -188,22 +198,8 @@ export default function Home() {
     setIsVisible(true);
     resetInactivityTimer();
 
-    chatHistoryRef.current.push({ role: "user", text: query });
-    const payload = JSON.stringify({
-      history: chatHistoryRef.current,
-      message: query
-    });
-
-    if (agentWsRef.current?.readyState === WebSocket.OPEN) {
-      agentWsRef.current.send(payload);
-    } else {
-      try {
-        const ws = new WebSocket("ws://127.0.0.1:44444/chat");
-        ws.onopen = () => ws.send(payload);
-        agentWsRef.current = ws;
-      } catch(e) {}
-    }
-  }, [resetInactivityTimer]);
+    sendToAgent(query);
+  }, [resetInactivityTimer, sendToAgent]);
 
   useEffect(() => {
       if (isVisible) {
@@ -370,12 +366,27 @@ export default function Home() {
               }
           } catch(e) {}
       };
+      ws.onopen = () => {
+        console.log("✅ Agent WebSocket Connected!");
+        while (pendingMessagesRef.current.length > 0) {
+          const queued = pendingMessagesRef.current.shift();
+          if (queued && ws && ws.readyState === WebSocket.OPEN) {
+            console.log("🚀 Flushing queued message to Agent:", queued);
+            ws.send(queued);
+          }
+        }
+      };
+      ws.onerror = () => {
+        console.warn("⚠️ Agent WS connection error");
+      };
       ws.onclose = () => {
-        if (isMounted) setTimeout(connect, 2000);
+        console.log("🔌 Agent WS closed, reconnecting in 1.5s...");
+        if (isMounted) setTimeout(connect, 1500);
       };
       agentWsRef.current = ws;
     };
     
+    connectAgentWsRef.current = connect;
     connect();
     
     return () => {
@@ -386,17 +397,21 @@ export default function Home() {
 
   // 3. Voice Activity Detection & Conversational Routing
   const handleSpeech = useCallback((transcript: string, isFinal: boolean) => {
-      if (!transcript.trim()) return;
-      const lower = transcript.toLowerCase();
+      if (!transcript || !transcript.trim()) return;
+      const lower = transcript.toLowerCase().trim();
       
       // Filter out common Whisper hallucinations on silence
       const trimmed = lower.replace(/[^a-z]/g, "");
-      if (trimmed === "you" || trimmed === "thankyou" || lower === "[silence]") {
+      if (trimmed === "you" || trimmed === "thankyou" || lower === "[silence]" || trimmed.length < 2) {
           return;
       }
       
-      if (isVisible) {
-          resetInactivityTimer();
+      resetInactivityTimer();
+
+      // Ensure window and character are awake on heard speech
+      if (!isVisibleRef.current) {
+          setIsVisible(true);
+          invoke("show_window_now");
       }
       
       // Wake Word Activation
@@ -404,55 +419,52 @@ export default function Home() {
       const wakeMatch = transcript.match(wakeRegex);
       const hasWakeWord = wakeMatch !== null || lower.includes("momentum");
 
-      if (!isVisibleRef.current) {
-          if (!hasWakeWord) return; // Do not wake up on ambient sounds
-
-          setIsVisible(true);
-          invoke("show_window_now");
-          
-          const remainder = wakeMatch ? wakeMatch[1].trim() : transcript.replace(/^(?:hey\s+|yo\s+|ok\s+|okay\s+)?momentum\b[,.]?\s*/i, "").trim();
-          
-          if (!remainder || remainder.length < 3) {
-             if (ttsWsRef.current?.readyState === WebSocket.OPEN) {
-                const greetings = ["Yeah?", "I'm here.", "Go ahead.", "I'm listening.", "What's up?"];
-                const greeting = greetings[Math.floor(Math.random() * greetings.length)];
-                ttsWsRef.current.send(greeting);
-                displayDialogue(greeting);
-             }
-             return;
-          }
-          transcript = remainder;
+      let cleanSpeech = transcript.trim();
+      if (wakeMatch) {
+          cleanSpeech = wakeMatch[1].trim();
+      } else if (hasWakeWord) {
+          cleanSpeech = transcript.replace(/^(?:hey\s+|yo\s+|ok\s+|okay\s+)?momentum\b[,.]?\s*/i, "").trim();
       }
 
-      // Conversational Routing (Stream to LLM)
+      const cleanLower = cleanSpeech.toLowerCase();
+
+      // Case 1: Pure wake word with no follow-up command (e.g. "Momentum", "Hey Momentum")
+      if (hasWakeWord && (!cleanSpeech || cleanSpeech.length < 2)) {
+          if (ttsWsRef.current?.readyState === WebSocket.OPEN) {
+              const greetings = ["Yeah?", "I'm here.", "Go ahead.", "I'm listening.", "What's up?"];
+              const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+              ttsWsRef.current.send(greeting);
+              displayDialogue(greeting);
+          }
+          return;
+      }
+
+      // Case 2: Status check / conversational check-in (e.g. "are you listening", "are you there", "are you")
+      if (cleanLower === "are you" || cleanLower === "are you listening" || cleanLower === "are you there" || cleanLower === "you there" || cleanLower === "you listening") {
+          const reply = "I'm listening, go ahead!";
+          if (ttsWsRef.current?.readyState === WebSocket.OPEN) {
+              ttsWsRef.current.send(reply);
+          }
+          displayDialogue(reply);
+          chatHistoryRef.current.push({ role: "user", text: transcript });
+          chatHistoryRef.current.push({ role: "agent", text: reply });
+          return;
+      }
+
+      // Case 3: Final transcript - route command or question to Agent
       if (isFinal) {
-          let finalTranscript = transcript.trim();
-          if (!finalTranscript) return;
+          const finalCommand = cleanSpeech || transcript.trim();
+          if (!finalCommand) return;
 
-          // If the phrase has no wake word and was not spoken in direct response to Momentum, ignore ambient talk
-          if (!hasWakeWord && currentDialogueRef.current.trim() === "" && chatHistoryRef.current.length === 0) {
-              return;
-          }
-
-          if (hasWakeWord && wakeMatch) {
-              finalTranscript = wakeMatch[1].trim() || finalTranscript;
-          }
-          
           // On Interruption: clear active dialogue immediately to feel responsive
           if (currentDialogueRef.current.trim() !== "") {
               setCurrentDialogue("");
               currentDialogueRef.current = "";
           }
-          
-          chatHistoryRef.current.push({ role: "user", text: finalTranscript });
-          if (agentWsRef.current?.readyState === WebSocket.OPEN) {
-              agentWsRef.current.send(JSON.stringify({
-                  history: chatHistoryRef.current,
-                  message: finalTranscript
-              }));
-          }
+
+          sendToAgent(finalCommand);
       }
-  }, []);
+  }, [resetInactivityTimer, displayDialogue, sendToAgent]);
 
   // Connect to Python Backend STT (Persistent with Reconnect)
   useEffect(() => {

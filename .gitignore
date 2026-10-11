@@ -30,6 +30,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!momentum-hud/src/lib/
 lib64/
 parts/
 sdist/

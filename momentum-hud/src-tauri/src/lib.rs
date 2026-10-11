@@ -112,16 +112,29 @@ fn launch_processes() -> AppProcesses {
     // ── 1. Momentum Rust Agent (port 44444) ───────────────────────────────
     let agent_dir = project_path("momentum-agent");
     #[cfg(target_os = "windows")]
-    let mut agent_bin = agent_dir.join("target").join("release").join("momentum-agent.exe");
+    let release_bin = agent_dir.join("target").join("release").join("momentum-agent.exe");
     #[cfg(not(target_os = "windows"))]
-    let mut agent_bin = agent_dir.join("target").join("release").join("momentum-agent");
+    let release_bin = agent_dir.join("target").join("release").join("momentum-agent");
 
-    if !agent_bin.exists() {
-        #[cfg(target_os = "windows")]
-        { agent_bin = agent_dir.join("target").join("debug").join("momentum-agent.exe"); }
-        #[cfg(not(target_os = "windows"))]
-        { agent_bin = agent_dir.join("target").join("debug").join("momentum-agent"); }
-    }
+    #[cfg(target_os = "windows")]
+    let debug_bin = agent_dir.join("target").join("debug").join("momentum-agent.exe");
+    #[cfg(not(target_os = "windows"))]
+    let debug_bin = agent_dir.join("target").join("debug").join("momentum-agent");
+
+    let agent_bin = match (release_bin.exists(), debug_bin.exists()) {
+        (true, true) => {
+            let rel_time = std::fs::metadata(&release_bin).and_then(|m| m.modified()).ok();
+            let deb_time = std::fs::metadata(&debug_bin).and_then(|m| m.modified()).ok();
+            if deb_time > rel_time {
+                debug_bin
+            } else {
+                release_bin
+            }
+        }
+        (true, false) => release_bin,
+        (false, true) => debug_bin,
+        (false, false) => release_bin,
+    };
     println!("🚀 Launching Agent: {:?}", agent_bin);
     match Command::new(&agent_bin).current_dir(&agent_dir).spawn() {
         Ok(child) => { println!("✅ Agent pid {}", child.id()); procs.agent = Some(child); }

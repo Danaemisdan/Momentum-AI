@@ -126,11 +126,15 @@ impl MomentumBrain {
 
         // Conversational question starters directed at the companion persona
         if normalized.starts_with("are you ")
+            || normalized == "are you"
             || normalized.starts_with("can you hear ")
             || normalized.starts_with("do you hear ")
             || normalized.starts_with("who are ")
             || normalized.starts_with("how are ")
             || normalized.starts_with("what are you ")
+            || normalized.starts_with("what r u ")
+            || normalized.starts_with("what are u ")
+            || normalized.starts_with("what you ")
             || normalized.starts_with("what did you ")
             || normalized.starts_with("why did you ")
             || normalized.starts_with("what do you think")
