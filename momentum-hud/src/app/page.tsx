@@ -45,18 +45,40 @@ export default function Home() {
     let unlistenFn: (() => void) | null = null;
     listen("notch-hover", (event: any) => {
       const isHovered = event.payload as boolean;
-      if (isVisibleRef.current) {
-        // Momentum is active on screen; textbox is already embedded below Momentum's face
-        return;
-      }
       if (isHovered) {
+        if (closeTimeoutRef.current) {
+          clearTimeout(closeTimeoutRef.current);
+          closeTimeoutRef.current = null;
+        }
         setIsKeyboardOpen(true);
-        setTimeout(() => textareaRef.current?.focus(), 50);
+        setTimeout(() => {
+          if (isVisibleRef.current) {
+            embeddedTextareaRef.current?.focus();
+          } else {
+            textareaRef.current?.focus();
+          }
+        }, 50);
       } else {
-        // Only close if user isn't typing
-        if (!inputText.trim()) {
-          setIsKeyboardOpen(false);
-          textareaRef.current?.blur();
+        // Only close if user isn't typing and neither textarea is focused
+        const isFocused = 
+          typeof document !== "undefined" && (
+            document.activeElement === textareaRef.current || 
+            document.activeElement === embeddedTextareaRef.current
+          );
+        if (!inputText.trim() && !isFocused) {
+          if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+          closeTimeoutRef.current = setTimeout(() => {
+            const stillFocused = 
+              typeof document !== "undefined" && (
+                document.activeElement === textareaRef.current || 
+                document.activeElement === embeddedTextareaRef.current
+              );
+            if (!inputText.trim() && !stillFocused) {
+              setIsKeyboardOpen(false);
+              textareaRef.current?.blur();
+              embeddedTextareaRef.current?.blur();
+            }
+          }, 450);
         }
       }
     }).then((unlisten) => {
@@ -67,8 +89,6 @@ export default function Home() {
       if (unlistenFn) unlistenFn();
     };
   }, [inputText]);
-  
-
   
   const hideTimeout = useRef<NodeJS.Timeout | null>(null);
   const dialogueTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -151,14 +171,26 @@ export default function Home() {
   }, []);
 
   const handleMouseLeaveBar = useCallback(() => {
-    // Only auto-close if input is empty
-    if (!inputText.trim()) {
+    // Only auto-close if input is empty and neither textarea is focused
+    const isFocused = 
+      typeof document !== "undefined" && (
+        document.activeElement === textareaRef.current || 
+        document.activeElement === embeddedTextareaRef.current
+      );
+    if (!inputText.trim() && !isFocused) {
       if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = setTimeout(() => {
-        setIsKeyboardOpen(false);
-        textareaRef.current?.blur();
-        embeddedTextareaRef.current?.blur();
-      }, 280);
+        const stillFocused = 
+          typeof document !== "undefined" && (
+            document.activeElement === textareaRef.current || 
+            document.activeElement === embeddedTextareaRef.current
+          );
+        if (!inputText.trim() && !stillFocused) {
+          setIsKeyboardOpen(false);
+          textareaRef.current?.blur();
+          embeddedTextareaRef.current?.blur();
+        }
+      }, 500);
     }
   }, [inputText]);
 
@@ -702,6 +734,7 @@ export default function Home() {
         {/* Momentum Face */}
         <div 
           data-tauri-drag-region
+          onMouseEnter={handleMouseEnterBar}
           className="animate-breathe relative flex items-center justify-center w-[120px] h-[120px] bg-[#0A0A0C] rounded-[32px] cursor-grab active:cursor-grabbing border border-white/5 drop-shadow-[0_10px_25px_rgba(0,0,0,0.5)]"
         >
           {/* Glowing Eyes */}
@@ -724,7 +757,7 @@ export default function Home() {
             </p>
         </div>
 
-        {/* Collapsible Liquid Glass Chat Unit below Momentum — Pops out ONLY on hover */}
+        {/* Collapsible Liquid Glass Chat Unit below Momentum — Pops out on hover or click */}
         {isVisible && (
           <div 
             onMouseEnter={handleMouseEnterBar}
@@ -738,9 +771,9 @@ export default function Home() {
                   setIsKeyboardOpen(true);
                   setTimeout(() => embeddedTextareaRef.current?.focus(), 60);
                 }}
-                className="flex flex-col items-center cursor-pointer pt-1 transition-opacity duration-300"
+                className="flex flex-col items-center cursor-pointer py-2.5 px-8 group transition-all duration-300"
               >
-                <div className="w-14 h-1.5 bg-white/30 hover:bg-white/60 rounded-full backdrop-blur-md shadow-[0_2px_8px_rgba(255,255,255,0.25)] transition-all duration-300" />
+                <div className="w-16 h-2 bg-white/40 group-hover:bg-white/80 rounded-full backdrop-blur-md shadow-[0_2px_10px_rgba(255,255,255,0.35)] transition-all duration-300" />
               </div>
             )}
 

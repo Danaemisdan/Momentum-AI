@@ -4,7 +4,7 @@ import asyncio
 import numpy as np
 import soundfile as sf
 from fastapi import FastAPI, WebSocket
-from starlette.websockets import WebSocketDisconnect, WebSocketDisconnected, WebSocketState
+from starlette.websockets import WebSocketDisconnect, WebSocketState
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from kokoro_onnx import Kokoro
@@ -322,7 +322,7 @@ async def audio_stream(websocket: WebSocket):
 
                     if websocket.client_state == WebSocketState.CONNECTED and websocket.application_state == WebSocketState.CONNECTED:
                         await websocket.send_bytes(wav_bytes)
-                except (WebSocketDisconnect, WebSocketDisconnected):
+                except WebSocketDisconnect:
                     print(f"🔌 UI Audio Stream Terminated during chunk {i}.")
                     return
                 except RuntimeError as e:
@@ -333,7 +333,7 @@ async def audio_stream(websocket: WebSocket):
                 except Exception as e:
                     print(f"🚨 Synthesis fault on chunk {i}: {e}")
 
-    except (WebSocketDisconnect, WebSocketDisconnected):
+    except WebSocketDisconnect:
         print("🔌 UI Audio Stream Terminated.")
     except RuntimeError as e:
         if "not connected" in str(e).lower() or "disconnect" in str(e).lower() or "close" in str(e).lower():
@@ -358,7 +358,7 @@ async def stt_stream(websocket: WebSocket):
     try:
         while True:
             await websocket.receive_text()
-    except (WebSocketDisconnect, WebSocketDisconnected):
+    except WebSocketDisconnect:
         pass
     except RuntimeError as e:
         if "not connected" in str(e).lower() or "disconnect" in str(e).lower() or "close" in str(e).lower():
