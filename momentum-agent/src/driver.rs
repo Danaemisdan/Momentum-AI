@@ -624,132 +624,6 @@ impl ActionDriver {
                 }
                 Ok("Navigate completed".into())
             },
-            "Calculate" | "Math" => {
-                if let Some(expr) = input_val {
-                    // Normalize words to operators first
-                    let normalized = expr.to_lowercase()
-                        .replace("multiplied by", "*")
-                        .replace("times", "*")
-                        .replace("plus", "+")
-                        .replace("minus", "-")
-                        .replace("divided by", "/")
-                        .replace("over", "/")
-                        .replace("into", "*")
-                        .replace(" x ", " * ")
-                        .replace(" X ", " * ")
-                        .replace("zero", "0")
-                        .replace("one", "1")
-                        .replace("two", "2")
-                        .replace("three", "3")
-                        .replace("four", "4")
-                        .replace("five", "5")
-                        .replace("six", "6")
-                        .replace("seven", "7")
-                        .replace("eight", "8")
-                        .replace("nine", "9")
-                        .replace("ten", "10");
-
-                    let chars: Vec<char> = normalized.chars().collect();
-                    let mut clean = String::new();
-                    for i in 0..chars.len() {
-                        let c = chars[i];
-                        if c.is_ascii_digit() || ['+', '-', '*', '/', '(', ')', '.', '%', '^'].contains(&c) {
-                            clean.push(c);
-                        } else if (c == 'x' || c == 'X') && i > 0 && i + 1 < chars.len() && chars[i - 1].is_ascii_digit() && chars[i + 1].is_ascii_digit() {
-                            clean.push('*');
-                        }
-                    }
-
-                    if clean.is_empty() {
-                        return Ok("Calculator opened".into());
-                    }
-
-                    println!("🧮 ActionDriver: Calculating '{}' on Calculator", clean);
-                    // Ensure Calculator is active and window is focused
-                    self.activate_app("Calculator");
-                    thread::sleep(Duration::from_millis(400));
-
-                    // Press Escape first to clear any stale display or memory keys
-                    let _ = enigo.key(Key::Escape, Click);
-                    thread::sleep(Duration::from_millis(200));
-
-                    // Helper to locate physical calculator buttons in the live UI list
-                    let find_calc_button = |target_ch: char| -> Option<&crate::types::UIElement> {
-                        ui_list.iter().find(|el| {
-                            let role = el.role.to_lowercase();
-                            if !role.contains("button") { return false; }
-                            let txt = el.text.trim().to_lowercase();
-                            let desc = el.title.as_deref().unwrap_or("").trim().to_lowercase();
-                            match target_ch {
-                                '0'..='9' => txt == target_ch.to_string() || desc == target_ch.to_string(),
-                                '+' => txt == "add" || desc == "add" || txt == "+",
-                                '-' => txt == "subtract" || desc == "subtract" || txt == "-",
-                                '*' => txt == "multiply" || desc == "multiply" || txt == "*" || txt == "x",
-                                '/' => txt == "divide" || desc == "divide" || txt == "/" || txt == "÷",
-                                '=' => txt == "equals" || desc == "equals" || txt == "=",
-                                '.' => txt == "point" || desc == "point" || txt == ".",
-                                _ => false,
-                            }
-                        })
-                    };
-
-                    for ch in clean.chars() {
-                        if let Some(btn) = find_calc_button(ch) {
-                            println!("  🎯 Clicking Calculator button '{}' at ({}, {})", ch, btn.x, btn.y);
-                            let _ = enigo.move_mouse(btn.x as i32, btn.y as i32, enigo::Coordinate::Abs);
-                            let _ = enigo.button(enigo::Button::Left, Click);
-                            thread::sleep(Duration::from_millis(80));
-                        } else {
-                            // Fallback to keyboard event with modifiers (e.g. Shift for '+' or '*')
-                            match ch {
-                                '+' => {
-                                    #[cfg(target_os = "macos")]
-                                    {
-                                        let _ = enigo.key(Key::Shift, enigo::Direction::Press);
-                                        let _ = enigo.key(Key::Unicode('='), Click);
-                                        let _ = enigo.key(Key::Shift, enigo::Direction::Release);
-                                    }
-                                    #[cfg(not(target_os = "macos"))]
-                                    {
-                                        let _ = enigo.key(Key::Unicode('+'), Click);
-                                    }
-                                }
-                                '*' => {
-                                    #[cfg(target_os = "macos")]
-                                    {
-                                        let _ = enigo.key(Key::Shift, enigo::Direction::Press);
-                                        let _ = enigo.key(Key::Unicode('8'), Click);
-                                        let _ = enigo.key(Key::Shift, enigo::Direction::Release);
-                                    }
-                                    #[cfg(not(target_os = "macos"))]
-                                    {
-                                        let _ = enigo.key(Key::Unicode('*'), Click);
-                                    }
-                                }
-                                other => {
-                                    let _ = enigo.key(Key::Unicode(other), Click);
-                                }
-                            }
-                            thread::sleep(Duration::from_millis(60));
-                        }
-                    }
-
-                    // Click Equals if not already ending with '='
-                    if !clean.ends_with('=') {
-                        if let Some(eq_btn) = find_calc_button('=') {
-                            println!("  🎯 Clicking Calculator button '=' at ({}, {})", eq_btn.x, eq_btn.y);
-                            let _ = enigo.move_mouse(eq_btn.x as i32, eq_btn.y as i32, enigo::Coordinate::Abs);
-                            let _ = enigo.button(enigo::Button::Left, Click);
-                        } else {
-                            let _ = enigo.key(Key::Return, Click);
-                        }
-                    }
-                    thread::sleep(Duration::from_millis(200));
-
-                    return Ok(format!("Calculated {} on Calculator", clean));
-                }
-                Ok("Calculator opened".into())
-            },
             "Search" => {
                 // UI Bifurcation: Prioritize search inputs in Top Navigation, then inputs across page
                 let search_target = ui_list.iter().find(|el| {
@@ -892,195 +766,31 @@ impl ActionDriver {
                 let _ = enigo.scroll(amount, enigo::Axis::Vertical);
                 Ok(format!("Scrolled {} (6 ticks to reveal content)", if is_up { "up" } else { "down" }))
             },
-            "Play" | "MediaPlay" => {
-                println!("🎵 ActionDriver: Executing Play/Media intent (target: {:?})", input_val);
-                // Look for first playable video thumbnail, result link, or play button
-                let play_target = ui_list.iter().find(|el| {
-                    let role = el.role.to_lowercase();
-                    // Exclude top-level windows, applications, and menubars
-                    if role.contains("window") || role.contains("application") || role.contains("menubar") || role.contains("menu") {
-                        return false;
-                    }
+            _ => {
+                // Generalized Semantic Action: Search the active app's UI for this intent / action
+                let target_query = input_val.unwrap_or(intent);
+                let q_lower = target_query.to_lowercase();
+                let intent_lower = intent.to_lowercase();
 
+                let target = ui_list.iter().find(|el| {
                     let text = el.text.to_lowercase();
                     let title = el.title.as_deref().unwrap_or("").to_lowercase();
                     let aria = el.aria_label.as_deref().unwrap_or("").to_lowercase();
-                    
-                    // Exclude browser chrome window titles (e.g. "YouTube - Google Chrome")
-                    let is_chrome_title = title.contains(" - google chrome") 
-                        || title.contains(" - youtube") 
-                        || title.contains(" - safari") 
-                        || title.contains(" - mozilla firefox")
-                        || title.contains(" - microsoft edge");
-                    if is_chrome_title {
-                        return false;
-                    }
 
-                    // Exclude search bars and address bars
-                    if role.contains("text") || role.contains("search") || el.is_input_like {
-                        return false;
-                    }
-
-                    // Exclude sponsored ads if possible
-                    if title.contains("sponsored") || text.contains("sponsored") || aria.contains("sponsored") {
-                        return false;
-                    }
-
-                    let is_play_control = aria.contains("play") || text.contains("play") || title.contains("play")
-                        || (role.contains("button") && (aria.contains("play") || text.contains("play") || title.contains("play")));
-
-                    let is_video_card = (role.contains("link") || role.contains("button") || role.contains("group") || role.contains("image"))
-                        && (el.spatial_zone.as_deref() == Some("Main Content") || el.y > 150.0)
-                        && (text.len() > 5 || title.len() > 5);
-
-                    let is_thumbnail = el.id.contains("video-title") || el.id.contains("thumbnail");
-
-                    is_play_control || is_thumbnail || is_video_card
+                    text.contains(&intent_lower) || title.contains(&intent_lower) || aria.contains(&intent_lower)
+                        || (!q_lower.is_empty() && (text.contains(&q_lower) || title.contains(&q_lower) || aria.contains(&q_lower)))
                 });
 
-                if let Some(target) = play_target {
-                    let target_name = if !target.text.is_empty() { &target.text } else { target.title.as_deref().unwrap_or("media") };
-                    println!("  🎯 Algorithm clicked Play node '{}' ('{}') at ({}, {}) in {:?}", 
-                        target.id, target_name, target.x, target.y, target.spatial_zone);
-                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
-                    let _ = enigo.button(enigo::Button::Left, Click);
-                    return Ok(format!("Triggered playback on '{}'", target_name));
-                }
-
-                // If no specific button found, trigger standard media/video toggle (Space / 'k' key for YouTube)
-                let _ = enigo.key(Key::Unicode('k'), Click);
-                Ok("Triggered media play shortcut".into())
-            },
-            "SearchContact" => {
-                let contact = input_val.unwrap_or("");
-                println!("💬 ActionDriver: Searching contact '{}' on messaging platform", contact);
-                self.activate_app("WhatsApp");
-                thread::sleep(Duration::from_millis(250));
-
-                // Check 1: Is this contact ALREADY visible in the chat list?
-                let contact_clean = contact.to_lowercase().trim().to_string();
-                let direct_chat = ui_list.iter().find(|el| {
-                    let desc = el.title.as_deref().unwrap_or("").to_lowercase();
-                    let txt = el.text.to_lowercase();
-                    let ph = el.placeholder.as_deref().unwrap_or("").to_lowercase();
-                    (desc.contains(&contact_clean) || txt.contains(&contact_clean) || ph.contains(&contact_clean))
-                        && (el.role == "AXButton" || el.role == "ListItem" || el.is_clickable)
-                        && (el.spatial_zone.as_deref() == Some("Left Sidebar") || el.spatial_zone.as_deref() == Some("Main Content"))
-                });
-
-                if let Some(chat) = direct_chat {
-                    let chat_title = chat.title.clone().unwrap_or_else(|| chat.text.clone());
-                    println!("  🎯 Algorithmic match: Found visible chat '{}' at ({}, {})", chat_title, chat.x, chat.y);
-                    let _ = enigo.move_mouse(chat.x as i32, chat.y as i32, enigo::Coordinate::Abs);
-                    let _ = enigo.button(enigo::Button::Left, Click);
-                    thread::sleep(Duration::from_millis(400));
-                    return Ok(format!("Opened chat with '{}'", contact));
-                }
-
-                // Check 2: Use native search shortcut (Cmd+F on macOS, Ctrl+F on Windows)
-                #[cfg(target_os = "macos")]
-                {
-                    let _ = enigo.key(Key::Meta, enigo::Direction::Press);
-                    let _ = enigo.key(Key::Unicode('f'), Click);
-                    let _ = enigo.key(Key::Meta, enigo::Direction::Release);
-                }
-                #[cfg(not(target_os = "macos"))]
-                {
-                    let _ = enigo.key(Key::Control, enigo::Direction::Press);
-                    let _ = enigo.key(Key::Unicode('f'), Click);
-                    let _ = enigo.key(Key::Control, enigo::Direction::Release);
-                }
-                thread::sleep(Duration::from_millis(150));
-
-                // Also click search target if discovered in UI tree
-                let search_target = ui_list.iter().find(|el| {
-                    let desc = el.title.as_deref().unwrap_or("").to_lowercase();
-                    let ph = el.placeholder.as_deref().unwrap_or("").to_lowercase();
-                    let txt = el.text.to_lowercase();
-                    (desc.contains("search") || ph.contains("search") || txt.contains("search"))
-                        && (el.role.contains("Button") || el.role.contains("Field") || el.role.contains("Search") || el.role.contains("Text") || el.role == "AXStaticText" || el.role == "AXButton")
-                });
-
-                if let Some(target) = search_target {
-                    println!("  🎯 Clicking search input '{}' at ({}, {}) in {:?}", 
-                        target.id, target.x, target.y, target.spatial_zone);
-                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
+                if let Some(el) = target {
+                    println!("  🎯 Dynamic UI Match: Found element for intent '{}' at ({}, {}) ('{}')", 
+                        intent, el.x, el.y, el.text);
+                    let _ = enigo.move_mouse(el.x as i32, el.y as i32, enigo::Coordinate::Abs);
                     let _ = enigo.button(enigo::Button::Left, Click);
                     thread::sleep(Duration::from_millis(150));
+                    return Ok(format!("Triggered '{}' on '{}'", intent, el.text));
                 }
 
-                // Clear previous search query
-                #[cfg(target_os = "macos")]
-                {
-                    let _ = enigo.key(Key::Meta, enigo::Direction::Press);
-                    let _ = enigo.key(Key::Unicode('a'), Click);
-                    let _ = enigo.key(Key::Meta, enigo::Direction::Release);
-                }
-                #[cfg(not(target_os = "macos"))]
-                {
-                    let _ = enigo.key(Key::Control, enigo::Direction::Press);
-                    let _ = enigo.key(Key::Unicode('a'), Click);
-                    let _ = enigo.key(Key::Control, enigo::Direction::Release);
-                }
-                thread::sleep(Duration::from_millis(60));
-                let _ = enigo.key(Key::Backspace, Click);
-                thread::sleep(Duration::from_millis(100));
-
-                // Type contact name with discrete human keystrokes (avoids OS batch dropping)
-                for ch in contact.chars() {
-                    let _ = enigo.key(Key::Unicode(ch), Click);
-                    thread::sleep(Duration::from_millis(60));
-                }
-
-                // Wait for search results to filter
-                thread::sleep(Duration::from_millis(600));
-
-                // Open top search match: Return -> Down Arrow -> Return
-                let _ = enigo.key(Key::Return, Click);
-                thread::sleep(Duration::from_millis(200));
-                let _ = enigo.key(Key::DownArrow, Click);
-                thread::sleep(Duration::from_millis(150));
-                let _ = enigo.key(Key::Return, Click);
-                thread::sleep(Duration::from_millis(400));
-
-                Ok(format!("Opened chat with '{}'", contact))
-            },
-            "SendMessage" => {
-                let msg = input_val.unwrap_or("");
-                println!("💬 ActionDriver: Sending message '{}' to active conversation", msg);
-                self.activate_app("WhatsApp");
-                thread::sleep(Duration::from_millis(250));
-
-                // Look for compose input: AXTextArea, "Compose message", "Type a message"
-                let compose_target = ui_list.iter().find(|el| {
-                    let desc = el.title.as_deref().unwrap_or("").to_lowercase();
-                    let ph = el.placeholder.as_deref().unwrap_or("").to_lowercase();
-                    let txt = el.text.to_lowercase();
-                    (desc.contains("compose") || desc.contains("type a message") || ph.contains("type") || ph.contains("message"))
-                        || (el.role == "AXTextArea" || el.role == "Edit")
-                });
-
-                if let Some(target) = compose_target {
-                    println!("  🎯 Algorithmic match: Found compose box '{}' at ({}, {})", target.id, target.x, target.y);
-                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
-                    let _ = enigo.button(enigo::Button::Left, Click);
-                    thread::sleep(Duration::from_millis(200));
-                }
-
-                // Type message with discrete human keystrokes
-                for ch in msg.chars() {
-                    let _ = enigo.key(Key::Unicode(ch), Click);
-                    thread::sleep(Duration::from_millis(50));
-                }
-
-                thread::sleep(Duration::from_millis(200));
-                let _ = enigo.key(Key::Return, Click);
-                thread::sleep(Duration::from_millis(300));
-
-                Ok(format!("Sent message: '{}'", msg))
-            },
-            _ => {
-                println!("  ⚠️ Unhandled UI intent: {}", intent);
+                println!("  ⚠️ No direct element found for '{}' in active UI", intent);
                 Ok(format!("Completed intent {}", intent))
             }
         }

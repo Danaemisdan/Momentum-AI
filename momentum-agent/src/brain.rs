@@ -1223,128 +1223,7 @@ Search query:<|im_end|>\n\
             available_apps.iter().any(|a| a.to_lowercase().contains(&n))
         };
 
-        // 0. Fast-Path Heuristic Planning (0ms execution, bypasses CPU LLM completely)
-        if cmd_lower.contains("calculate") || cmd_lower.contains("math") || cmd_lower.starts_with("calc")
-            || (cmd_lower.chars().any(|c| c.is_numeric()) && (cmd_lower.contains('+') || cmd_lower.contains('-') || cmd_lower.contains('*') || cmd_lower.contains('/') || cmd_lower.contains('x'))) {
-            // Extract the actual mathematical expression from user sentence
-            let normalized = cmd_lower
-                .replace("multiplied by", "*")
-                .replace("times", "*")
-                .replace("plus", "+")
-                .replace("minus", "-")
-                .replace("divided by", "/")
-                .replace("over", "/")
-                .replace("into", "*")
-                .replace(" x ", " * ")
-                .replace(" X ", " * ")
-                .replace("zero", "0")
-                .replace("one", "1")
-                .replace("two", "2")
-                .replace("three", "3")
-                .replace("four", "4")
-                .replace("five", "5")
-                .replace("six", "6")
-                .replace("seven", "7")
-                .replace("eight", "8")
-                .replace("nine", "9")
-                .replace("ten", "10");
-
-            let chars: Vec<char> = normalized.chars().collect();
-            let mut math_expr = String::new();
-            for i in 0..chars.len() {
-                let ch = chars[i];
-                if ch.is_ascii_digit() || ['+', '-', '*', '/', '(', ')', '.', '%', '^'].contains(&ch) {
-                    math_expr.push(ch);
-                } else if (ch == 'x' || ch == 'X') && i > 0 && i + 1 < chars.len() && chars[i - 1].is_ascii_digit() && chars[i + 1].is_ascii_digit() {
-                    math_expr.push('*');
-                }
-            }
-
-            if math_expr.is_empty() {
-                return Some(serde_json::json!([
-                    {"action_type": "OpenApp", "input": "calculator"}
-                ]));
-            }
-
-            return Some(serde_json::json!([
-                {"action_type": "OpenApp", "input": "calculator"},
-                {"action_type": "UI_Intent", "intent": "Calculate", "input": math_expr}
-            ]));
-        }
-
-        if cmd_lower.contains("3d model") || cmd_lower.contains("3d asset") || cmd_lower.contains("mesh") {
-            return Some(serde_json::json!([
-                {"action_type": "InspectEnvironment", "input": "3D software"},
-                {"action_type": "GenerateAsset", "input": user_command},
-                {"action_type": "OpenApp", "input": "blender"}
-            ]));
-        }
-
-        if cmd_lower.contains("youtube") {
-            let query = Self::clean_intent_query(user_command, &["youtube"]);
-            let final_query = if query.is_empty() { "music video".to_string() } else { query };
-            let nav_url = format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&final_query));
-            return Some(serde_json::json!([
-                {"action_type": "OpenApp", "input": "browser"},
-                {"action_type": "Navigate", "input": nav_url},
-                {"action_type": "UI_Intent", "intent": "Play", "input": final_query}
-            ]));
-        }
-
-        if cmd_lower.contains("whatsapp") || (cmd_lower.contains("message ") && (cmd_lower.contains("on ") || cmd_lower.contains("to "))) {
-            let (contact, message_text) = Self::parse_messaging_request(user_command);
-            let contact_target = if contact.is_empty() { "chat".to_string() } else { contact };
-
-            let mut seq = Vec::new();
-            if is_app_installed("whatsapp") {
-                seq.push(serde_json::json!({"action_type": "OpenApp", "input": "whatsapp"}));
-            } else {
-                seq.push(serde_json::json!({"action_type": "OpenApp", "input": "browser"}));
-                seq.push(serde_json::json!({"action_type": "Navigate", "input": "https://web.whatsapp.com"}));
-            }
-            seq.push(serde_json::json!({"action_type": "UI_Intent", "intent": "SearchContact", "input": contact_target}));
-
-            if let Some(msg) = message_text {
-                seq.push(serde_json::json!({"action_type": "UI_Intent", "intent": "SendMessage", "input": msg}));
-            }
-
-            return Some(serde_json::Value::Array(seq));
-        }
-
-        if cmd_lower.contains("linkedin") {
-            let query = Self::clean_intent_query(user_command, &["linkedin"]);
-            let final_query = if query.is_empty() { "clients".to_string() } else { query };
-            return Some(serde_json::json!([
-                {"action_type": "OpenApp", "input": "browser"},
-                {"action_type": "Navigate", "input": "https://www.linkedin.com"},
-                {"action_type": "UI_Intent", "intent": "Search", "input": final_query}
-            ]));
-        }
-
-        if cmd_lower.contains("music") || cmd_lower.contains("song") || cmd_lower.contains("spotify") {
-            let query = Self::clean_intent_query(user_command, &["spotify"]);
-            let final_query = if query.is_empty() { "music".to_string() } else { query };
-
-            if is_app_installed("spotify") {
-                return Some(serde_json::json!([
-                    {"action_type": "OpenApp", "input": "spotify"},
-                    {"action_type": "UI_Intent", "intent": "Search", "input": final_query},
-                    {"action_type": "UI_Intent", "intent": "Play", "input": "Play"}
-                ]));
-            } else {
-                let nav_url = if cmd_lower.contains("spotify") {
-                    "https://open.spotify.com".to_string()
-                } else {
-                    format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&final_query))
-                };
-                return Some(serde_json::json!([
-                    {"action_type": "OpenApp", "input": "browser"},
-                    {"action_type": "Navigate", "input": nav_url},
-                    {"action_type": "UI_Intent", "intent": "Play", "input": final_query}
-                ]));
-            }
-        }
-
+        // Generic OS primitive fast paths (scroll, open, navigate)
         if cmd_lower.starts_with("scroll down") || cmd_lower == "down" {
             return Some(serde_json::json!([
                 {"action_type": "Scroll", "input": "down"}
@@ -1826,48 +1705,63 @@ mod tests {
     }
 
     #[test]
-    fn plan_fast_sequence_extracts_math_and_opens_calculator() {
+    fn plan_fast_sequence_handles_open_app() {
         let plan = MomentumBrain::plan_fast_sequence(
-            "now calculate 10*5 on the calculator app",
+            "open blender",
             "Finder",
-            &["Calculator".into(), "Notes".into()],
+            &["Blender".into(), "Notes".into()],
         ).expect("should produce plan");
 
         let arr = plan.as_array().expect("plan should be json array");
-        assert_eq!(arr.len(), 2);
+        assert_eq!(arr.len(), 1);
         assert_eq!(arr[0]["action_type"], "OpenApp");
-        assert_eq!(arr[0]["input"], "calculator");
-        assert_eq!(arr[1]["action_type"], "UI_Intent");
-        assert_eq!(arr[1]["intent"], "Calculate");
-        assert_eq!(arr[1]["input"], "10*5");
+        assert_eq!(arr[0]["input"], "blender");
     }
 
     #[test]
-    fn plan_fast_sequence_falls_back_to_web_spotify_when_uninstalled() {
+    fn plan_fast_sequence_handles_scroll() {
         let plan = MomentumBrain::plan_fast_sequence(
-            "open spotify and play some music for me",
+            "scroll down",
             "Finder",
-            &["Notes".into(), "Calculator".into()],
+            &[],
+        ).expect("should produce plan");
+
+        let arr = plan.as_array().expect("plan should be json array");
+        assert_eq!(arr[0]["action_type"], "Scroll");
+        assert_eq!(arr[0]["input"], "down");
+    }
+
+    #[test]
+    fn plan_fast_sequence_handles_navigate() {
+        let plan = MomentumBrain::plan_fast_sequence(
+            "go to https://github.com",
+            "Finder",
+            &[],
         ).expect("should produce plan");
 
         let arr = plan.as_array().expect("plan should be json array");
         assert_eq!(arr[0]["action_type"], "OpenApp");
         assert_eq!(arr[0]["input"], "browser");
         assert_eq!(arr[1]["action_type"], "Navigate");
-        assert_eq!(arr[1]["input"], "https://open.spotify.com");
+        assert_eq!(arr[1]["input"], "https://github.com");
     }
 
     #[test]
-    fn plan_fast_sequence_routes_to_native_spotify_when_installed() {
+    fn plan_fast_sequence_defers_arbitrary_tasks_to_cognitive_planner() {
+        // Complex goals like calculating or messaging must NOT be hardcoded into fast paths
         let plan = MomentumBrain::plan_fast_sequence(
-            "open spotify and play some music for me",
-            "Finder",
-            &["Spotify".into(), "Calculator".into()],
-        ).expect("should produce plan");
+            "cut the clip at 5 seconds",
+            "DaVinci Resolve",
+            &["DaVinci Resolve".into()],
+        );
+        assert!(plan.is_none(), "Arbitrary app tasks must defer to cognitive planner & AX inspection");
 
-        let arr = plan.as_array().expect("plan should be json array");
-        assert_eq!(arr[0]["action_type"], "OpenApp");
-        assert_eq!(arr[0]["input"], "spotify");
+        let calc_plan = MomentumBrain::plan_fast_sequence(
+            "calculate 10*20",
+            "Calculator",
+            &["Calculator".into()],
+        );
+        assert!(calc_plan.is_none(), "Calculate must defer to cognitive planner & AX inspection");
     }
 
     #[test]
@@ -1889,40 +1783,6 @@ mod tests {
     }
 
     #[test]
-    fn plan_fast_sequence_routes_whatsapp_message_request() {
-        let plan = MomentumBrain::plan_fast_sequence(
-            "can you message jagadeesh on whatsapp?",
-            "Finder",
-            &["WhatsApp".into()],
-        ).expect("should produce plan");
-
-        let arr = plan.as_array().expect("plan should be json array");
-        assert_eq!(arr[0]["action_type"], "OpenApp");
-        assert_eq!(arr[0]["input"], "whatsapp");
-        assert_eq!(arr[1]["action_type"], "UI_Intent");
-        assert_eq!(arr[1]["intent"], "SearchContact");
-        assert_eq!(arr[1]["input"], "jagadeesh");
-    }
-
-    #[test]
-    fn plan_fast_sequence_cleans_youtube_music_video_query() {
-        let plan = MomentumBrain::plan_fast_sequence(
-            "can you play any music video on youtube?",
-            "Finder",
-            &[],
-        ).expect("should produce plan");
-
-        let arr = plan.as_array().expect("plan should be json array");
-        assert_eq!(arr[0]["action_type"], "OpenApp");
-        assert_eq!(arr[0]["input"], "browser");
-        assert_eq!(arr[1]["action_type"], "Navigate");
-        assert_eq!(arr[1]["input"], "https://www.youtube.com/results?search_query=music+video");
-        assert_eq!(arr[2]["action_type"], "UI_Intent");
-        assert_eq!(arr[2]["intent"], "Play");
-        assert_eq!(arr[2]["input"], "music video");
-    }
-
-    #[test]
     fn parse_messaging_request_handles_contact_and_message_body() {
         let (c1, m1) = MomentumBrain::parse_messaging_request("can you message jagadeesh on whatsapp?");
         assert_eq!(c1, "jagadeesh");
@@ -1935,24 +1795,5 @@ mod tests {
         let (c3, m3) = MomentumBrain::parse_messaging_request("message jagadeesh \"meeting in 10 mins\" on whatsapp");
         assert_eq!(c3, "jagadeesh");
         assert_eq!(m3, Some("meeting in 10 mins".to_string()));
-    }
-
-    #[test]
-    fn plan_fast_sequence_includes_send_message_when_body_present() {
-        let plan = MomentumBrain::plan_fast_sequence(
-            "can you message jagadeesh saying hello bro on whatsapp?",
-            "Finder",
-            &["WhatsApp".into()],
-        ).expect("should produce plan");
-
-        let arr = plan.as_array().expect("plan should be json array");
-        assert_eq!(arr.len(), 3);
-        assert_eq!(arr[0]["action_type"], "OpenApp");
-        assert_eq!(arr[1]["action_type"], "UI_Intent");
-        assert_eq!(arr[1]["intent"], "SearchContact");
-        assert_eq!(arr[1]["input"], "jagadeesh");
-        assert_eq!(arr[2]["action_type"], "UI_Intent");
-        assert_eq!(arr[2]["intent"], "SendMessage");
-        assert_eq!(arr[2]["input"], "hello bro");
     }
 }
