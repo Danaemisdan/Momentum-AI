@@ -680,7 +680,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                             }
                                                         }
                                                     }
-                                                    tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1200)).await;
                                                 },
                                                 "Navigate" => {
                                                     let target = input_val.unwrap_or(&refined_goal);
@@ -690,7 +690,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                     // Use user's real browser in the foreground
                                                     driver_clone.open_url(&resolved_url);
                                                     milestone_outcome = format!("Navigated to {}", resolved_url);
-                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(2200)).await;
                                                 },
                                                 "Scroll" => {
                                                     let direction = input_val.unwrap_or("down");

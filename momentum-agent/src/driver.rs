@@ -648,17 +648,21 @@ impl ActionDriver {
                     }
 
                     println!("🧮 ActionDriver: Calculating '{}' on Calculator", clean);
-                    // Ensure Calculator is active
+                    // Ensure Calculator is active and window is focused
                     let _ = self.open_app("calculator");
-                    thread::sleep(Duration::from_millis(600));
+                    thread::sleep(Duration::from_millis(800));
 
                     // Press Escape first to clear any stale display or memory keys
                     let _ = enigo.key(Key::Escape, Click);
-                    thread::sleep(Duration::from_millis(150));
+                    thread::sleep(Duration::from_millis(200));
 
-                    // Type calculation string into Calculator window with Enter
-                    let to_type = format!("{}=", clean);
-                    let _ = enigo.text(&to_type);
+                    // Type calculation string with discrete keypresses
+                    for ch in clean.chars() {
+                        let _ = enigo.key(Key::Unicode(ch), Click);
+                        thread::sleep(Duration::from_millis(60));
+                    }
+                    thread::sleep(Duration::from_millis(150));
+                    let _ = enigo.key(Key::Return, Click);
                     return Ok(format!("Entered {} into Calculator", clean));
                 }
                 Ok("Calculator opened".into())
@@ -809,23 +813,52 @@ impl ActionDriver {
                 println!("🎵 ActionDriver: Executing Play/Media intent (target: {:?})", input_val);
                 // Look for first playable video thumbnail, result link, or play button
                 let play_target = ui_list.iter().find(|el| {
+                    let role = el.role.to_lowercase();
+                    // Exclude top-level windows, applications, and menubars
+                    if role.contains("window") || role.contains("application") || role.contains("menubar") || role.contains("menu") {
+                        return false;
+                    }
+
                     let text = el.text.to_lowercase();
                     let title = el.title.as_deref().unwrap_or("").to_lowercase();
-                    let role = el.role.to_lowercase();
                     let aria = el.aria_label.as_deref().unwrap_or("").to_lowercase();
                     
-                    aria.contains("play") 
-                        || text.contains("play")
-                        || title.contains("play")
-                        || (role.contains("button") && (aria.contains("play") || text.contains("play") || title.contains("play")))
-                        || (el.spatial_zone.as_deref() == Some("Main Content") && (text.len() > 15 || title.len() > 15) && el.is_clickable)
-                        || el.id.contains("video-title") 
-                        || el.id.contains("thumbnail")
+                    // Exclude browser chrome window titles (e.g. "YouTube - Google Chrome")
+                    let is_chrome_title = title.contains(" - google chrome") 
+                        || title.contains(" - youtube") 
+                        || title.contains(" - safari") 
+                        || title.contains(" - mozilla firefox")
+                        || title.contains(" - microsoft edge");
+                    if is_chrome_title {
+                        return false;
+                    }
+
+                    // Exclude search bars and address bars
+                    if role.contains("text") || role.contains("search") || el.is_input_like {
+                        return false;
+                    }
+
+                    // Exclude sponsored ads if possible
+                    if title.contains("sponsored") || text.contains("sponsored") || aria.contains("sponsored") {
+                        return false;
+                    }
+
+                    let is_play_control = aria.contains("play") || text.contains("play") || title.contains("play")
+                        || (role.contains("button") && (aria.contains("play") || text.contains("play") || title.contains("play")));
+
+                    let is_video_card = (role.contains("link") || role.contains("button") || role.contains("group") || role.contains("image"))
+                        && (el.spatial_zone.as_deref() == Some("Main Content") || el.y > 150.0)
+                        && (text.len() > 5 || title.len() > 5);
+
+                    let is_thumbnail = el.id.contains("video-title") || el.id.contains("thumbnail");
+
+                    is_play_control || is_thumbnail || is_video_card
                 });
 
                 if let Some(target) = play_target {
                     let target_name = if !target.text.is_empty() { &target.text } else { target.title.as_deref().unwrap_or("media") };
-                    println!("  🎯 Algorithm clicked Play node '{}' ('{}') at ({}, {})", target.id, target_name, target.x, target.y);
+                    println!("  🎯 Algorithm clicked Play node '{}' ('{}') at ({}, {}) in {:?}", 
+                        target.id, target_name, target.x, target.y, target.spatial_zone);
                     let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
                     let _ = enigo.button(enigo::Button::Left, Click);
                     return Ok(format!("Triggered playback on '{}'", target_name));
@@ -834,6 +867,61 @@ impl ActionDriver {
                 // If no specific button found, trigger standard media/video toggle (Space / 'k' key for YouTube)
                 let _ = enigo.key(Key::Unicode('k'), Click);
                 Ok("Triggered media play shortcut".into())
+            },
+            "SearchContact" => {
+                let contact = input_val.unwrap_or("");
+                println!("💬 ActionDriver: Searching contact '{}' on messaging platform", contact);
+                // Look for search input in Top Navigation or Left Sidebar
+                let search_target = ui_list.iter().find(|el| {
+                    let role = el.role.to_lowercase();
+                    let is_input = el.is_input_like || role.contains("search") || role.contains("text") || role.contains("edit");
+                    let placeholder = el.placeholder.as_deref().unwrap_or("").to_lowercase();
+                    let title = el.title.as_deref().unwrap_or("").to_lowercase();
+                    let aria = el.aria_label.as_deref().unwrap_or("").to_lowercase();
+                    
+                    is_input && (
+                        placeholder.contains("search") || placeholder.contains("chat") 
+                        || aria.contains("search") || aria.contains("chat")
+                        || title.contains("search")
+                        || el.spatial_zone.as_deref() == Some("Top Navigation")
+                        || el.spatial_zone.as_deref() == Some("Left Sidebar")
+                    )
+                }).or_else(|| {
+                    ui_list.iter().find(|el| el.is_input_like)
+                });
+
+                if let Some(target) = search_target {
+                    println!("  🎯 Found messaging search node '{}' at ({}, {}) in {:?}", 
+                        target.id, target.x, target.y, target.spatial_zone);
+                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
+                    let _ = enigo.button(enigo::Button::Left, Click);
+                    thread::sleep(Duration::from_millis(200));
+
+                    #[cfg(target_os = "macos")]
+                    {
+                        let _ = enigo.key(Key::Meta, enigo::Direction::Press);
+                        let _ = enigo.key(Key::Unicode('a'), Click);
+                        let _ = enigo.key(Key::Meta, enigo::Direction::Release);
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        let _ = enigo.key(Key::Control, enigo::Direction::Press);
+                        let _ = enigo.key(Key::Unicode('a'), Click);
+                        let _ = enigo.key(Key::Control, enigo::Direction::Release);
+                    }
+                    thread::sleep(Duration::from_millis(100));
+
+                    let _ = enigo.text(contact);
+                    thread::sleep(Duration::from_millis(300));
+                    let _ = enigo.key(Key::Return, Click);
+                    return Ok(format!("Opened chat with '{}'", contact));
+                }
+
+                // Fallback: type shortcut or text
+                let _ = enigo.text(contact);
+                thread::sleep(Duration::from_millis(200));
+                let _ = enigo.key(Key::Return, Click);
+                Ok(format!("Typed contact query '{}'", contact))
             },
             _ => {
                 println!("  ⚠️ Unhandled UI intent: {}", intent);

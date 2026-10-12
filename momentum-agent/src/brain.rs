@@ -163,7 +163,27 @@ impl MomentumBrain {
         }
 
         // Media playback
-        if normalized.starts_with("play ") {
+        if normalized.starts_with("play ") 
+            || normalized.contains("play ") 
+            || normalized.contains("music")
+            || normalized.contains("song")
+            || normalized.contains("video")
+        {
+            if !normalized.starts_with("can you hear") && !normalized.starts_with("do you hear") {
+                return Some(AgentMode::Operator);
+            }
+        }
+
+        // Messaging / Communication
+        if normalized.contains("message ") 
+            || normalized.contains("text ") 
+            || normalized.contains("whatsapp")
+            || normalized.contains("telegram")
+            || normalized.contains("slack")
+            || normalized.contains("discord")
+            || normalized.contains("dm ")
+            || normalized.contains("chat with")
+        {
             return Some(AgentMode::Operator);
         }
 
@@ -220,15 +240,19 @@ impl MomentumBrain {
         // Known Web platform mentions with task intent
         let platform_domains = [
             "linkedin.com", "github.com", "youtube.com", "reddit.com", "amazon.com",
-            "twitter.com", "x.com", "spotify.com", "clutch.co", "fiverr.com", "upwork.com"
+            "twitter.com", "x.com", "spotify.com", "clutch.co", "fiverr.com", "upwork.com",
+            "web.whatsapp.com"
         ];
         if platform_domains.iter().any(|d| normalized.contains(d)) {
             return Some(AgentMode::Operator);
         }
         let platforms = [
-            "youtube", "amazon", "spotify", "reddit", "netflix", "github", "linkedin", "twitter"
+            "youtube", "amazon", "spotify", "reddit", "netflix", "github", "linkedin", "twitter",
+            "whatsapp", "telegram", "slack", "discord", "calculator"
         ];
-        let task_verbs = ["watch", "find", "search", "play", "buy", "show", "open", "look"];
+        let task_verbs = [
+            "watch", "find", "search", "play", "buy", "show", "open", "look", "message", "text", "send", "calculate", "calc"
+        ];
         if platforms.iter().any(|p| normalized.contains(p)) && task_verbs.iter().any(|v| normalized.contains(v)) {
             return Some(AgentMode::Operator);
         }
@@ -996,6 +1020,72 @@ HISTORY: {history}<|im_end|>
         Ok(clean)
     }
 
+    pub fn clean_intent_query(input: &str, platform_keywords: &[&str]) -> String {
+        let mut text = input.trim().to_lowercase();
+
+        // 1. Remove conversational question frames / politeness wrappers
+        let conversational_prefixes = [
+            "can you please ", "could you please ", "would you please ",
+            "can you ", "could you ", "would you ", "will you ",
+            "please ", "i want to ", "i need to ", "help me ",
+            "go ahead and ", "tell me to ", "let's ", "lets "
+        ];
+        for prefix in &conversational_prefixes {
+            if text.starts_with(prefix) {
+                text = text[prefix.len()..].trim().to_string();
+                break;
+            }
+        }
+
+        // 2. Remove action verbs at the start
+        let action_prefixes = [
+            "play some ", "play any ", "play a ", "play me ", "play ",
+            "watch some ", "watch any ", "watch a ", "watch me ", "watch ",
+            "listen to some ", "listen to any ", "listen to a ", "listen to ",
+            "show me some ", "show me any ", "show me a ", "show me ", "show ",
+            "search for some ", "search for any ", "search for a ", "search for ", "search ",
+            "find me some ", "find me any ", "find me a ", "find me ", "find ",
+            "look up some ", "look up any ", "look up a ", "look up ", "look ",
+            "message ", "send a message to ", "send message to ", "send a message ", "text "
+        ];
+        for prefix in &action_prefixes {
+            if text.starts_with(prefix) {
+                text = text[prefix.len()..].trim().to_string();
+                break;
+            }
+        }
+
+        // 3. Remove platform targeting phrases anywhere in the string
+        for kw in platform_keywords {
+            let patterns = [
+                format!(" on {}", kw),
+                format!(" in {}", kw),
+                format!(" from {}", kw),
+                format!(" via {}", kw),
+                format!(" using {}", kw),
+            ];
+            for p in &patterns {
+                text = text.replace(p.as_str(), " ");
+            }
+            if text.ends_with(kw) {
+                text = text[..text.len() - kw.len()].trim().to_string();
+            }
+        }
+
+        // 4. Remove conversational suffixes
+        let suffixes = [" for me", " bro", " please", " thanks", " right now", " now", " today"];
+        for s in &suffixes {
+            if text.ends_with(s) {
+                text = text[..text.len() - s.len()].trim().to_string();
+            }
+        }
+
+        // 5. Clean punctuation and excess whitespace
+        let cleaned: String = text.chars().filter(|c| !['?', '!', '"', '\'', ',', '.'].contains(c)).collect();
+        let normalized = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+        normalized
+    }
+
     pub fn plan_fast_sequence(
         user_command: &str,
         _focused_app: &str,
@@ -1067,55 +1157,64 @@ HISTORY: {history}<|im_end|>
         }
 
         if cmd_lower.contains("youtube") {
-            let clean_query = cmd_lower
-                .replace("play some", "")
-                .replace("play", "")
-                .replace("watch", "")
-                .replace("find", "")
-                .replace("on youtube", "")
-                .replace("for me", "")
-                .replace("bro", "")
-                .replace("please", "")
-                .trim()
-                .to_string();
-            let query = if clean_query.is_empty() { "music".to_string() } else { clean_query };
-            let nav_url = format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&query));
+            let query = Self::clean_intent_query(user_command, &["youtube"]);
+            let final_query = if query.is_empty() { "music video".to_string() } else { query };
+            let nav_url = format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&final_query));
             return Some(serde_json::json!([
                 {"action_type": "OpenApp", "input": "browser"},
                 {"action_type": "Navigate", "input": nav_url},
-                {"action_type": "UI_Intent", "intent": "Play", "input": query}
+                {"action_type": "UI_Intent", "intent": "Play", "input": final_query}
+            ]));
+        }
+
+        if cmd_lower.contains("whatsapp") || (cmd_lower.contains("message ") && (cmd_lower.contains("on ") || cmd_lower.contains("to "))) {
+            let contact = Self::clean_intent_query(user_command, &["whatsapp", "message", "text"]);
+            let contact_target = if contact.is_empty() { "chat".to_string() } else { contact };
+
+            if is_app_installed("whatsapp") {
+                return Some(serde_json::json!([
+                    {"action_type": "OpenApp", "input": "whatsapp"},
+                    {"action_type": "UI_Intent", "intent": "SearchContact", "input": contact_target}
+                ]));
+            } else {
+                return Some(serde_json::json!([
+                    {"action_type": "OpenApp", "input": "browser"},
+                    {"action_type": "Navigate", "input": "https://web.whatsapp.com"},
+                    {"action_type": "UI_Intent", "intent": "SearchContact", "input": contact_target}
+                ]));
+            }
+        }
+
+        if cmd_lower.contains("linkedin") {
+            let query = Self::clean_intent_query(user_command, &["linkedin"]);
+            let final_query = if query.is_empty() { "clients".to_string() } else { query };
+            return Some(serde_json::json!([
+                {"action_type": "OpenApp", "input": "browser"},
+                {"action_type": "Navigate", "input": "https://www.linkedin.com"},
+                {"action_type": "UI_Intent", "intent": "Search", "input": final_query}
             ]));
         }
 
         if cmd_lower.contains("music") || cmd_lower.contains("song") || cmd_lower.contains("spotify") {
-            let clean_query = cmd_lower
-                .replace("open spotify and", "")
-                .replace("open spotify", "")
-                .replace("play some", "")
-                .replace("play", "")
-                .replace("for me", "")
-                .replace("bro", "")
-                .replace("please", "")
-                .trim()
-                .to_string();
-            let query = if clean_query.is_empty() { "music".to_string() } else { clean_query };
+            let query = Self::clean_intent_query(user_command, &["spotify"]);
+            let final_query = if query.is_empty() { "music".to_string() } else { query };
 
             if is_app_installed("spotify") {
                 return Some(serde_json::json!([
                     {"action_type": "OpenApp", "input": "spotify"},
-                    {"action_type": "UI_Intent", "intent": "Search", "input": query},
+                    {"action_type": "UI_Intent", "intent": "Search", "input": final_query},
                     {"action_type": "UI_Intent", "intent": "Play", "input": "Play"}
                 ]));
             } else {
                 let nav_url = if cmd_lower.contains("spotify") {
                     "https://open.spotify.com".to_string()
                 } else {
-                    format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&query))
+                    format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&final_query))
                 };
                 return Some(serde_json::json!([
                     {"action_type": "OpenApp", "input": "browser"},
                     {"action_type": "Navigate", "input": nav_url},
-                    {"action_type": "UI_Intent", "intent": "Play", "input": query}
+                    {"action_type": "UI_Intent", "intent": "Play", "input": final_query}
                 ]));
             }
         }
@@ -1633,5 +1732,57 @@ mod tests {
         let arr = plan.as_array().expect("plan should be json array");
         assert_eq!(arr[0]["action_type"], "OpenApp");
         assert_eq!(arr[0]["input"], "spotify");
+    }
+
+    #[test]
+    fn test_clean_intent_query_strips_conversational_frames() {
+        let q1 = MomentumBrain::clean_intent_query("can you play any music video on youtube?", &["youtube"]);
+        assert_eq!(q1, "music video");
+
+        let q2 = MomentumBrain::clean_intent_query("can you message jagadeesh on whatsapp?", &["whatsapp", "message", "text"]);
+        assert_eq!(q2, "jagadeesh");
+
+        let q3 = MomentumBrain::clean_intent_query("play Bohemian Rhapsody on youtube", &["youtube"]);
+        assert_eq!(q3, "bohemian rhapsody");
+    }
+
+    #[test]
+    fn heuristic_classifier_routes_whatsapp_message_request_to_task() {
+        let intent = MomentumBrain::heuristic_mode("can you message jagadeesh on whatsapp?");
+        assert_eq!(intent, Some(AgentMode::Operator));
+    }
+
+    #[test]
+    fn plan_fast_sequence_routes_whatsapp_message_request() {
+        let plan = MomentumBrain::plan_fast_sequence(
+            "can you message jagadeesh on whatsapp?",
+            "Finder",
+            &["WhatsApp".into()],
+        ).expect("should produce plan");
+
+        let arr = plan.as_array().expect("plan should be json array");
+        assert_eq!(arr[0]["action_type"], "OpenApp");
+        assert_eq!(arr[0]["input"], "whatsapp");
+        assert_eq!(arr[1]["action_type"], "UI_Intent");
+        assert_eq!(arr[1]["intent"], "SearchContact");
+        assert_eq!(arr[1]["input"], "jagadeesh");
+    }
+
+    #[test]
+    fn plan_fast_sequence_cleans_youtube_music_video_query() {
+        let plan = MomentumBrain::plan_fast_sequence(
+            "can you play any music video on youtube?",
+            "Finder",
+            &[],
+        ).expect("should produce plan");
+
+        let arr = plan.as_array().expect("plan should be json array");
+        assert_eq!(arr[0]["action_type"], "OpenApp");
+        assert_eq!(arr[0]["input"], "browser");
+        assert_eq!(arr[1]["action_type"], "Navigate");
+        assert_eq!(arr[1]["input"], "https://www.youtube.com/results?search_query=music+video");
+        assert_eq!(arr[2]["action_type"], "UI_Intent");
+        assert_eq!(arr[2]["intent"], "Play");
+        assert_eq!(arr[2]["input"], "music video");
     }
 }
