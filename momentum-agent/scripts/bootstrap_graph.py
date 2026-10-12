@@ -401,6 +401,148 @@ Connect concept nodes to each other with RELATED_TO edges where meaningful.
     print(f"  + {len(nodes)} concept nodes, {len(edges)} edges")
 
 
+def pass_game_engines_and_dev_tools(api_key: str, graph: dict):
+    print("\n[Pass 6] Game engines + dev tools...")
+    tools_b1 = ["unreal_engine", "unity", "godot", "gamemaker_studio", "rpg_maker", "cry_engine", "o3de", "pygame", "love2d", "bevy"]
+    tools_b2 = ["visual_studio", "visual_studio_code", "xcode", "android_studio", "intellij_idea", "pycharm", "webstorm", "rider", "clion", "eclipse"]
+    tools_b3 = ["cmake", "gradle", "webpack", "vite", "docker", "kubernetes", "terraform", "ansible", "postman", "insomnia"]
+
+    meta = """\
+- "platform_type": "desktop_app" or "cli"
+- "nature": what this tool is and who uses it (1 sentence)
+- "primary_use_cases": JSON array of 3-5 things an AI agent or developer does with it
+- "target": app name or CLI command to invoke it"""
+
+    edge_instructions = 'Include BEST_FOR edges to relevant industry IDs (e.g. "industry:gaming", "industry:saas", "industry:ai_ml"). Include RELATED_TO edges between closely related tools.'
+
+    total_nodes, total_edges = [], []
+    for batch in [tools_b1, tools_b2, tools_b3]:
+        nodes, edges = gemini_batch(api_key, batch, "platform", meta, edge_instructions)
+        merge_into_graph(graph, nodes, edges)
+        total_nodes.extend(nodes); total_edges.extend(edges)
+        time.sleep(1)
+    print(f"  + {len(total_nodes)} nodes, {len(total_edges)} edges")
+
+
+def pass_3d_and_creative_tools(api_key: str, graph: dict):
+    print("\n[Pass 7] 3D modelling + creative tools...")
+    tools_b1 = ["blender", "maya", "3ds_max", "cinema_4d", "zbrush", "substance_painter", "substance_designer", "houdini", "modo", "mudbox"]
+    tools_b2 = ["photoshop", "illustrator", "after_effects", "premiere_pro", "davinci_resolve", "final_cut_pro", "lightroom", "indesign", "sketch", "affinity_designer"]
+    tools_b3 = ["figma", "framer", "spline", "tinkercad", "openscad", "rhino3d", "sketchup", "archicad", "revit", "lumion"]
+    tools_b4 = ["stable_diffusion", "midjourney", "runway_ml", "kling", "sora", "elevenlabs", "suno", "udio", "topaz_video_ai", "frame_io"]
+
+    meta = """\
+- "platform_type": "desktop_app" or "web"
+- "nature": what this creative tool does and who uses it (1 sentence)
+- "primary_use_cases": JSON array of 3-5 specific things an AI agent can do or observe using this tool
+- "output_types": JSON array of what this tool produces (e.g. ["3d_model", "texture", "animation", "render"])
+- "target": app name or URL"""
+
+    edge_instructions = 'Include BEST_FOR edges to relevant industries: "industry:gaming", "industry:media_entertainment", "industry:architecture", "industry:animation_vfx". Include PART_OF edges to "app_category:3d_modeling" or "app_category:design_tool" as appropriate.'
+
+    total_nodes, total_edges = [], []
+    for batch in [tools_b1, tools_b2, tools_b3, tools_b4]:
+        nodes, edges = gemini_batch(api_key, batch, "platform", meta, edge_instructions)
+        merge_into_graph(graph, nodes, edges)
+        total_nodes.extend(nodes); total_edges.extend(edges)
+        time.sleep(1)
+    print(f"  + {len(total_nodes)} nodes, {len(total_edges)} edges")
+
+
+def pass_electronics_and_engineering(api_key: str, graph: dict):
+    print("\n[Pass 8] Electronics + engineering tools...")
+    tools_b1 = ["kicad", "eagle_pcb", "altium_designer", "circuit_maker", "ltspice", "multisim", "proteus", "fritzing", "easyeda", "fusion_360"]
+    tools_b2 = ["autocad", "solidworks", "catia", "creo", "siemens_nx", "ansys", "abaqus", "matlab", "simulink", "labview"]
+    tools_b3 = ["arduino_ide", "platformio", "stm32cubeide", "keil_mdk", "openocd", "quartus", "vivado", "modelsin", "comsol", "openfoam"]
+
+    meta = """\
+- "platform_type": "desktop_app" or "web"
+- "nature": what this engineering tool does and what domain it covers (1 sentence)
+- "primary_use_cases": JSON array of 3-5 things engineers or an AI agent do with it
+- "domain": the engineering discipline — "electronics", "mechanical", "simulation", "embedded", "pcb", "cad"
+- "target": app name"""
+
+    edge_instructions = 'Include BEST_FOR edges to: "industry:hardware_electronics", "industry:automotive", "industry:aerospace", "industry:manufacturing", "industry:biotech" as relevant. Include RELATED_TO edges between complementary tools.'
+
+    total_nodes, total_edges = [], []
+    for batch in [tools_b1, tools_b2, tools_b3]:
+        nodes, edges = gemini_batch(api_key, batch, "platform", meta, edge_instructions)
+        merge_into_graph(graph, nodes, edges)
+        total_nodes.extend(nodes); total_edges.extend(edges)
+        time.sleep(1)
+    print(f"  + {len(total_nodes)} nodes, {len(total_edges)} edges")
+
+
+def pass_audio_and_video_production(api_key: str, graph: dict):
+    print("\n[Pass 9] Audio + video production tools...")
+    tools_b1 = ["ableton_live", "logic_pro", "fl_studio", "pro_tools", "cubase", "reaper", "garageband", "audacity", "audition", "bitwig"]
+    tools_b2 = ["obs_studio", "streamlabs", "ecamm_live", "vmix", "wirecast", "resolume", "touchdesigner", "notch", "madmapper", "modul8"]
+    tools_b3 = ["splice", "native_instruments", "izotope", "waves_plugins", "soundtoys", "plugin_alliance", "arturia", "overbridge", "loopback", "blackhole_audio"]
+
+    meta = """\
+- "platform_type": "desktop_app" or "web"
+- "nature": what this audio/video tool does and who uses it (1 sentence)
+- "primary_use_cases": JSON array of 3-4 specific production tasks
+- "media_type": "audio", "video", "live_streaming", "visual_performance", or "audio_plugin"
+- "target": app name"""
+
+    edge_instructions = 'Include BEST_FOR edges to: "industry:media_entertainment", "industry:music_production", "industry:gaming", "industry:podcast". Include PART_OF edges to "app_category:media_player" or "app_category:screen_recorder" where applicable.'
+
+    total_nodes, total_edges = [], []
+    for batch in [tools_b1, tools_b2, tools_b3]:
+        nodes, edges = gemini_batch(api_key, batch, "platform", meta, edge_instructions)
+        merge_into_graph(graph, nodes, edges)
+        total_nodes.extend(nodes); total_edges.extend(edges)
+        time.sleep(1)
+    print(f"  + {len(total_nodes)} nodes, {len(total_edges)} edges")
+
+
+def pass_science_and_data_tools(api_key: str, graph: dict):
+    print("\n[Pass 10] Science + data tools...")
+    tools_b1 = ["jupyter_notebook", "rstudio", "spss", "sas", "stata", "tableau", "power_bi", "looker", "metabase", "grafana"]
+    tools_b2 = ["excel", "google_sheets", "airtable", "databricks", "snowflake", "bigquery", "redshift", "dbt", "airflow", "prefect"]
+    tools_b3 = ["tensorflow", "pytorch", "huggingface", "weights_and_biases", "mlflow", "ray", "dask", "spark", "kafka", "elasticsearch"]
+
+    meta = """\
+- "platform_type": "desktop_app", "web", "cli", or "library"
+- "nature": what this data/science tool does and who uses it (1 sentence)
+- "primary_use_cases": JSON array of 3-5 things a data scientist or AI agent does with it
+- "data_domain": "ml_training", "data_viz", "data_pipeline", "statistics", "database", "monitoring"
+- "target": app name, URL, or pip install name"""
+
+    edge_instructions = 'Include BEST_FOR edges to: "industry:ai_ml", "industry:fintech", "industry:healthtech", "industry:saas", "industry:consulting". Include RELATED_TO edges between complementary tools.'
+
+    total_nodes, total_edges = [], []
+    for batch in [tools_b1, tools_b2, tools_b3]:
+        nodes, edges = gemini_batch(api_key, batch, "platform", meta, edge_instructions)
+        merge_into_graph(graph, nodes, edges)
+        total_nodes.extend(nodes); total_edges.extend(edges)
+        time.sleep(1)
+    print(f"  + {len(total_nodes)} nodes, {len(total_edges)} edges")
+
+
+def pass_missing_industries(api_key: str, graph: dict):
+    print("\n[Pass 11] Missing industries...")
+    missing_b1 = ["gaming", "animation_vfx", "music_production", "film_production", "architecture", "hardware_electronics", "semiconductors", "robotics", "space_tech", "quantum_computing"]
+    missing_b2 = ["fashion", "food_beverage", "sports_fitness", "travel_tourism", "events_entertainment", "education_k12", "higher_education", "social_impact", "climate_tech", "web3_crypto"]
+    missing_b3 = ["podcast", "creator_economy", "influencer_marketing", "prop_tech", "legal_tech", "hr_tech", "supply_chain_tech", "maritime", "mining", "energy_utilities"]
+
+    meta = """\
+- "description": what this industry is and who the key players are (1-2 sentences)
+- "b2b_or_b2c": "b2b", "b2c", or "both"
+- "typical_goals": JSON array of 3-4 common business goals in this industry
+- "key_job_titles": JSON array of key decision-maker roles
+- "relevant_tools": JSON array of 3-5 software tool names commonly used in this industry"""
+
+    total_nodes, total_edges = [], []
+    for batch in [missing_b1, missing_b2, missing_b3]:
+        nodes, edges = gemini_batch(api_key, batch, "industry", meta)
+        merge_into_graph(graph, nodes, edges)
+        total_nodes.extend(nodes); total_edges.extend(edges)
+        time.sleep(1)
+    print(f"  + {len(total_nodes)} nodes, {len(total_edges)} edges")
+
+
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
@@ -412,6 +554,13 @@ ALL_PASSES = {
     "tactics": pass_domains_and_tactics,
     "sources": pass_information_sources,
     "concepts": pass_concepts,
+    # Expansion passes — add more any time
+    "game_engines": pass_game_engines_and_dev_tools,
+    "creative_tools": pass_3d_and_creative_tools,
+    "electronics": pass_electronics_and_engineering,
+    "audio_video": pass_audio_and_video_production,
+    "science_data": pass_science_and_data_tools,
+    "more_industries": pass_missing_industries,
 }
 
 
