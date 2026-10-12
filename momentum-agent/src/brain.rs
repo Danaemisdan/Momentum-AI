@@ -202,6 +202,10 @@ impl MomentumBrain {
             || normalized.starts_with("google for ")
             || normalized.starts_with("look up ")
             || normalized.starts_with("find me ")
+            || normalized.contains("find me ")
+            || normalized.contains("search for ")
+            || normalized.contains("search on ")
+            || normalized.contains("look up ")
         {
             return Some(AgentMode::Operator);
         }
@@ -217,6 +221,13 @@ impl MomentumBrain {
             "twitter.com", "x.com", "spotify.com", "clutch.co", "fiverr.com", "upwork.com"
         ];
         if platform_domains.iter().any(|d| normalized.contains(d)) {
+            return Some(AgentMode::Operator);
+        }
+        let platforms = [
+            "youtube", "amazon", "spotify", "reddit", "netflix", "github", "linkedin", "twitter"
+        ];
+        let task_verbs = ["watch", "find", "search", "play", "buy", "show", "open", "look"];
+        if platforms.iter().any(|p| normalized.contains(p)) && task_verbs.iter().any(|v| normalized.contains(v)) {
             return Some(AgentMode::Operator);
         }
 
