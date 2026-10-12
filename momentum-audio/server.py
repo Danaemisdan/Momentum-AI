@@ -213,16 +213,18 @@ async def lifespan(app: FastAPI):
                     return
 
                 # Text-based Acoustic Echo Cancellation (AEC)
-                # Prevent the microphone from hearing the agent's own speaker output
-                is_echo = False
-                for recent in app_state["recent_agent_speech"]:
-                    if difflib.SequenceMatcher(None, text.lower(), recent.lower()).ratio() > 0.4:
-                        is_echo = True
-                        break
-                
-                if is_echo:
-                    print(f"🔇 AEC Filtered Echo: {text}", flush=True)
-                    return
+                # Only check for echo if the agent is ACTIVELY speaking or audio is playing
+                is_speaking = app_state.get("is_speaking", False)
+                if is_speaking:
+                    is_echo = False
+                    for recent in app_state["recent_agent_speech"]:
+                        if difflib.SequenceMatcher(None, text.lower(), recent.lower()).ratio() > 0.75:
+                            is_echo = True
+                            break
+                    if is_echo:
+                        print(f"🔇 AEC Filtered Echo (while speaking): {text}", flush=True)
+                        return
+
 
                 # Check if agent is currently speaking
                 is_speaking = app_state.get("is_speaking", False)

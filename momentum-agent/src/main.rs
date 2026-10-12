@@ -554,10 +554,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                 println!("🧠 [Graph] Injecting {} chars of context into planner", kg_context_for_llm.len());
                             }
 
-                            // Slot-filling: if required info is missing, ask ONE question and stop
-                            let slot_question = crate::brain::MomentumBrain::check_required_slots(&refined_goal, &kg_context_for_llm);
+                            // Slot-filling: dynamically query the Knowledge Graph tactic nodes!
+                            let slot_question = {
+                                let kg_lock = kg_operator.lock().await;
+                                kg_lock.check_tactic_missing_slots(&refined_goal).map(|(_tactic, q)| q)
+                            };
                             if let Some(ref question) = slot_question {
-                                println!("🔶 [Slots] Missing required info — asking: {}", question);
+                                println!("🔶 [Graph Slots] Missing required info — asking: {}", question);
                                 let _ = tx_op_resp.send(WsResponse {
                                     msg_type: "action".into(),
                                     t: None,

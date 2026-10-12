@@ -444,8 +444,51 @@ impl KnowledgeGraph {
         self.data.edges.len()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.data.nodes.is_empty()
+    /// Dynamically inspects tactic nodes in the graph to see if any tactic matches the user goal,
+    /// and checks whether all its `required_inputs` are provided in the goal.
+    /// Returns (tactic_label, first_missing_slot_description) if a required input is missing.
+    pub fn check_tactic_missing_slots(&self, goal: &str) -> Option<(String, String)> {
+        let goal_lower = goal.to_lowercase();
+        let words: Vec<&str> = goal_lower.split_whitespace().collect();
+
+        let tactics = self.find_nodes_by_type(&NodeType::Tactic);
+        for tactic in tactics {
+            let t_id = tactic.id.to_lowercase().replace("tactic:", "").replace('_', " ");
+            let t_label = tactic.label.to_lowercase();
+
+            let id_matches = t_id.split_whitespace().any(|tw| tw.len() > 3 && words.contains(&tw));
+            let label_matches = t_label.split_whitespace().any(|tw| tw.len() > 3 && words.contains(&tw));
+
+            if !id_matches && !label_matches {
+                continue;
+            }
+
+            if let Some(req_inputs) = tactic.meta.get("required_inputs").and_then(|v| v.as_array()) {
+                for req in req_inputs {
+                    if let Some(slot_name) = req.as_str() {
+                        let clean_slot = slot_name.to_lowercase().replace('_', " ");
+                        let is_provided = clean_slot.split_whitespace().any(|sw| goal_lower.contains(sw))
+                            || (clean_slot.contains("body") && (goal_lower.contains(" that ") || goal_lower.contains(" saying ") || goal_lower.contains('"')))
+                            || (clean_slot.contains("audience") && (goal_lower.contains(" in ") || goal_lower.contains(" for ")))
+                            || (clean_slot.contains("company") && (goal_lower.contains(" at ") || goal_lower.contains(" for ")))
+                            || (clean_slot.contains("email") && goal_lower.contains('@'));
+
+                        if !is_provided {
+                            let question = match slot_name {
+                                "message_body" | "value_proposition" => "What message would you like to convey?".into(),
+                                "contact_name" | "prospect_email" | "lead_id" => "Who specifically should we reach out to?".into(),
+                                "target_audience" | "company_name" => "What target audience or industry should we focus on?".into(),
+                                "platform" => "Which platform would you prefer to use?".into(),
+                                "delay_days" => "What follow-up timeframe should we set?".into(),
+                                other => format!("Please provide details for the {}.", other.replace('_', " ")),
+                            };
+                            return Some((tactic.label.clone(), question));
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// Normalize an arbitrary string into a stable snake_case label for use as a node ID segment
@@ -476,7 +519,8 @@ mod tests {
     use std::path::PathBuf;
 
     fn in_memory_kg() -> KnowledgeGraph {
-        KnowledgeGraph::load_from(PathBuf::from("/tmp/momentum_test_graph.json"))
+        let unique_id = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        KnowledgeGraph::load_from(PathBuf::from(format!("/tmp/momentum_test_graph_{}.json", unique_id)))
     }
 
     #[test]
@@ -547,5 +591,24 @@ mod tests {
             .get_meta_u64("success_count")
             .unwrap_or(0);
         assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_check_tactic_missing_slots() {
+        let mut kg = in_memory_kg();
+        let tactic = Node::new("tactic:cold_outreach", NodeType::Tactic, "Cold Outreach")
+            .with_meta("required_inputs", serde_json::json!(["prospect_email", "message_body"]));
+        kg.upsert_node(tactic);
+
+        // When goal only has email, it should detect missing message_body
+        let missing = kg.check_tactic_missing_slots("do cold outreach to alex@example.com");
+        assert!(missing.is_some());
+        let (label, question) = missing.unwrap();
+        assert_eq!(label, "Cold Outreach");
+        assert!(question.contains("message"));
+
+        // When goal has both email and message body, it should pass with None
+        let complete = kg.check_tactic_missing_slots("cold outreach to alex@example.com saying let's meet");
+        assert!(complete.is_none());
     }
 }
