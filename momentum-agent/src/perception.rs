@@ -104,12 +104,17 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
 
 /// Robust perception engine that extracts native interactive elements from OS Accessibility APIs (macOS AX and Windows UIAutomation).
 pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
+    perceive_native_target(None).await
+}
+
+/// Robust perception engine that extracts native interactive elements, optionally targeting and activating a specific application.
+pub async fn perceive_native_target(target_app: Option<&str>) -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
     let mut all_elements = Vec::new();
     
     let timeout_duration = if cfg!(target_os = "windows") {
         std::time::Duration::from_millis(4000)
     } else {
-        std::time::Duration::from_millis(1500)
+        std::time::Duration::from_millis(2000)
     };
 
     let output_res = if cfg!(target_os = "macos") {
@@ -123,11 +128,12 @@ pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Err
             .find(|p| std::path::Path::new(p).exists())
             .map(|p| std::fs::canonicalize(p).unwrap_or_else(|_| std::path::PathBuf::from(p)))
             .unwrap_or_else(|| std::path::PathBuf::from("./scripts/mac_ax"));
-        tokio::time::timeout(
-            timeout_duration,
-            tokio::process::Command::new(script)
-                .output()
-        ).await
+        
+        let mut cmd = tokio::process::Command::new(script);
+        if let Some(target) = target_app {
+            cmd.arg(target);
+        }
+        tokio::time::timeout(timeout_duration, cmd.output()).await
     } else if cfg!(target_os = "windows") {
         let win_ax_candidates = [
             "./scripts/win_ax.ps1",
@@ -139,16 +145,17 @@ pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Err
             .find(|p| std::path::Path::new(p).exists())
             .map(|p| std::fs::canonicalize(p).unwrap_or_else(|_| std::path::PathBuf::from(p)))
             .unwrap_or_else(|| std::path::PathBuf::from("./scripts/win_ax.ps1"));
-        tokio::time::timeout(
-            timeout_duration,
-            tokio::process::Command::new("powershell")
-                .arg("-NoProfile")
-                .arg("-ExecutionPolicy")
-                .arg("Bypass")
-                .arg("-File")
-                .arg(script)
-                .output()
-        ).await
+        
+        let mut cmd = tokio::process::Command::new("powershell");
+        cmd.arg("-NoProfile")
+            .arg("-ExecutionPolicy")
+            .arg("Bypass")
+            .arg("-File")
+            .arg(script);
+        if let Some(target) = target_app {
+            cmd.arg(target);
+        }
+        tokio::time::timeout(timeout_duration, cmd.output()).await
     } else {
         return Ok(vec![]);
     };
@@ -166,9 +173,30 @@ pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Err
             let local_id = v["id"].as_str().unwrap_or("error").to_string();
             let full_id = format!("native:{}", local_id);
             let role = v["role"].as_str().unwrap_or("").to_string();
-            let text = v["title"].as_str().unwrap_or("").to_string();
+            let raw_title = v["title"].as_str().unwrap_or("").to_string();
             let title_desc = v["description"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
-            let is_input_like = role == "AXTextField" || role == "AXTextArea" || role == "Edit" || role.to_lowercase().contains("text") || role.to_lowercase().contains("edit");
+            let placeholder = v["placeholder"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let value = v["value"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+
+            let text = if !raw_title.is_empty() {
+                raw_title
+            } else if let Some(desc) = &title_desc {
+                desc.clone()
+            } else if let Some(val) = &value {
+                val.clone()
+            } else {
+                placeholder.clone().unwrap_or_default()
+            };
+
+            // Avoid treating AXStaticText (chat messages, labels) as an input
+            let is_input_like = role == "AXTextField" 
+                || role == "AXTextArea" 
+                || role == "AXSearchField"
+                || role == "AXComboBox"
+                || role == "Edit" 
+                || (role.to_lowercase().contains("text") && !role.contains("Static") && !role.contains("static")) 
+                || (role.to_lowercase().contains("edit") && !role.contains("Editor"));
+
             let semantic_intent = crate::intent::infer_intent(&role, &text, title_desc.as_deref(), None);
 
             all_elements.push(UIElement {
@@ -182,8 +210,8 @@ pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Err
                 title: title_desc,
                 tag: None,
                 aria_label: None,
-                placeholder: None,
-                is_clickable: true, // Native elements extracted are filtered to be interactive
+                placeholder,
+                is_clickable: true,
                 is_input_like,
                 frame_id: None,
                 semantic_intent,

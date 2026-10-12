@@ -627,7 +627,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                     macro_state: Some(MacroState::ActOnSurface),
                                     tool_name: None,
                                 });
-                                
+                                let mut current_target_app: Option<String> = None;
                                 for (step_idx, step) in steps.iter().enumerate() {
                                             let action_type = step.get("action_type").and_then(|v| v.as_str()).unwrap_or("");
                                             let intent = step.get("intent").and_then(|v| v.as_str()).unwrap_or("");
@@ -655,6 +655,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                 },
                                                 "OpenApp" => {
                                                     let target_app = input_val.unwrap_or("browser");
+                                                    current_target_app = Some(target_app.to_string());
                                                     match driver_clone.open_app(target_app) {
                                                         Ok(opened) => {
                                                             milestone_outcome = format!("Opened {}", opened);
@@ -671,7 +672,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                                 "twitter" | "x" => Some("https://x.com"),
                                                                 "reddit" => Some("https://reddit.com"),
                                                                 _ => None,
-                                                            };
+                                                             };
                                                             if let Some(url) = web_url {
                                                                 driver_clone.open_url(url);
                                                                 milestone_outcome = format!("'{}' opened in native browser ({})", target_app, url);
@@ -688,6 +689,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                     println!("🧭 Navigating directly in native browser: {}", resolved_url);
 
                                                     // Use user's real browser in the foreground
+                                                    current_target_app = Some("browser".to_string());
                                                     driver_clone.open_url(&resolved_url);
                                                     milestone_outcome = format!("Navigated to {}", resolved_url);
                                                     tokio::time::sleep(tokio::time::Duration::from_millis(2200)).await;
@@ -703,8 +705,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                     let mut attempts = 0;
                                                     loop {
                                                         attempts += 1;
-                                                        // Always perceive the real user screen via native accessibility APIs
-                                                        let ui_list = crate::perception::perceive_native().await.unwrap_or_default();
+                                                        // Always perceive the real user screen via native accessibility APIs targeted to current app
+                                                        let ui_list = crate::perception::perceive_native_target(current_target_app.as_deref()).await.unwrap_or_default();
 
                                                         // Universal Algorithmic UI interaction
                                                         match driver_clone.execute_ui_intent(intent, input_val, &ui_list) {
@@ -728,7 +730,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                 },
                                                 "Search" => {
                                                     let query = input_val.unwrap_or(&refined_goal);
-                                                    let ui_list = crate::perception::perceive_native().await.unwrap_or_default();
+                                                    let ui_list = crate::perception::perceive_native_target(current_target_app.as_deref()).await.unwrap_or_default();
                                                     match driver_clone.execute_ui_intent("Search", Some(query), &ui_list) {
                                                         Ok(detail) => {
                                                             milestone_outcome = detail;

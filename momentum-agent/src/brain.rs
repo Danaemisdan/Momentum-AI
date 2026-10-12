@@ -1086,6 +1086,38 @@ HISTORY: {history}<|im_end|>
         normalized
     }
 
+    pub fn parse_messaging_request(input: &str) -> (String, Option<String>) {
+        let cleaned = Self::clean_intent_query(input, &["whatsapp", "telegram", "slack", "discord"]);
+        let lower = cleaned.to_lowercase();
+
+        // 1. Quoted message: e.g. message jagadeesh "hey bro" on whatsapp
+        if let Some(pos) = input.find('"') {
+            if let Some(end_pos) = input[pos + 1..].find('"') {
+                let msg = input[pos + 1..pos + 1 + end_pos].trim().to_string();
+                let before = &input[..pos];
+                let contact = Self::clean_intent_query(before, &["whatsapp", "telegram", "slack", "discord"]);
+                if !contact.is_empty() && !msg.is_empty() {
+                    return (contact, Some(msg));
+                }
+            }
+        }
+
+        // 2. Delimiter words: "saying", "that", "tell", ":"
+        for sep in &[" saying ", " that ", " : "] {
+            if let Some(pos) = lower.find(sep) {
+                let contact_part = &cleaned[..pos];
+                let msg_part = &cleaned[pos + sep.len()..];
+                let contact = contact_part.trim().to_string();
+                let msg = msg_part.trim().to_string();
+                if !contact.is_empty() && !msg.is_empty() {
+                    return (contact, Some(msg));
+                }
+            }
+        }
+
+        (cleaned, None)
+    }
+
     pub fn plan_fast_sequence(
         user_command: &str,
         _focused_app: &str,
@@ -1168,21 +1200,23 @@ HISTORY: {history}<|im_end|>
         }
 
         if cmd_lower.contains("whatsapp") || (cmd_lower.contains("message ") && (cmd_lower.contains("on ") || cmd_lower.contains("to "))) {
-            let contact = Self::clean_intent_query(user_command, &["whatsapp", "message", "text"]);
+            let (contact, message_text) = Self::parse_messaging_request(user_command);
             let contact_target = if contact.is_empty() { "chat".to_string() } else { contact };
 
+            let mut seq = Vec::new();
             if is_app_installed("whatsapp") {
-                return Some(serde_json::json!([
-                    {"action_type": "OpenApp", "input": "whatsapp"},
-                    {"action_type": "UI_Intent", "intent": "SearchContact", "input": contact_target}
-                ]));
+                seq.push(serde_json::json!({"action_type": "OpenApp", "input": "whatsapp"}));
             } else {
-                return Some(serde_json::json!([
-                    {"action_type": "OpenApp", "input": "browser"},
-                    {"action_type": "Navigate", "input": "https://web.whatsapp.com"},
-                    {"action_type": "UI_Intent", "intent": "SearchContact", "input": contact_target}
-                ]));
+                seq.push(serde_json::json!({"action_type": "OpenApp", "input": "browser"}));
+                seq.push(serde_json::json!({"action_type": "Navigate", "input": "https://web.whatsapp.com"}));
             }
+            seq.push(serde_json::json!({"action_type": "UI_Intent", "intent": "SearchContact", "input": contact_target}));
+
+            if let Some(msg) = message_text {
+                seq.push(serde_json::json!({"action_type": "UI_Intent", "intent": "SendMessage", "input": msg}));
+            }
+
+            return Some(serde_json::Value::Array(seq));
         }
 
         if cmd_lower.contains("linkedin") {
@@ -1784,5 +1818,39 @@ mod tests {
         assert_eq!(arr[2]["action_type"], "UI_Intent");
         assert_eq!(arr[2]["intent"], "Play");
         assert_eq!(arr[2]["input"], "music video");
+    }
+
+    #[test]
+    fn parse_messaging_request_handles_contact_and_message_body() {
+        let (c1, m1) = MomentumBrain::parse_messaging_request("can you message jagadeesh on whatsapp?");
+        assert_eq!(c1, "jagadeesh");
+        assert_eq!(m1, None);
+
+        let (c2, m2) = MomentumBrain::parse_messaging_request("can you message jagadeesh saying hello bro on whatsapp?");
+        assert_eq!(c2, "jagadeesh");
+        assert_eq!(m2, Some("hello bro".to_string()));
+
+        let (c3, m3) = MomentumBrain::parse_messaging_request("message jagadeesh \"meeting in 10 mins\" on whatsapp");
+        assert_eq!(c3, "jagadeesh");
+        assert_eq!(m3, Some("meeting in 10 mins".to_string()));
+    }
+
+    #[test]
+    fn plan_fast_sequence_includes_send_message_when_body_present() {
+        let plan = MomentumBrain::plan_fast_sequence(
+            "can you message jagadeesh saying hello bro on whatsapp?",
+            "Finder",
+            &["WhatsApp".into()],
+        ).expect("should produce plan");
+
+        let arr = plan.as_array().expect("plan should be json array");
+        assert_eq!(arr.len(), 3);
+        assert_eq!(arr[0]["action_type"], "OpenApp");
+        assert_eq!(arr[1]["action_type"], "UI_Intent");
+        assert_eq!(arr[1]["intent"], "SearchContact");
+        assert_eq!(arr[1]["input"], "jagadeesh");
+        assert_eq!(arr[2]["action_type"], "UI_Intent");
+        assert_eq!(arr[2]["intent"], "SendMessage");
+        assert_eq!(arr[2]["input"], "hello bro");
     }
 }

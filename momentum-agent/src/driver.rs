@@ -871,57 +871,126 @@ impl ActionDriver {
             "SearchContact" => {
                 let contact = input_val.unwrap_or("");
                 println!("💬 ActionDriver: Searching contact '{}' on messaging platform", contact);
-                // Look for search input in Top Navigation or Left Sidebar
-                let search_target = ui_list.iter().find(|el| {
-                    let role = el.role.to_lowercase();
-                    let is_input = el.is_input_like || role.contains("search") || role.contains("text") || role.contains("edit");
-                    let placeholder = el.placeholder.as_deref().unwrap_or("").to_lowercase();
-                    let title = el.title.as_deref().unwrap_or("").to_lowercase();
-                    let aria = el.aria_label.as_deref().unwrap_or("").to_lowercase();
-                    
-                    is_input && (
-                        placeholder.contains("search") || placeholder.contains("chat") 
-                        || aria.contains("search") || aria.contains("chat")
-                        || title.contains("search")
-                        || el.spatial_zone.as_deref() == Some("Top Navigation")
-                        || el.spatial_zone.as_deref() == Some("Left Sidebar")
-                    )
-                }).or_else(|| {
-                    ui_list.iter().find(|el| el.is_input_like)
+
+                // Check 1: Is this contact ALREADY visible in the chat list?
+                let contact_clean = contact.to_lowercase().trim().to_string();
+                let direct_chat = ui_list.iter().find(|el| {
+                    let desc = el.title.as_deref().unwrap_or("").to_lowercase();
+                    let txt = el.text.to_lowercase();
+                    let ph = el.placeholder.as_deref().unwrap_or("").to_lowercase();
+                    (desc.contains(&contact_clean) || txt.contains(&contact_clean) || ph.contains(&contact_clean))
+                        && (el.role == "AXButton" || el.role == "ListItem" || el.is_clickable)
+                        && (el.spatial_zone.as_deref() == Some("Left Sidebar") || el.spatial_zone.as_deref() == Some("Main Content"))
                 });
 
-                if let Some(target) = search_target {
-                    println!("  🎯 Found messaging search node '{}' at ({}, {}) in {:?}", 
-                        target.id, target.x, target.y, target.spatial_zone);
-                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
+                if let Some(chat) = direct_chat {
+                    let chat_title = chat.title.clone().unwrap_or_else(|| chat.text.clone());
+                    println!("  🎯 Algorithmic match: Found visible chat '{}' at ({}, {})", chat_title, chat.x, chat.y);
+                    let _ = enigo.move_mouse(chat.x as i32, chat.y as i32, enigo::Coordinate::Abs);
                     let _ = enigo.button(enigo::Button::Left, Click);
-                    thread::sleep(Duration::from_millis(200));
-
-                    #[cfg(target_os = "macos")]
-                    {
-                        let _ = enigo.key(Key::Meta, enigo::Direction::Press);
-                        let _ = enigo.key(Key::Unicode('a'), Click);
-                        let _ = enigo.key(Key::Meta, enigo::Direction::Release);
-                    }
-                    #[cfg(not(target_os = "macos"))]
-                    {
-                        let _ = enigo.key(Key::Control, enigo::Direction::Press);
-                        let _ = enigo.key(Key::Unicode('a'), Click);
-                        let _ = enigo.key(Key::Control, enigo::Direction::Release);
-                    }
-                    thread::sleep(Duration::from_millis(100));
-
-                    let _ = enigo.text(contact);
-                    thread::sleep(Duration::from_millis(300));
-                    let _ = enigo.key(Key::Return, Click);
+                    thread::sleep(Duration::from_millis(400));
                     return Ok(format!("Opened chat with '{}'", contact));
                 }
 
-                // Fallback: type shortcut or text
-                let _ = enigo.text(contact);
+                // Check 2: Use native search shortcut (Cmd+F on macOS, Ctrl+F on Windows)
+                #[cfg(target_os = "macos")]
+                {
+                    let _ = enigo.key(Key::Meta, enigo::Direction::Press);
+                    let _ = enigo.key(Key::Unicode('f'), Click);
+                    let _ = enigo.key(Key::Meta, enigo::Direction::Release);
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    let _ = enigo.key(Key::Control, enigo::Direction::Press);
+                    let _ = enigo.key(Key::Unicode('f'), Click);
+                    let _ = enigo.key(Key::Control, enigo::Direction::Release);
+                }
+                thread::sleep(Duration::from_millis(150));
+
+                // Also click search target if discovered in UI tree
+                let search_target = ui_list.iter().find(|el| {
+                    let desc = el.title.as_deref().unwrap_or("").to_lowercase();
+                    let ph = el.placeholder.as_deref().unwrap_or("").to_lowercase();
+                    let txt = el.text.to_lowercase();
+                    (desc.contains("search") || ph.contains("search") || txt.contains("search"))
+                        && (el.role.contains("Button") || el.role.contains("Field") || el.role.contains("Search") || el.role.contains("Text") || el.role == "AXStaticText" || el.role == "AXButton")
+                });
+
+                if let Some(target) = search_target {
+                    println!("  🎯 Clicking search input '{}' at ({}, {}) in {:?}", 
+                        target.id, target.x, target.y, target.spatial_zone);
+                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
+                    let _ = enigo.button(enigo::Button::Left, Click);
+                    thread::sleep(Duration::from_millis(150));
+                }
+
+                // Clear previous search query
+                #[cfg(target_os = "macos")]
+                {
+                    let _ = enigo.key(Key::Meta, enigo::Direction::Press);
+                    let _ = enigo.key(Key::Unicode('a'), Click);
+                    let _ = enigo.key(Key::Meta, enigo::Direction::Release);
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    let _ = enigo.key(Key::Control, enigo::Direction::Press);
+                    let _ = enigo.key(Key::Unicode('a'), Click);
+                    let _ = enigo.key(Key::Control, enigo::Direction::Release);
+                }
+                thread::sleep(Duration::from_millis(60));
+                let _ = enigo.key(Key::Backspace, Click);
+                thread::sleep(Duration::from_millis(100));
+
+                // Type contact name with discrete human keystrokes (avoids OS batch dropping)
+                for ch in contact.chars() {
+                    let _ = enigo.key(Key::Unicode(ch), Click);
+                    thread::sleep(Duration::from_millis(60));
+                }
+
+                // Wait for search results to filter
+                thread::sleep(Duration::from_millis(600));
+
+                // Open top search match: Return -> Down Arrow -> Return
+                let _ = enigo.key(Key::Return, Click);
+                thread::sleep(Duration::from_millis(200));
+                let _ = enigo.key(Key::DownArrow, Click);
+                thread::sleep(Duration::from_millis(150));
+                let _ = enigo.key(Key::Return, Click);
+                thread::sleep(Duration::from_millis(400));
+
+                Ok(format!("Opened chat with '{}'", contact))
+            },
+            "SendMessage" => {
+                let msg = input_val.unwrap_or("");
+                println!("💬 ActionDriver: Sending message '{}' to active conversation", msg);
+
+                // Look for compose input: AXTextArea, "Compose message", "Type a message"
+                let compose_target = ui_list.iter().find(|el| {
+                    let desc = el.title.as_deref().unwrap_or("").to_lowercase();
+                    let ph = el.placeholder.as_deref().unwrap_or("").to_lowercase();
+                    let txt = el.text.to_lowercase();
+                    (desc.contains("compose") || desc.contains("type a message") || ph.contains("type") || ph.contains("message"))
+                        || (el.role == "AXTextArea" || el.role == "Edit")
+                });
+
+                if let Some(target) = compose_target {
+                    println!("  🎯 Algorithmic match: Found compose box '{}' at ({}, {})", target.id, target.x, target.y);
+                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
+                    let _ = enigo.button(enigo::Button::Left, Click);
+                    thread::sleep(Duration::from_millis(200));
+                }
+
+                // Type message with discrete human keystrokes
+                for ch in msg.chars() {
+                    let _ = enigo.key(Key::Unicode(ch), Click);
+                    thread::sleep(Duration::from_millis(50));
+                }
+
                 thread::sleep(Duration::from_millis(200));
                 let _ = enigo.key(Key::Return, Click);
-                Ok(format!("Typed contact query '{}'", contact))
+                thread::sleep(Duration::from_millis(300));
+
+                Ok(format!("Sent message: '{}'", msg))
             },
             _ => {
                 println!("  ⚠️ Unhandled UI intent: {}", intent);
