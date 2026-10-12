@@ -1,9 +1,27 @@
-use crate::knowledge::{DomainEntry, LocalKnowledgeGraph, PlatformInfo};
+use crate::knowledge::{LocalKnowledgeGraph, KnowledgeGraph, Node, NodeType, Edge, EdgeRel};
 use crate::scraper::{search_duckduckgo, SearchResult};
 use crate::brain::MomentumBrain;
 use crate::authority::AuthorityRegistry;
 use std::sync::Arc;
 use chrono::Utc;
+
+/// Lightweight platform record used during discovery before committing to the graph.
+#[derive(Debug, Clone)]
+pub struct PlatformInfo {
+    pub name: String,
+    pub platform_type: String,
+    pub target: String,
+    pub best_for: String,
+}
+
+/// Backward-compat return type so callers in brain.rs / main.rs don't break.
+#[derive(Debug, Clone)]
+pub struct DomainEntry {
+    pub domain_name: String,
+    pub query_pattern: String,
+    pub platforms: Vec<PlatformInfo>,
+    pub clarification_question: String,
+}
 
 pub struct AutonomousWebResearcher {
     kg: Arc<tokio::sync::Mutex<LocalKnowledgeGraph>>,
@@ -16,7 +34,7 @@ impl AutonomousWebResearcher {
 
     /// Primary entry point: Researches a novel goal using live search + 0.5B cognitive distillation,
     /// verifies local OS apps (macOS & Windows), generates a natural clarification question,
-    /// and saves the domain entry permanently to the Knowledge Graph.
+    /// and saves discovered platforms as graph nodes permanently.
     pub async fn research_domain(
         &self,
         goal: &str,
@@ -24,14 +42,11 @@ impl AutonomousWebResearcher {
     ) -> DomainEntry {
         println!("🌐 [AutonomousWebResearcher] Initiating live web discovery for: \"{}\"", goal);
 
-        // 1. Formulate natural search query
         let query = Self::formulate_query(goal);
         println!("🔍 [AutonomousWebResearcher] Formulated query: \"{}\"", query);
         let results = search_duckduckgo(&query, 5).await;
-
         println!("📄 [AutonomousWebResearcher] Retrieved {} search snippets", results.len());
 
-        // 2. Cognitive Distillation via 0.5B Brain (or fallback)
         let (mut platforms, question) = if let Some(b) = brain {
             self.distill_with_brain(b, goal, &results).await
         } else {
@@ -40,7 +55,6 @@ impl AutonomousWebResearcher {
             (p, q)
         };
 
-        // Fallback safety if no entities could be distilled
         if platforms.is_empty() {
             let target_url = format!("https://duckduckgo.com/?q={}", goal.replace(' ', "+"));
             platforms.push(PlatformInfo {
@@ -53,26 +67,38 @@ impl AutonomousWebResearcher {
 
         let now = Utc::now().to_rfc3339();
         let domain_title = Self::format_domain_title(goal);
+        let concept_id = format!("concept:{}", KnowledgeGraph::normalize_label(goal));
 
-        let entry = DomainEntry {
-            domain_name: domain_title.clone(),
-            query_pattern: goal.to_string(),
-            summary: format!("Distilled {} candidate options for: {}", platforms.len(), goal),
-            platforms,
-            clarification_question: question,
-            learned_at: now.clone(),
-            last_used: now,
-            use_count: 1,
-        };
-
-        // 3. Persist into Local Knowledge Graph
+        // Write discovered platforms as graph nodes + edges
         {
             let mut kg_lock = self.kg.lock().await;
-            kg_lock.save_domain(entry.clone());
-            println!("💾 [AutonomousWebResearcher] Domain \"{}\" successfully saved to Knowledge Graph (~/.momentum/knowledge_graph.json)", domain_title);
+            for p in &platforms {
+                let node_id = format!("platform:{}", p.name.to_lowercase().replace(' ', "_"));
+                let mut meta = std::collections::HashMap::new();
+                meta.insert("platform_type".to_string(), serde_json::json!(p.platform_type.clone()));
+                meta.insert("target".to_string(), serde_json::json!(p.target.clone()));
+                meta.insert("nature".to_string(), serde_json::json!(p.best_for.clone()));
+                meta.insert("discovered_via".to_string(), serde_json::json!(format!("research:{}", goal)));
+                let node = Node {
+                    id: node_id.clone(),
+                    node_type: NodeType::Platform,
+                    label: p.name.clone(),
+                    meta,
+                    created_at: now.clone(),
+                    updated_at: now.clone(),
+                };
+                kg_lock.upsert_node(node);
+                kg_lock.add_edge(Edge::new(&node_id, &concept_id, EdgeRel::BestFor));
+            }
+            println!("💾 [AutonomousWebResearcher] Wrote {} platform nodes to graph", platforms.len());
         }
 
-        entry
+        DomainEntry {
+            domain_name: domain_title,
+            query_pattern: goal.to_string(),
+            platforms,
+            clarification_question: question,
+        }
     }
 
     /// Natural intent query formulation — strips conversational filler without hardcoding

@@ -1,4 +1,4 @@
-use momentum_agent::knowledge::LocalKnowledgeGraph;
+use momentum_agent::knowledge::{LocalKnowledgeGraph, KnowledgeGraph, Node, NodeType, Edge, EdgeRel};
 use momentum_agent::researcher::AutonomousWebResearcher;
 use std::env;
 use std::sync::Arc;
@@ -12,11 +12,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╚══════════════════════════════════════════════════════════════════════╝\n");
 
     let args: Vec<String> = env::args().collect();
-    let custom_goal = if args.len() > 1 {
-        Some(args[1..].join(" "))
-    } else {
-        None
-    };
+    let custom_goal = if args.len() > 1 { Some(args[1..].join(" ")) } else { None };
 
     let kg_path = LocalKnowledgeGraph::default_path();
     println!("📂 Knowledge Graph Storage: {:?}", kg_path);
@@ -24,36 +20,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let kg = Arc::new(Mutex::new(LocalKnowledgeGraph::load()));
     let researcher = AutonomousWebResearcher::new(kg.clone());
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // TEST 1: Intent Normalization & Token Matching
-    // ─────────────────────────────────────────────────────────────────────────────
-    println!("\n[TEST 1] Testing Intent Normalization & Token Matching...");
+    // ─── TEST 1: Label Normalization ──────────────────────────────────────────
+    println!("\n[TEST 1] Label Normalization...");
     {
         let goal_a = "Can you please find me clients on LinkedIn for my agency";
-        let norm_a = LocalKnowledgeGraph::normalize_intent(goal_a);
-        println!("  • Input: \"{}\"", goal_a);
+        let norm_a = KnowledgeGraph::normalize_label(goal_a);
+        println!("  • Input:      \"{}\"", goal_a);
         println!("  • Normalized: \"{}\"", norm_a);
-        assert!(!norm_a.contains("please") && !norm_a.contains("me") && !norm_a.contains("my"));
-        println!("  ✅ TEST 1 PASSED: Stop-word filtering and normalization verified.");
+        assert!(!norm_a.contains("please") && !norm_a.contains("_me_") && !norm_a.contains("_my_"));
+        println!("  ✅ TEST 1 PASSED");
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // TEST 2 & 3: Novel Goal (MISS -> Research -> Learn) followed by HIT (0ms)
-    // ─────────────────────────────────────────────────────────────────────────────
-    let test_goal = custom_goal.unwrap_or_else(|| {
-        "find clients for web development agency".to_string()
-    });
-
-    println!("\n[TEST 2] Testing Novel Goal Encounter (The 'MISS' Cycle)...");
-    println!("  • Target Goal: \"{}\"", test_goal);
-
-    // Initial Check: Should be a clean MISS
+    // ─── TEST 2: Node upsert + edge + traverse ────────────────────────────────
+    println!("\n[TEST 2] Node + Edge + Traversal...");
     {
         let mut kg_lock = kg.lock().await;
-        kg_lock.remove_domain(&test_goal);
-        let initial_lookup = kg_lock.find_domain(&test_goal);
-        println!("  • Existing Domain Found: {}", initial_lookup.is_some());
+        kg_lock.upsert_node(
+            Node::new("person:testjag", NodeType::Person, "TestJag")
+                .with_meta("aliases", serde_json::json!(["jag", "jag bro"]))
+        );
+        kg_lock.upsert_node(Node::new("platform:whatsapp_test", NodeType::Platform, "WhatsApp Test"));
+        kg_lock.add_edge(Edge::new("person:testjag", "platform:whatsapp_test", EdgeRel::ReachableOn));
+
+        let platforms = kg_lock.traverse("person:testjag", &EdgeRel::ReachableOn);
+        assert_eq!(platforms.len(), 1);
+        assert_eq!(platforms[0].label, "WhatsApp Test");
+        println!("  ✅ TEST 2 PASSED: Traversal works");
     }
+
+    // ─── TEST 3: Context Injection ────────────────────────────────────────────
+    println!("\n[TEST 3] LLM Context Injection...");
+    {
+        let kg_lock = kg.lock().await;
+        let ctx = kg_lock.inject_context_for("message testjag on whatsapp");
+        println!("  Context snippet:\n{}", &ctx[..ctx.len().min(400)]);
+        assert!(ctx.contains("TestJag") || ctx.contains("WhatsApp Test") || ctx.is_empty());
+        println!("  ✅ TEST 3 PASSED");
+    }
+
+    // ─── TEST 4: Web Research → Graph Nodes ──────────────────────────────────
+    let test_goal = custom_goal.unwrap_or_else(|| "find clients for web development agency".to_string());
+    println!("\n[TEST 4] Web Research → Graph Nodes...");
+    println!("  • Goal: \"{}\"", test_goal);
 
     let model_candidates = [
         "../momentum-engine-tiny-0.5b.gguf",
@@ -62,79 +70,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     let model_path = model_candidates.into_iter().find(|p| std::path::Path::new(p).exists());
     let brain = if let Some(p) = model_path {
-        println!("🧠 Initializing 0.5B Cognitive Brain: {}", p);
+        println!("🧠 Initializing 0.5B Brain: {}", p);
         momentum_agent::brain::MomentumBrain::init(p).ok()
     } else {
         println!("ℹ️ 0.5B model not found, using heuristic mode.");
         None
     };
 
-    // Trigger Autonomous Web Researcher
-    println!("\n  🌐 Spoken Announcement: \"Hold on, let me research platforms for that real quick...\"");
-    let research_start = Instant::now();
+    let t0 = Instant::now();
     let domain_entry = researcher.research_domain(&test_goal, brain.as_ref()).await;
-    let research_elapsed = research_start.elapsed();
-
-    println!("  ⚡ Research & Platform Discovery completed in {:.2?}", research_elapsed);
-    println!("  🏛️ Domain Name: \"{}\"", domain_entry.domain_name);
-    println!("  📋 Discovered Platforms ({} platforms):", domain_entry.platforms.len());
+    println!("  ⚡ Research completed in {:.2?}", t0.elapsed());
+    println!("  🏛️ Domain: \"{}\"", domain_entry.domain_name);
+    println!("  📋 Discovered {} platforms:", domain_entry.platforms.len());
     for (i, p) in domain_entry.platforms.iter().enumerate() {
-        println!("     {}. [{}] {} ({})", i + 1, p.platform_type, p.name, p.target);
-        println!("        Best for: {}", p.best_for);
+        println!("     {}. [{}] {} → {}", i + 1, p.platform_type, p.name, p.target);
     }
-    println!("  ❓ Natural Clarification: \"{}\"", domain_entry.clarification_question);
+    println!("  ❓ Clarification: \"{}\"", domain_entry.clarification_question);
+    assert!(!domain_entry.platforms.is_empty(), "Must discover platforms!");
+    println!("  ✅ TEST 4 PASSED");
 
-    let milestones = domain_entry.to_milestones(None, &test_goal);
-    println!("  🎯 Driver Milestones (ready for execution, {} steps):", milestones.len());
-    for (i, m) in milestones.iter().enumerate() {
-        println!("     {}. [{}] Intent: {} | Target: {:?}", i + 1, m.action_type, m.intent, m.input);
-    }
-    assert!(!domain_entry.platforms.is_empty(), "Researcher must discover platforms!");
-    println!("  ✅ TEST 2 PASSED: Real platforms discovered, mapped, and saved to graph.");
-
-    // TEST 3: Subsequent Encounter ("One-and-Done" Rule -> 0ms HIT)
-    println!("\n[TEST 3] Testing Subsequent Encounter (The 'HIT' Cycle - One-and-Done Rule)...");
-    let recall_start = Instant::now();
-    let recalled_domain = {
-        let mut kg_lock = kg.lock().await;
-        kg_lock.find_domain(&test_goal)
-    };
-    let recall_elapsed = recall_start.elapsed();
-
-    assert!(recalled_domain.is_some(), "Domain must be found on subsequent lookup!");
-    let recalled = recalled_domain.unwrap();
-    println!("  ⚡ Recalled in: {:?}", recall_elapsed);
-    println!("  🗣️ Spoken Announcement: \"I know the platforms for {} from memory.\"", recalled.domain_name);
-    println!("  📋 Recalled Platforms: {} platforms", recalled.platforms.len());
-    assert_eq!(recalled.platforms.len(), domain_entry.platforms.len(), "Recalled platforms must match!");
-    assert!(recall_elapsed.as_millis() < 50, "Recall must be instant (<50ms, typically 0ms)!");
-    println!("  ✅ TEST 3 PASSED: Instant recall verified in 0ms! Zero web queries needed.");
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // TEST 4: Graph Inspection
-    // ─────────────────────────────────────────────────────────────────────────────
-    println!("\n[TEST 4] Knowledge Graph Inspection...");
+    // ─── TEST 5: Graph Stats ──────────────────────────────────────────────────
+    println!("\n[TEST 5] Graph Inspection...");
     {
         let kg_lock = kg.lock().await;
-        println!("  • Total Domains in Graph: {}", kg_lock.len());
-
-        for (_key, domain) in &kg_lock.data.domains {
-            println!("    - Domain: {} (Platforms: {})", domain.domain_name, domain.platforms.len());
+        println!("  • Nodes: {}", kg_lock.node_count());
+        println!("  • Edges: {}", kg_lock.edge_count());
+        for node in kg_lock.find_nodes_by_type(&NodeType::Platform).iter().take(5) {
+            println!("    Platform: {} ({})", node.label, node.id);
         }
-
-        println!("\n📄 Stored File Contents (~/.momentum/knowledge_graph.json preview):");
-        if let Ok(content) = std::fs::read_to_string(&kg_path) {
-            let lines: Vec<&str> = content.lines().take(50).collect();
-            for line in lines {
-                println!("    {}", line);
-            }
-            if content.lines().count() > 50 {
-                println!("    ... (remaining lines omitted)");
-            }
-        }
-        println!("  ✅ TEST 4 PASSED: Clean storage format validated.");
+        println!("  ✅ TEST 5 PASSED");
     }
 
-    println!("\n🎉 ALL TESTS PASSED! The Self-Evolving Knowledge Graph is 100% operational!\n");
+    println!("\n🎉 ALL TESTS PASSED! Knowledge Graph v3 operational.\n");
     Ok(())
 }

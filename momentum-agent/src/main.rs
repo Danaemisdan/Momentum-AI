@@ -561,60 +561,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                 local_sequence
                             } else {
                                 // Fallback: check Knowledge Graph or conduct research ONLY if planner couldn't formulate steps
-                                let is_explicit_research = refined_goal.to_lowercase().contains("research") 
+                                let is_explicit_research = refined_goal.to_lowercase().contains("research")
                                     || refined_goal.to_lowercase().contains("investigate")
                                     || refined_goal.to_lowercase().contains("find out");
 
-                                let domain = {
-                                    let mut kg = kg_operator.lock().await;
-                                    kg.find_domain(&refined_goal)
+                                // Look up known platform nodes for this goal via context injection
+                                let kg_context = {
+                                    let kg_lock = kg_operator.lock().await;
+                                    kg_lock.inject_context_for(&refined_goal)
                                 };
 
-                                let domain = match domain {
-                                    Some(d) => d,
-                                    None => {
-                                        if is_explicit_research {
-                                            let research_speech = "Hold on, let me research that for you real quick...".to_string();
-                                            let _ = tx_op_resp.send(WsResponse {
-                                                msg_type: "action".into(),
-                                                t: None,
-                                                speech: Some(research_speech.clone()),
-                                                action: Some(Action::Talk { speech: research_speech }),
-                                                thought: None,
-                                                agent_mode: Some(AgentMode::Operator),
-                                                macro_state: Some(MacroState::Planning),
-                                                tool_name: None,
-                                            });
-                                            researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await
+                                // If research explicitly requested, discover platforms live
+                                let steps: Vec<serde_json::Value> = if is_explicit_research && kg_context.is_empty() {
+                                    let research_speech = "Hold on, let me research that for you real quick...".to_string();
+                                    let _ = tx_op_resp.send(WsResponse {
+                                        msg_type: "action".into(),
+                                        t: None,
+                                        speech: Some(research_speech.clone()),
+                                        action: Some(Action::Talk { speech: research_speech }),
+                                        thought: None,
+                                        agent_mode: Some(AgentMode::Operator),
+                                        macro_state: Some(MacroState::Planning),
+                                        tool_name: None,
+                                    });
+                                    let domain_entry = researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await;
+                                    // Build milestones from first discovered platform
+                                    if let Some(p) = domain_entry.platforms.first() {
+                                        if p.platform_type == "desktop_app" {
+                                            vec![
+                                                serde_json::json!({"action_type":"OpenApp","intent":"LaunchApp","input": p.target}),
+                                                serde_json::json!({"action_type":"UI_Intent","intent":"Search","input": refined_goal}),
+                                            ]
                                         } else {
-                                            // Non-research fallback: formulate direct UI/browser search
-                                            crate::knowledge::DomainEntry {
-                                                domain_name: "Web".to_string(),
-                                                query_pattern: refined_goal.clone(),
-                                                summary: format!("Direct action for {}", refined_goal),
-                                                platforms: vec![crate::knowledge::PlatformInfo {
-                                                    name: "Browser".to_string(),
-                                                    platform_type: "browser".to_string(),
-                                                    target: driver_clone.resolve_target_url(&refined_goal),
-                                                    best_for: refined_goal.clone(),
-                                                }],
-                                                clarification_question: String::new(),
-                                                learned_at: chrono::Utc::now().to_rfc3339(),
-                                                last_used: chrono::Utc::now().to_rfc3339(),
-                                                use_count: 1,
-                                            }
+                                            vec![
+                                                serde_json::json!({"action_type":"OpenApp","intent":"LaunchSurface","input":"browser"}),
+                                                serde_json::json!({"action_type":"Navigate","intent":"VisitPlatform","input": p.target}),
+                                                serde_json::json!({"action_type":"UI_Intent","intent":"Search","input": refined_goal}),
+                                            ]
                                         }
+                                    } else {
+                                        vec![
+                                            serde_json::json!({"action_type":"OpenApp","intent":"LaunchSurface","input":"browser"}),
+                                            serde_json::json!({"action_type":"Navigate","intent":"SearchWeb","input": format!("https://duckduckgo.com/?q={}", refined_goal.replace(' ', "+"))}),
+                                        ]
                                     }
+                                } else {
+                                    // Direct browser fallback
+                                     let target_url = driver_clone.resolve_target_url(&refined_goal);
+                                    vec![
+                                        serde_json::json!({"action_type":"OpenApp","intent":"LaunchSurface","input":"browser"}),
+                                        serde_json::json!({"action_type":"Navigate","intent":"OpenTarget","input": target_url}),
+                                        serde_json::json!({"action_type":"UI_Intent","intent":"Search","input": refined_goal}),
+                                    ]
                                 };
-                                let milestones = domain.to_milestones(None, &refined_goal);
-                                milestones.into_iter()
-                                    .map(|s| serde_json::to_value(s).unwrap_or_default())
-                                    .collect()
+                                steps
                             };
 
                             let mut execution_log = Vec::new();
 
                             if !steps.is_empty() {
+
                                 println!("🗺️ Strategic Milestones executing: {} steps", steps.len());
                                 let ack_speech = "On it.".to_string();
                                 let _ = tx_op_resp.send(WsResponse {
