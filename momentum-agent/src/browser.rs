@@ -162,14 +162,21 @@ impl MomentumBrowser {
         };
         
         // Inject stealth JS to erase navigator.webdriver traces immediately
-        let stealth_js = r#"
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-            window.chrome = { runtime: {} };
-            Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel' });
-        "#;
-        let _ = page.evaluate(stealth_js).await;
+        let platform_str = if cfg!(target_os = "windows") {
+            "Win32"
+        } else if cfg!(target_os = "macos") {
+            "MacIntel"
+        } else {
+            "Linux x86_64"
+        };
+        let stealth_js = format!(r#"
+            Object.defineProperty(navigator, 'webdriver', {{ get: () => undefined }});
+            Object.defineProperty(navigator, 'plugins', {{ get: () => [1, 2, 3, 4, 5] }});
+            Object.defineProperty(navigator, 'languages', {{ get: () => ['en-US', 'en'] }});
+            window.chrome = {{ runtime: {{}} }};
+            Object.defineProperty(navigator, 'platform', {{ get: () => '{}' }});
+        "#, platform_str);
+        let _ = page.evaluate(stealth_js.as_str()).await;
         
         // Set viewport explicitly — critical for headless mode so getBoundingClientRect works
         use chromiumoxide::cdp::browser_protocol::emulation::SetDeviceMetricsOverrideParams;

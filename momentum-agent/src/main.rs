@@ -60,8 +60,53 @@ async fn cancel_active_task(
     }
 }
 
+#[cfg(target_os = "windows")]
+mod win_util {
+    use std::ffi::c_void;
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetForegroundWindow() -> *mut c_void;
+        fn GetWindowThreadProcessId(hwnd: *mut c_void, lpdw_process_id: *mut u32) -> u32;
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn OpenProcess(dw_desired_access: u32, b_inherit_handle: i32, dw_process_id: u32) -> *mut c_void;
+        fn CloseHandle(h_object: *mut c_void) -> i32;
+        fn K32GetModuleBaseNameA(h_process: *mut c_void, h_module: *mut c_void, lp_base_name: *mut u8, n_size: u32) -> u32;
+    }
+
+    pub fn get_foreground_process_name() -> String {
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if hwnd.is_null() {
+                return "Desktop".to_string();
+            }
+            let mut pid: u32 = 0;
+            GetWindowThreadProcessId(hwnd, &mut pid);
+            if pid == 0 {
+                return "Desktop".to_string();
+            }
+            let handle = OpenProcess(0x1000, 0, pid);
+            if handle.is_null() {
+                return "Desktop".to_string();
+            }
+            let mut buf = [0u8; 260];
+            let len = K32GetModuleBaseNameA(handle, std::ptr::null_mut(), buf.as_mut_ptr(), buf.len() as u32);
+            CloseHandle(handle);
+            if len > 0 {
+                let name = String::from_utf8_lossy(&buf[..len as usize]).to_string();
+                return name.trim_end_matches(".exe").to_string();
+            }
+            "Desktop".to_string()
+        }
+    }
+}
+
 pub fn get_frontmost_app() -> String {
-    if cfg!(target_os = "macos") {
+    #[cfg(target_os = "macos")]
+    {
         if let Ok(output) = std::process::Command::new("sh")
             .arg("-c")
             .arg("lsappinfo info -only name $(lsappinfo front)")
@@ -78,23 +123,17 @@ pub fn get_frontmost_app() -> String {
                 }
             }
         }
-    } else if cfg!(target_os = "windows") {
-        if let Ok(output) = std::process::Command::new("powershell")
-            .args(&[
-                "-NoProfile",
-                "-Command",
-                "$w = Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow();' -Name Win32 -Namespace Win32Functions -PassThru; $h = $w::GetForegroundWindow(); (Get-Process | Where-Object { $_.MainWindowHandle -eq $h }).ProcessName"
-            ])
-            .output()
-        {
-            let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !text.is_empty() {
-                return text;
-            }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let name = win_util::get_foreground_process_name();
+        if !name.is_empty() {
+            return name;
         }
     }
     "Desktop".to_string()
 }
+
 
 fn infer_initial_macro_state(goal: &str) -> MacroState {
     let _ = goal;
@@ -494,77 +533,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                 println!("⚡ [0ms Fast Plan] Local cognitive sequence selected ({} steps)", local_sequence.len());
                                 local_sequence
                             } else {
-                                // 2. External Web Research & Discovery: Only for prospecting or informational research goals
-                                let domain_opt = {
+                                // Fallback: check Knowledge Graph or conduct research ONLY if planner couldn't formulate steps
+                                let is_explicit_research = refined_goal.to_lowercase().contains("research") 
+                                    || refined_goal.to_lowercase().contains("investigate")
+                                    || refined_goal.to_lowercase().contains("find out");
+
+                                let domain = {
                                     let mut kg = kg_operator.lock().await;
                                     kg.find_domain(&refined_goal)
                                 };
 
-                                let domain = match domain_opt {
-                                    Some(d) => {
-                                        println!("⚡ [KG HIT: 0ms] Recalled stored domain \"{}\" for: \"{}\"", d.domain_name, refined_goal);
-                                        let recall_speech = format!("I know the platforms for {}. Moving on that now.", d.domain_name);
-                                        let _ = tx_op_resp.send(WsResponse {
-                                            msg_type: "action".into(),
-                                            t: None,
-                                            speech: Some(recall_speech.clone()),
-                                            action: Some(Action::Talk { speech: recall_speech }),
-                                            thought: None,
-                                            agent_mode: Some(AgentMode::Operator),
-                                            macro_state: Some(MacroState::Planning),
-                                            tool_name: None,
-                                        });
-                                        d
-                                    }
+                                let domain = match domain {
+                                    Some(d) => d,
                                     None => {
-                                        println!("🔍 [KG MISS] Novel goal. Autonomous Web Researcher initiated for: \"{}\"", refined_goal);
-                                        let research_speech = "Hold on, let me research platforms for that real quick...".to_string();
-                                        let _ = tx_op_resp.send(WsResponse {
-                                            msg_type: "action".into(),
-                                            t: None,
-                                            speech: Some(research_speech.clone()),
-                                            action: Some(Action::Talk { speech: research_speech }),
-                                            thought: None,
-                                            agent_mode: Some(AgentMode::Operator),
-                                            macro_state: Some(MacroState::Planning),
-                                            tool_name: None,
-                                        });
-
-                                        let researched_entry = researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await;
-                                        let top_names = researched_entry.platforms.iter().take(3).map(|p| p.name.clone()).collect::<Vec<_>>().join(", ");
-                                        if !top_names.is_empty() {
-                                            let update_speech = format!("Found {}. Setting up navigation now.", top_names);
+                                        if is_explicit_research {
+                                            let research_speech = "Hold on, let me research that for you real quick...".to_string();
                                             let _ = tx_op_resp.send(WsResponse {
                                                 msg_type: "action".into(),
                                                 t: None,
-                                                speech: Some(update_speech.clone()),
-                                                action: Some(Action::Talk { speech: update_speech }),
+                                                speech: Some(research_speech.clone()),
+                                                action: Some(Action::Talk { speech: research_speech }),
                                                 thought: None,
                                                 agent_mode: Some(AgentMode::Operator),
-                                                macro_state: Some(MacroState::ActOnSurface),
+                                                macro_state: Some(MacroState::Planning),
                                                 tool_name: None,
                                             });
+                                            researcher_operator.research_domain(&refined_goal, Some(&brain_agent)).await
+                                        } else {
+                                            // Non-research fallback: formulate direct UI/browser search
+                                            crate::knowledge::DomainEntry {
+                                                domain_name: "Web".to_string(),
+                                                query_pattern: refined_goal.clone(),
+                                                summary: format!("Direct action for {}", refined_goal),
+                                                platforms: vec![crate::knowledge::PlatformInfo {
+                                                    name: "Browser".to_string(),
+                                                    platform_type: "browser".to_string(),
+                                                    target: driver_clone.resolve_target_url(&refined_goal),
+                                                    best_for: refined_goal.clone(),
+                                                }],
+                                                clarification_question: String::new(),
+                                                learned_at: chrono::Utc::now().to_rfc3339(),
+                                                last_used: chrono::Utc::now().to_rfc3339(),
+                                                use_count: 1,
+                                            }
                                         }
-                                        researched_entry
                                     }
                                 };
-
-                                if !domain.platforms.is_empty() {
-                                    let top_platform = domain.platforms.first().map(|p| p.name.clone()).unwrap_or_else(|| "Platform".to_string());
-                                    println!("⚡ [0ms Fast Plan] Using researched domain milestones for \"{}\" (Platform: {})", domain.domain_name, top_platform);
-                                    let nav_speech = format!("Opening {} for {}.", top_platform, domain.domain_name);
-                                    let _ = tx_op_resp.send(WsResponse {
-                                        msg_type: "action".into(),
-                                        t: None,
-                                        speech: Some(nav_speech.clone()),
-                                        action: Some(Action::Talk { speech: nav_speech }),
-                                        thought: None,
-                                        agent_mode: Some(AgentMode::Operator),
-                                        macro_state: Some(MacroState::ActOnSurface),
-                                        tool_name: None,
-                                    });
-                                }
-                                domain.to_milestones(None, &refined_goal).into_iter()
+                                let milestones = domain.to_milestones(None, &refined_goal);
+                                milestones.into_iter()
                                     .map(|s| serde_json::to_value(s).unwrap_or_default())
                                     .collect()
                             };
@@ -573,6 +589,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                             if !steps.is_empty() {
                                 println!("🗺️ Strategic Milestones executing: {} steps", steps.len());
+                                let ack_speech = "On it.".to_string();
+                                let _ = tx_op_resp.send(WsResponse {
+                                    msg_type: "action".into(),
+                                    t: None,
+                                    speech: Some(ack_speech.clone()),
+                                    action: Some(Action::Talk { speech: ack_speech }),
+                                    thought: None,
+                                    agent_mode: Some(AgentMode::Operator),
+                                    macro_state: Some(MacroState::ActOnSurface),
+                                    tool_name: None,
+                                });
                                 
                                 for (step_idx, step) in steps.iter().enumerate() {
                                             let action_type = step.get("action_type").and_then(|v| v.as_str()).unwrap_or("");

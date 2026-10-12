@@ -1,43 +1,63 @@
 # Native Windows UI Automation Extraction for Momentum AI
-Add-Type -AssemblyName UIAutomationClient
-Add-Type -AssemblyName UIAutomationTypes
-
-$w = Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();' -Name Win32Native -Namespace Win32Functions -PassThru
-$hwnd = $w::GetForegroundWindow()
-
-if ($hwnd -eq [IntPtr]::Zero) {
-    Write-Output "[]"
-    exit 0
-}
+$ErrorActionPreference = "SilentlyContinue"
 
 try {
-    $element = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
+    [void][System.Reflection.Assembly]::LoadWithPartialName("UIAutomationClient")
+    [void][System.Reflection.Assembly]::LoadWithPartialName("UIAutomationTypes")
+
+    $element = [System.Windows.Automation.AutomationElement]::FocusedElement
     if ($null -eq $element) {
         Write-Output "[]"
         exit 0
     }
 
-    $condition = [System.Windows.Automation.Condition]::TrueCondition
-    $raw_children = $element.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    # Focus on the top-level parent window or the focused element itself
+    $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+    $root = $element
+    while ($true) {
+        $parent = $walker.GetParent($root)
+        if ($null -eq $parent -or $parent -eq [System.Windows.Automation.AutomationElement]::RootElement) {
+            break
+        }
+        $root = $parent
+    }
+
+    # Query interactive controls: Button, Edit, Hyperlink, ListItem, MenuItem, TabItem
+    $cTypes = @(
+        [System.Windows.Automation.ControlType]::Button,
+        [System.Windows.Automation.ControlType]::Edit,
+        [System.Windows.Automation.ControlType]::Hyperlink,
+        [System.Windows.Automation.ControlType]::ListItem,
+        [System.Windows.Automation.ControlType]::MenuItem,
+        [System.Windows.Automation.ControlType]::TabItem
+    )
 
     $results = @()
     $idx = 0
-    foreach ($child in $raw_children) {
-        if ($idx -ge 80) { break }
-        $rect = $child.Current.BoundingRectangle
-        if ($rect.Width -gt 0 -and $rect.Height -gt 0 -and -not $child.Current.IsOffscreen) {
-            $name = $child.Current.Name
-            $type = $child.Current.ControlType.ProgrammaticName.Replace("ControlType.", "")
-            if (-not [string]::IsNullOrWhiteSpace($name) -or $type -eq "Edit" -or $type -eq "Button" -or $type -eq "Hyperlink") {
-                $results += @{
-                    id = "$idx"
-                    role = $type
-                    title = if ($name) { $name } else { "" }
-                    x = [math]::Round($rect.X + ($rect.Width / 2))
-                    y = [math]::Round($rect.Y + ($rect.Height / 2))
-                    description = if ($child.Current.HelpText) { $child.Current.HelpText } else { "" }
-                }
-                $idx++
+
+    foreach ($ct in $cTypes) {
+        if ($idx -ge 50) { break }
+        $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ct)
+        $children = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+        if ($null -ne $children) {
+            foreach ($child in $children) {
+                if ($idx -ge 50) { break }
+                try {
+                    $rect = $child.Current.BoundingRectangle
+                    if ($rect.Width -gt 0 -and $rect.Height -gt 0 -and -not $child.Current.IsOffscreen) {
+                        $name = $child.Current.Name
+                        $type = $ct.ProgrammaticName.Replace("ControlType.", "")
+                        $results += @{
+                            id = "$idx"
+                            role = $type
+                            title = if ($name) { $name } else { "" }
+                            x = [math]::Round($rect.X + ($rect.Width / 2))
+                            y = [math]::Round($rect.Y + ($rect.Height / 2))
+                            description = if ($child.Current.HelpText) { $child.Current.HelpText } else { "" }
+                        }
+                        $idx++
+                    }
+                } catch {}
             }
         }
     }

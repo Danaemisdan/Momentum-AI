@@ -2,7 +2,6 @@ use crate::brain::MomentumBrain;
 use crate::perception::perceive_native;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-use std::process::Command;
 
 /// The Spinal Cord: A continuous, zero-JSON background loop that bypasses the OODA overhead.
 /// It rips the native UI tree every second, feeds it to the Tiny LLM, and instantly executes physical clicks.
@@ -75,11 +74,12 @@ pub async fn start_spinal_cord(micro_goal: String, brain: Arc<MomentumBrain>) {
                     let id = action.strip_prefix("c_").unwrap_or("");
                     if let Some(el) = ui_elements.iter().find(|e| e.id == id || e.selector == id) {
                         println!("Physical Reflex: Clicking {} at ({}, {})", el.id, el.x, el.y);
-                        // Fire native physical click via mac_click script
-                        let _ = Command::new("./scripts/mac_click")
-                            .arg(el.x.to_string())
-                            .arg(el.y.to_string())
-                            .output();
+                        // Fire native physical click cross-platform
+                        use enigo::{Direction::Click, Enigo, Mouse, Settings};
+                        if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
+                            let _ = enigo.move_mouse(el.x as i32, el.y as i32, enigo::Coordinate::Abs);
+                            let _ = enigo.button(enigo::Button::Left, Click);
+                        }
                         println!("Spinal cord micro-goal executed.");
                         break;
                     } else {

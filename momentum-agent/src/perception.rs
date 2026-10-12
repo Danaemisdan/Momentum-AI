@@ -106,32 +106,38 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
 pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
     let mut all_elements = Vec::new();
     
-    let output = if cfg!(target_os = "macos") {
+    let timeout_duration = std::time::Duration::from_millis(1500);
+    let output_res = if cfg!(target_os = "macos") {
         let mac_ax_candidates = ["./scripts/mac_ax", "scripts/mac_ax", "momentum-agent/scripts/mac_ax"];
         let script = mac_ax_candidates.iter().find(|p| std::path::Path::new(p).exists()).unwrap_or(&"./scripts/mac_ax");
-        tokio::process::Command::new(script)
-            .current_dir(std::env::current_dir()?)
-            .output()
-            .await?
+        tokio::time::timeout(
+            timeout_duration,
+            tokio::process::Command::new(script)
+                .current_dir(std::env::current_dir()?)
+                .output()
+        ).await
     } else if cfg!(target_os = "windows") {
         let win_ax_candidates = ["./scripts/win_ax.ps1", "scripts/win_ax.ps1", "momentum-agent/scripts/win_ax.ps1"];
         let script = win_ax_candidates.iter().find(|p| std::path::Path::new(p).exists()).unwrap_or(&"./scripts/win_ax.ps1");
-        tokio::process::Command::new("powershell")
-            .arg("-NoProfile")
-            .arg("-ExecutionPolicy")
-            .arg("Bypass")
-            .arg("-File")
-            .arg(script)
-            .current_dir(std::env::current_dir()?)
-            .output()
-            .await?
+        tokio::time::timeout(
+            timeout_duration,
+            tokio::process::Command::new("powershell")
+                .arg("-NoProfile")
+                .arg("-ExecutionPolicy")
+                .arg("Bypass")
+                .arg("-File")
+                .arg(script)
+                .current_dir(std::env::current_dir()?)
+                .output()
+        ).await
     } else {
         return Ok(vec![]);
     };
-        
-    if !output.status.success() {
-        return Err("Failed to extract native UI tree from OS Accessibility API".into());
-    }
+
+    let output = match output_res {
+        Ok(Ok(o)) if o.status.success() => o,
+        _ => return Ok(vec![]),
+    };
     
     let json_str = String::from_utf8_lossy(&output.stdout);
     let nodes: Value = serde_json::from_str(&json_str).unwrap_or(Value::Null);
