@@ -171,6 +171,8 @@ impl MomentumBrain {
         if normalized.starts_with("calculate ") 
             || normalized.starts_with("calc ") 
             || normalized.starts_with("solve ")
+            || normalized.contains("calculator")
+            || (normalized.contains("calculate") && normalized.chars().any(|c| c.is_numeric()))
             || (normalized.chars().any(|c| c.is_numeric()) && (normalized.contains('+') || normalized.contains('-') || normalized.contains('*') || normalized.contains('/') || normalized.contains('x')))
         {
             return Some(AgentMode::Operator);
@@ -994,48 +996,138 @@ HISTORY: {history}<|im_end|>
         Ok(clean)
     }
 
-    pub async fn extract_sequence_args(
-        &self, 
-        user_command: &str, 
-        _history: &str,
-        focused_app: &str,
-        available_apps: &[String]
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn plan_fast_sequence(
+        user_command: &str,
+        _focused_app: &str,
+        available_apps: &[String],
+    ) -> Option<serde_json::Value> {
         let cmd_lower = user_command.to_lowercase();
         
+        // Helper to check installed apps
+        let is_app_installed = |name: &str| -> bool {
+            let n = name.to_lowercase();
+            available_apps.iter().any(|a| a.to_lowercase().contains(&n))
+        };
+
         // 0. Fast-Path Heuristic Planning (0ms execution, bypasses CPU LLM completely)
         if cmd_lower.contains("calculate") || cmd_lower.contains("math") || cmd_lower.starts_with("calc")
             || (cmd_lower.chars().any(|c| c.is_numeric()) && (cmd_lower.contains('+') || cmd_lower.contains('-') || cmd_lower.contains('*') || cmd_lower.contains('/') || cmd_lower.contains('x'))) {
-            return Ok(serde_json::json!([
+            // Extract the actual mathematical expression from user sentence
+            let normalized = cmd_lower
+                .replace("multiplied by", "*")
+                .replace("times", "*")
+                .replace("plus", "+")
+                .replace("minus", "-")
+                .replace("divided by", "/")
+                .replace("over", "/")
+                .replace("into", "*")
+                .replace(" x ", " * ")
+                .replace(" X ", " * ")
+                .replace("zero", "0")
+                .replace("one", "1")
+                .replace("two", "2")
+                .replace("three", "3")
+                .replace("four", "4")
+                .replace("five", "5")
+                .replace("six", "6")
+                .replace("seven", "7")
+                .replace("eight", "8")
+                .replace("nine", "9")
+                .replace("ten", "10");
+
+            let chars: Vec<char> = normalized.chars().collect();
+            let mut math_expr = String::new();
+            for i in 0..chars.len() {
+                let ch = chars[i];
+                if ch.is_ascii_digit() || ['+', '-', '*', '/', '(', ')', '.', '%', '^'].contains(&ch) {
+                    math_expr.push(ch);
+                } else if (ch == 'x' || ch == 'X') && i > 0 && i + 1 < chars.len() && chars[i - 1].is_ascii_digit() && chars[i + 1].is_ascii_digit() {
+                    math_expr.push('*');
+                }
+            }
+
+            if math_expr.is_empty() {
+                return Some(serde_json::json!([
+                    {"action_type": "OpenApp", "input": "calculator"}
+                ]));
+            }
+
+            return Some(serde_json::json!([
                 {"action_type": "OpenApp", "input": "calculator"},
-                {"action_type": "UI_Intent", "intent": "Calculate", "input": user_command}
+                {"action_type": "UI_Intent", "intent": "Calculate", "input": math_expr}
             ]));
         }
 
         if cmd_lower.contains("3d model") || cmd_lower.contains("3d asset") || cmd_lower.contains("mesh") {
-            return Ok(serde_json::json!([
+            return Some(serde_json::json!([
                 {"action_type": "InspectEnvironment", "input": "3D software"},
                 {"action_type": "GenerateAsset", "input": user_command},
                 {"action_type": "OpenApp", "input": "blender"}
             ]));
         }
 
-        if cmd_lower.contains("music") || cmd_lower.contains("song") || cmd_lower.contains("spotify") {
-            return Ok(serde_json::json!([
-                {"action_type": "OpenApp", "input": "spotify"},
-                {"action_type": "UI_Intent", "intent": "Search", "input": user_command},
-                {"action_type": "UI_Intent", "intent": "Click", "input": "Play"}
+        if cmd_lower.contains("youtube") {
+            let clean_query = cmd_lower
+                .replace("play some", "")
+                .replace("play", "")
+                .replace("watch", "")
+                .replace("find", "")
+                .replace("on youtube", "")
+                .replace("for me", "")
+                .replace("bro", "")
+                .replace("please", "")
+                .trim()
+                .to_string();
+            let query = if clean_query.is_empty() { "music".to_string() } else { clean_query };
+            let nav_url = format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&query));
+            return Some(serde_json::json!([
+                {"action_type": "OpenApp", "input": "browser"},
+                {"action_type": "Navigate", "input": nav_url},
+                {"action_type": "UI_Intent", "intent": "Play", "input": query}
             ]));
         }
 
+        if cmd_lower.contains("music") || cmd_lower.contains("song") || cmd_lower.contains("spotify") {
+            let clean_query = cmd_lower
+                .replace("open spotify and", "")
+                .replace("open spotify", "")
+                .replace("play some", "")
+                .replace("play", "")
+                .replace("for me", "")
+                .replace("bro", "")
+                .replace("please", "")
+                .trim()
+                .to_string();
+            let query = if clean_query.is_empty() { "music".to_string() } else { clean_query };
+
+            if is_app_installed("spotify") {
+                return Some(serde_json::json!([
+                    {"action_type": "OpenApp", "input": "spotify"},
+                    {"action_type": "UI_Intent", "intent": "Search", "input": query},
+                    {"action_type": "UI_Intent", "intent": "Play", "input": "Play"}
+                ]));
+            } else {
+                let nav_url = if cmd_lower.contains("spotify") {
+                    "https://open.spotify.com".to_string()
+                } else {
+                    format!("https://www.youtube.com/results?search_query={}", crate::driver::ActionDriver::percent_encode(&query))
+                };
+                return Some(serde_json::json!([
+                    {"action_type": "OpenApp", "input": "browser"},
+                    {"action_type": "Navigate", "input": nav_url},
+                    {"action_type": "UI_Intent", "intent": "Play", "input": query}
+                ]));
+            }
+        }
+
         if cmd_lower.starts_with("scroll down") || cmd_lower == "down" {
-            return Ok(serde_json::json!([
+            return Some(serde_json::json!([
                 {"action_type": "Scroll", "input": "down"}
             ]));
         }
 
         if cmd_lower.starts_with("scroll up") || cmd_lower == "up" {
-            return Ok(serde_json::json!([
+            return Some(serde_json::json!([
                 {"action_type": "Scroll", "input": "up"}
             ]));
         }
@@ -1047,7 +1139,26 @@ HISTORY: {history}<|im_end|>
                 cmd_lower.trim_start_matches("launch ").trim()
             };
             if !app_name.is_empty() {
-                return Ok(serde_json::json!([
+                if !is_app_installed(app_name) {
+                    let web_fallback = match app_name {
+                        "spotify" => Some("https://open.spotify.com"),
+                        "youtube" => Some("https://youtube.com"),
+                        "whatsapp" => Some("https://web.whatsapp.com"),
+                        "telegram" => Some("https://web.telegram.org"),
+                        "slack" => Some("https://app.slack.com"),
+                        "discord" => Some("https://discord.com/app"),
+                        "twitter" | "x" => Some("https://x.com"),
+                        "reddit" => Some("https://reddit.com"),
+                        _ => None,
+                    };
+                    if let Some(url) = web_fallback {
+                        return Some(serde_json::json!([
+                            {"action_type": "OpenApp", "input": "browser"},
+                            {"action_type": "Navigate", "input": url}
+                        ]));
+                    }
+                }
+                return Some(serde_json::json!([
                     {"action_type": "OpenApp", "input": app_name}
                 ]));
             }
@@ -1061,10 +1172,24 @@ HISTORY: {history}<|im_end|>
             } else {
                 cmd_lower.trim_start_matches("navigate to ").trim()
             };
-            return Ok(serde_json::json!([
+            return Some(serde_json::json!([
                 {"action_type": "OpenApp", "input": "browser"},
                 {"action_type": "Navigate", "input": target}
             ]));
+        }
+
+        None
+    }
+
+    pub async fn extract_sequence_args(
+        &self, 
+        user_command: &str, 
+        _history: &str,
+        focused_app: &str,
+        available_apps: &[String]
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        if let Some(fast_plan) = Self::plan_fast_sequence(user_command, focused_app, available_apps) {
+            return Ok(fast_plan);
         }
 
         let app_sample = if available_apps.is_empty() {
@@ -1463,5 +1588,50 @@ mod tests {
     fn heuristic_classifier_keeps_simple_greeting_as_chat() {
         let intent = MomentumBrain::heuristic_mode("hi");
         assert_eq!(intent, Some(AgentMode::Chat));
+    }
+
+    #[test]
+    fn plan_fast_sequence_extracts_math_and_opens_calculator() {
+        let plan = MomentumBrain::plan_fast_sequence(
+            "now calculate 10*5 on the calculator app",
+            "Finder",
+            &["Calculator".into(), "Notes".into()],
+        ).expect("should produce plan");
+
+        let arr = plan.as_array().expect("plan should be json array");
+        assert_eq!(arr.len(), 2);
+        assert_eq!(arr[0]["action_type"], "OpenApp");
+        assert_eq!(arr[0]["input"], "calculator");
+        assert_eq!(arr[1]["action_type"], "UI_Intent");
+        assert_eq!(arr[1]["intent"], "Calculate");
+        assert_eq!(arr[1]["input"], "10*5");
+    }
+
+    #[test]
+    fn plan_fast_sequence_falls_back_to_web_spotify_when_uninstalled() {
+        let plan = MomentumBrain::plan_fast_sequence(
+            "open spotify and play some music for me",
+            "Finder",
+            &["Notes".into(), "Calculator".into()],
+        ).expect("should produce plan");
+
+        let arr = plan.as_array().expect("plan should be json array");
+        assert_eq!(arr[0]["action_type"], "OpenApp");
+        assert_eq!(arr[0]["input"], "browser");
+        assert_eq!(arr[1]["action_type"], "Navigate");
+        assert_eq!(arr[1]["input"], "https://open.spotify.com");
+    }
+
+    #[test]
+    fn plan_fast_sequence_routes_to_native_spotify_when_installed() {
+        let plan = MomentumBrain::plan_fast_sequence(
+            "open spotify and play some music for me",
+            "Finder",
+            &["Spotify".into(), "Calculator".into()],
+        ).expect("should produce plan");
+
+        let arr = plan.as_array().expect("plan should be json array");
+        assert_eq!(arr[0]["action_type"], "OpenApp");
+        assert_eq!(arr[0]["input"], "spotify");
     }
 }

@@ -135,6 +135,48 @@ pub fn get_frontmost_app() -> String {
 }
 
 
+fn format_clean_chat_history(history: &[crate::types::ChatMessage], current_message: &str) -> String {
+    let mut msgs: Vec<(String, String)> = Vec::new();
+    for msg in history.iter().filter(|m| !m.text.trim().is_empty()) {
+        let role = if msg.role == "agent" || msg.role == "assistant" {
+            "assistant".to_string()
+        } else {
+            "user".to_string()
+        };
+        msgs.push((role, msg.text.trim().to_string()));
+    }
+
+    // Drop trailing message if it is an exact duplicate of current user input (UI sends it inside history)
+    if let Some(last) = msgs.last() {
+        if last.0 == "user" && last.1 == current_message.trim() {
+            msgs.pop();
+        }
+    }
+
+    // Consolidate consecutive messages from the same role (e.g. streaming sentence chunks)
+    let mut consolidated: Vec<(String, String)> = Vec::new();
+    for (role, text) in msgs {
+        if let Some(prev) = consolidated.last_mut() {
+            if prev.0 == role {
+                prev.1.push(' ');
+                prev.1.push_str(&text);
+                continue;
+            }
+        }
+        consolidated.push((role, text));
+    }
+
+    // Keep the last 10 real dialogue turns
+    let keep_turns = 10;
+    let skip = if consolidated.len() > keep_turns { consolidated.len() - keep_turns } else { 0 };
+
+    let mut out = String::new();
+    for (role, text) in consolidated.into_iter().skip(skip) {
+        out.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", role, text));
+    }
+    out
+}
+
 fn infer_initial_macro_state(goal: &str) -> MacroState {
     let _ = goal;
     MacroState::AcquireSurface
@@ -292,14 +334,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         continue;
                     }
                     ClientMessage::InterimInput { history, text } => {
-                        let clean_history: Vec<&crate::types::ChatMessage> = history.iter().filter(|msg| !msg.text.trim().is_empty()).collect();
-                        let mut history_str = String::new();
-                        let keep_count = 6;
-                        let skip = if clean_history.len() > keep_count { clean_history.len() - keep_count } else { 0 };
-                        for msg in clean_history.iter().skip(skip) {
-                            history_str.push_str(&format!("<|im_start|>{role}\n{text}<|im_end|>\n", role=msg.role, text=msg.text));
-                        }
-                        
+                        let history_str = format_clean_chat_history(&history, &text);
                         let brain_prefill = brain.clone();
                         let text_clone = text.clone();
                         tokio::spawn(async move {
@@ -324,18 +359,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                 println!("💬 New input: {}", message);
                 
-                // Do not filter out short messages like "hi" — it breaks conversational context
-                let clean_history: Vec<&crate::types::ChatMessage> = history.iter().filter(|msg| {
-                    !msg.text.trim().is_empty()
-                }).collect();
-
-                let mut history_str = String::new();
-                let keep_count = 6; // Reduced from 20 to speed up TTFT for faster replies
-                let skip = if clean_history.len() > keep_count { clean_history.len() - keep_count } else { 0 };
-                // Don't inject omitted warnings into the history prompt, it confuses the model
-                for msg in clean_history.iter().skip(skip) {
-                    history_str.push_str(&format!("<|im_start|>{role}\n{text}<|im_end|>\n", role=msg.role, text=msg.text));
-                }
+                let history_str = format_clean_chat_history(&history, &message);
 
                 // --- INTENT CLASSIFICATION ---
                 let agent_mode = match MomentumBrain::heuristic_mode(&message) {
@@ -646,7 +670,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                                 milestone_outcome = format!("Opened {}", opened);
                                                             }
                                                             Err(e) => {
-                                                                milestone_outcome = format!("Could not open {}: {}", target_app, e);
+                                                                println!("⚠️ App '{}' failed to open locally: {}. Checking web fallback...", target_app, e);
+                                                                let web_url = match target_app.to_lowercase().as_str() {
+                                                                    "spotify" => Some("https://open.spotify.com"),
+                                                                    "youtube" => Some("https://youtube.com"),
+                                                                    "whatsapp" => Some("https://web.whatsapp.com"),
+                                                                    "telegram" => Some("https://web.telegram.org"),
+                                                                    "slack" => Some("https://app.slack.com"),
+                                                                    "discord" => Some("https://discord.com/app"),
+                                                                    "twitter" | "x" => Some("https://x.com"),
+                                                                    "reddit" => Some("https://reddit.com"),
+                                                                    _ => None,
+                                                                };
+                                                                if let Some(url) = web_url {
+                                                                    driver_clone.open_url(url);
+                                                                    milestone_outcome = format!("'{}' not installed locally. Opened {} in browser.", target_app, url);
+                                                                } else {
+                                                                    milestone_outcome = format!("Could not open {}: {}", target_app, e);
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -806,5 +847,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_clean_chat_history_drops_duplicate_trailing_user_message() {
+        let history = vec![
+            crate::types::ChatMessage { role: "user".into(), text: "hey".into() },
+            crate::types::ChatMessage { role: "agent".into(), text: "Hey!".into() },
+            crate::types::ChatMessage { role: "agent".into(), text: "How's it going?".into() },
+            crate::types::ChatMessage { role: "user".into(), text: "Not bad".into() },
+        ];
+        let current_msg = "Not bad";
+        let out = format_clean_chat_history(&history, current_msg);
+        assert!(out.contains("<|im_start|>user\nhey<|im_end|>"));
+        assert!(out.contains("<|im_start|>assistant\nHey! How's it going?<|im_end|>"));
+        // The duplicate trailing "Not bad" in history must be dropped because current_msg is "Not bad"
+        assert!(!out.contains("<|im_start|>user\nNot bad<|im_end|>"));
+    }
+
+    #[test]
+    fn test_format_clean_chat_history_consolidates_streaming_assistant_chunks() {
+        let history = vec![
+            crate::types::ChatMessage { role: "agent".into(), text: "Chunk 1.".into() },
+            crate::types::ChatMessage { role: "agent".into(), text: "Chunk 2.".into() },
+        ];
+        let out = format_clean_chat_history(&history, "next");
+        assert_eq!(out, "<|im_start|>assistant\nChunk 1. Chunk 2.<|im_end|>\n");
     }
 }

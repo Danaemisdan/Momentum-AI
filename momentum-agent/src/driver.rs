@@ -104,8 +104,8 @@ impl ActionDriver {
                 ("Calculator", "Calculator", vec!["calculator", "math", "calc"]),
                 ("Terminal", "Terminal", vec!["terminal", "shell", "cmd"]),
                 ("Safari", "Safari", vec!["browser", "web"]),
-                ("Spotify", "Spotify", vec!["music", "media", "spotify"]),
                 ("Finder", "Finder", vec!["files", "explorer", "finder"]),
+                ("TextEdit", "TextEdit", vec!["editor", "notes", "text"]),
             ];
             for (name, path, cats) in mac_builtins {
                 if !apps.iter().any(|a| a.name.eq_ignore_ascii_case(name)) {
@@ -159,12 +159,10 @@ impl ActionDriver {
             let win_builtins = [
                 ("Notepad", "notepad", vec!["notes", "editor", "text"]),
                 ("Calculator", "calc", vec!["calculator", "math", "calc"]),
-                ("Spotify", "spotify:", vec!["music", "media", "spotify"]),
                 ("Command Prompt", "cmd", vec!["terminal", "shell", "cmd"]),
                 ("PowerShell", "powershell", vec!["terminal", "shell", "powershell"]),
                 ("Windows Terminal", "wt", vec!["terminal", "shell"]),
                 ("Microsoft Edge", "msedge", vec!["browser", "web"]),
-                ("Google Chrome", "chrome", vec!["browser", "web", "chrome"]),
                 ("Paint", "mspaint", vec!["paint", "image", "draw"]),
                 ("File Explorer", "explorer", vec!["files", "explorer", "finder"]),
             ];
@@ -220,8 +218,6 @@ impl ActionDriver {
                 ("Text Editor", "gedit", vec!["notes", "editor", "text"]),
                 ("Calculator", "gnome-calculator", vec!["calculator", "math", "calc"]),
                 ("Terminal", "x-terminal-emulator", vec!["terminal", "shell", "cmd"]),
-                ("Web Browser", "google-chrome", vec!["browser", "web"]),
-                ("Spotify", "spotify", vec!["music", "media", "spotify"]),
                 ("Files", "xdg-open .", vec!["files", "explorer", "finder"]),
             ];
             for (name, path, cats) in linux_builtins {
@@ -328,11 +324,6 @@ impl ActionDriver {
         let target_lower = app_or_category.to_lowercase();
 
         if self.current_os == "windows" {
-            // High-priority native protocol & utility handlers on Windows
-            if target_lower.contains("spotify") || target_lower == "music" {
-                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", "spotify:"]).spawn();
-                return Ok("Spotify".to_string());
-            }
             if target_lower == "notes" || target_lower == "notepad" {
                 let _ = std::process::Command::new("cmd").args(&["/c", "start", "", "notepad"]).spawn();
                 return Ok("Notepad".to_string());
@@ -355,29 +346,35 @@ impl ActionDriver {
                 return Ok(app_name);
             }
 
-            // Fallback: system start
+            // Check if user asked for a 3rd party app not found in installed apps
+            let common_3rd_party = ["spotify", "slack", "discord", "whatsapp", "telegram", "zoom", "figma", "blender", "steam", "chrome", "firefox"];
+            if common_3rd_party.iter().any(|&p| target_lower.contains(p)) {
+                return Err(format!("Application '{}' is not installed locally", app_or_category));
+            }
+
             let _ = std::process::Command::new("cmd").args(&["/c", "start", "", app_or_category]).spawn();
             return Ok(app_or_category.to_string());
         } else if self.current_os == "macos" {
-            if target_lower.contains("spotify") || target_lower == "music" {
-                let _ = std::process::Command::new("open").arg("-a").arg("Spotify").spawn()
-                    .or_else(|_| std::process::Command::new("open").arg("-a").arg("Music").spawn());
-                return Ok("Spotify".to_string());
-            }
             if let Some(app) = self.find_app(app_or_category) {
                 let app_name = app.name.clone();
                 println!("  🎯 Discovered matching app: {} ({})", app_name, app.path);
-                let _ = std::process::Command::new("open").arg("-a").arg(&app_name).spawn();
-                return Ok(app_name);
+                if let Ok(status) = std::process::Command::new("open").arg("-a").arg(&app_name).status() {
+                    if status.success() {
+                        return Ok(app_name);
+                    }
+                }
             }
-            let _ = std::process::Command::new("open").arg("-a").arg(app_or_category).spawn();
-            return Ok(app_or_category.to_string());
+
+            // Direct launch attempt with status validation
+            if let Ok(status) = std::process::Command::new("open").arg("-a").arg(app_or_category).status() {
+                if status.success() {
+                    return Ok(app_or_category.to_string());
+                }
+            }
+
+            Err(format!("Application '{}' is not installed locally", app_or_category))
         } else {
             // Linux
-            if target_lower.contains("spotify") || target_lower == "music" {
-                let _ = std::process::Command::new("spotify").spawn();
-                return Ok("Spotify".to_string());
-            }
             if target_lower == "notes" || target_lower == "notepad" {
                 let _ = std::process::Command::new("gedit").spawn()
                     .or_else(|_| std::process::Command::new("mousepad").spawn())
@@ -397,6 +394,13 @@ impl ActionDriver {
                     .or_else(|_| std::process::Command::new("gtk-launch").arg(&app.name).spawn());
                 return Ok(app_name);
             }
+
+            // Check if user asked for a 3rd party app not found in installed apps
+            let common_3rd_party = ["spotify", "slack", "discord", "whatsapp", "telegram", "zoom", "figma", "blender", "steam", "chrome", "firefox"];
+            if common_3rd_party.iter().any(|&p| target_lower.contains(p)) {
+                return Err(format!("Application '{}' is not installed locally", app_or_category));
+            }
+
             let _ = std::process::Command::new(app_or_category).spawn()
                 .or_else(|_| std::process::Command::new("xdg-open").arg(app_or_category).spawn());
             return Ok(app_or_category.to_string());
@@ -576,21 +580,52 @@ impl ActionDriver {
             },
             "Calculate" | "Math" => {
                 if let Some(expr) = input_val {
-                    let clean = expr.trim()
-                        .replace("men", "")
-                        .replace("man", "")
-                        .replace("X", "*")
-                        .replace("x", "*")
+                    // Normalize words to operators first
+                    let normalized = expr.to_lowercase()
+                        .replace("multiplied by", "*")
                         .replace("times", "*")
                         .replace("plus", "+")
                         .replace("minus", "-")
                         .replace("divided by", "/")
-                        .replace(" ", "");
+                        .replace("over", "/")
+                        .replace("into", "*")
+                        .replace(" x ", " * ")
+                        .replace(" X ", " * ")
+                        .replace("zero", "0")
+                        .replace("one", "1")
+                        .replace("two", "2")
+                        .replace("three", "3")
+                        .replace("four", "4")
+                        .replace("five", "5")
+                        .replace("six", "6")
+                        .replace("seven", "7")
+                        .replace("eight", "8")
+                        .replace("nine", "9")
+                        .replace("ten", "10");
+
+                    let chars: Vec<char> = normalized.chars().collect();
+                    let mut clean = String::new();
+                    for i in 0..chars.len() {
+                        let c = chars[i];
+                        if c.is_ascii_digit() || ['+', '-', '*', '/', '(', ')', '.', '%', '^'].contains(&c) {
+                            clean.push(c);
+                        } else if (c == 'x' || c == 'X') && i > 0 && i + 1 < chars.len() && chars[i - 1].is_ascii_digit() && chars[i + 1].is_ascii_digit() {
+                            clean.push('*');
+                        }
+                    }
+
+                    if clean.is_empty() {
+                        return Ok("Calculator opened".into());
+                    }
 
                     println!("🧮 ActionDriver: Calculating '{}' on Calculator", clean);
                     // Ensure Calculator is active
                     let _ = self.open_app("calculator");
                     thread::sleep(Duration::from_millis(600));
+
+                    // Press Escape first to clear any stale display or memory keys
+                    let _ = enigo.key(Key::Escape, Click);
+                    thread::sleep(Duration::from_millis(150));
 
                     // Type calculation string into Calculator window with Enter
                     let to_type = format!("{}=", clean);
@@ -710,6 +745,34 @@ impl ActionDriver {
                 let amount = if is_up { -6 } else { 6 };
                 let _ = enigo.scroll(amount, enigo::Axis::Vertical);
                 Ok(format!("Scrolled {} (6 ticks to reveal content)", if is_up { "up" } else { "down" }))
+            },
+            "Play" | "MediaPlay" => {
+                println!("🎵 ActionDriver: Executing Play/Media intent (target: {:?})", input_val);
+                // Look for first playable video thumbnail, result link, or play button
+                let play_target = ui_list.iter().find(|el| {
+                    let text = el.text.to_lowercase();
+                    let role = el.role.to_lowercase();
+                    let tag = el.tag.as_deref().unwrap_or("").to_lowercase();
+                    let aria = el.aria_label.as_deref().unwrap_or("").to_lowercase();
+                    
+                    aria.contains("play") 
+                        || text.contains("play")
+                        || (role.contains("button") && (aria.contains("play") || text.contains("play")))
+                        || (tag == "a" && (el.href.as_deref().unwrap_or("").contains("watch?v=") || text.len() > 15))
+                        || el.id.contains("video-title") 
+                        || el.id.contains("thumbnail")
+                });
+
+                if let Some(target) = play_target {
+                    println!("  🎯 Algorithm clicked Play node '{}' ('{}') at ({}, {})", target.id, target.text, target.x, target.y);
+                    let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
+                    let _ = enigo.button(enigo::Button::Left, Click);
+                    return Ok(format!("Triggered playback on '{}'", target.text));
+                }
+
+                // If no specific button found, trigger standard media/video toggle (Space / 'k' key for YouTube)
+                let _ = enigo.key(Key::Unicode('k'), Click);
+                Ok("Triggered media play shortcut".into())
             },
             _ => {
                 println!("  ⚠️ Unhandled UI intent: {}", intent);
@@ -870,7 +933,7 @@ impl ActionDriver {
         Ok(())
     }
 
-    fn percent_encode(input: &str) -> String {
+    pub fn percent_encode(input: &str) -> String {
         let mut encoded = String::new();
         for b in input.bytes() {
             match b {
