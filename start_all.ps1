@@ -1,7 +1,10 @@
 $ErrorActionPreference = "SilentlyContinue"
 $env:PYTHONIOENCODING = "utf-8"
-$env:HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
-$env:MOMENTUM_MODEL_PATH = "$PSScriptRoot\momentum-agent\momentum-engine-0.5b.gguf"
+if (Test-Path "$PSScriptRoot\momentum-engine-tiny-0.5b.gguf") {
+    $env:MOMENTUM_MODEL_PATH = "$PSScriptRoot\momentum-engine-tiny-0.5b.gguf"
+} elseif (Test-Path "$PSScriptRoot\momentum-engine-3b.gguf") {
+    $env:MOMENTUM_MODEL_PATH = "$PSScriptRoot\momentum-engine-3b.gguf"
+}
 
 # Add cargo and standard python locations if present
 if ($env:USERPROFILE) {

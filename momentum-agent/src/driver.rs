@@ -339,6 +339,21 @@ impl ActionDriver {
                 return Ok("Terminal".to_string());
             }
 
+            if target_lower == "browser" || target_lower == "chrome" {
+                let chrome_candidates = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                ];
+                for path in &chrome_candidates {
+                    if std::path::Path::new(path).exists() {
+                        let _ = std::process::Command::new(path).spawn();
+                        return Ok("Google Chrome".to_string());
+                    }
+                }
+                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", "msedge"]).spawn();
+                return Ok("Microsoft Edge".to_string());
+            }
+
             if let Some(app) = self.find_app(app_or_category) {
                 let app_name = app.name.clone();
                 println!("  🎯 Discovered matching app: {} ({})", app_name, app.path);
@@ -347,7 +362,7 @@ impl ActionDriver {
             }
 
             // Check if user asked for a 3rd party app not found in installed apps
-            let common_3rd_party = ["spotify", "slack", "discord", "whatsapp", "telegram", "zoom", "figma", "blender", "steam", "chrome", "firefox"];
+            let common_3rd_party = ["spotify", "slack", "discord", "whatsapp", "telegram", "zoom", "figma", "blender", "steam", "firefox"];
             if common_3rd_party.iter().any(|&p| target_lower.contains(p)) {
                 return Err(format!("Application '{}' is not installed locally", app_or_category));
             }
@@ -544,7 +559,21 @@ impl ActionDriver {
                 let _ = std::process::Command::new("open").arg(url).spawn();
             }
         } else if self.current_os == "windows" {
-            let _ = std::process::Command::new("cmd").args(&["/c", "start", "", url]).spawn();
+            let chrome_candidates = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            ];
+            let mut launched = false;
+            for path in &chrome_candidates {
+                if std::path::Path::new(path).exists() {
+                    let _ = std::process::Command::new(path).arg(url).spawn();
+                    launched = true;
+                    break;
+                }
+            }
+            if !launched {
+                let _ = std::process::Command::new("cmd").args(&["/c", "start", "", url]).spawn();
+            }
         } else {
             let _ = std::process::Command::new("xdg-open").arg(url).spawn();
         }
@@ -635,35 +664,65 @@ impl ActionDriver {
                 Ok("Calculator opened".into())
             },
             "Search" => {
-                // Find searchbox or text input in UI map
+                // UI Bifurcation: Prioritize search inputs in Top Navigation, then inputs across page
                 let search_target = ui_list.iter().find(|el| {
-                    el.semantic_intent.as_deref() == Some("Search")
-                        || el.role.contains("search")
+                    let zone_match = el.spatial_zone.as_deref() == Some("Top Navigation");
+                    let is_search_field = el.semantic_intent.as_deref() == Some("Search")
+                        || el.role.to_lowercase().contains("search")
+                        || el.role.contains("AXSearchField")
                         || el.placeholder.as_deref().map_or(false, |p| p.to_lowercase().contains("search"))
                         || el.aria_label.as_deref().map_or(false, |a| a.to_lowercase().contains("search"))
-                        || el.is_input_like
+                        || el.title.as_deref().map_or(false, |t| t.to_lowercase().contains("search"));
+                    
+                    is_search_field || (zone_match && el.is_input_like)
+                }).or_else(|| {
+                    // Fallback to any interactive input field
+                    ui_list.iter().find(|el| el.is_input_like)
                 });
 
                 if let Some(target) = search_target {
-                    println!("  🎯 Algorithm found Search node '{}' at ({}, {})", target.id, target.x, target.y);
+                    let target_desc = target.title.as_deref().or(target.aria_label.as_deref()).unwrap_or(&target.text);
+                    println!("  🎯 Algorithm found Search node '{}' ('{}') at ({}, {}) in {:?}", 
+                        target.id, target_desc, target.x, target.y, target.spatial_zone);
                     let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
                     let _ = enigo.button(enigo::Button::Left, Click);
                     thread::sleep(Duration::from_millis(200));
 
                     if let Some(text) = input_val {
+                        // Human clear-and-type
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = enigo.key(Key::Meta, enigo::Direction::Press);
+                            let _ = enigo.key(Key::Unicode('a'), Click);
+                            let _ = enigo.key(Key::Meta, enigo::Direction::Release);
+                        }
+                        #[cfg(not(target_os = "macos"))]
+                        {
+                            let _ = enigo.key(Key::Control, enigo::Direction::Press);
+                            let _ = enigo.key(Key::Unicode('a'), Click);
+                            let _ = enigo.key(Key::Control, enigo::Direction::Release);
+                        }
+                        thread::sleep(Duration::from_millis(100));
+
                         let _ = enigo.text(text);
-                        thread::sleep(Duration::from_millis(150));
+                        thread::sleep(Duration::from_millis(200));
                         let _ = enigo.key(Key::Return, Click);
                     }
-                    return Ok(format!("Typed search query into UI node {}", target.id));
+                    return Ok(format!("Searched for '{}' in active window", input_val.unwrap_or("")));
                 }
 
-                // Fallback deterministic keystrokes or open web search
+                // If no search input found on screen, try universal web app search hotkey '/'
                 if let Some(text) = input_val {
-                    self.search_web(text);
-                    return Ok(format!("Searched web for '{}'", text));
+                    println!("  ⌨️ Trying universal web app search hotkey '/' on active window");
+                    let _ = enigo.key(Key::Unicode('/'), Click);
+                    thread::sleep(Duration::from_millis(150));
+                    let _ = enigo.text(text);
+                    thread::sleep(Duration::from_millis(150));
+                    let _ = enigo.key(Key::Return, Click);
+                    return Ok(format!("Triggered search for '{}' via shortcut", text));
                 }
-                Ok("Executed search shortcut".into())
+
+                Err("Could not find a search input on current window".into())
             },
 
             "Click" => {
@@ -751,23 +810,25 @@ impl ActionDriver {
                 // Look for first playable video thumbnail, result link, or play button
                 let play_target = ui_list.iter().find(|el| {
                     let text = el.text.to_lowercase();
+                    let title = el.title.as_deref().unwrap_or("").to_lowercase();
                     let role = el.role.to_lowercase();
-                    let tag = el.tag.as_deref().unwrap_or("").to_lowercase();
                     let aria = el.aria_label.as_deref().unwrap_or("").to_lowercase();
                     
                     aria.contains("play") 
                         || text.contains("play")
-                        || (role.contains("button") && (aria.contains("play") || text.contains("play")))
-                        || (tag == "a" && (el.href.as_deref().unwrap_or("").contains("watch?v=") || text.len() > 15))
+                        || title.contains("play")
+                        || (role.contains("button") && (aria.contains("play") || text.contains("play") || title.contains("play")))
+                        || (el.spatial_zone.as_deref() == Some("Main Content") && (text.len() > 15 || title.len() > 15) && el.is_clickable)
                         || el.id.contains("video-title") 
                         || el.id.contains("thumbnail")
                 });
 
                 if let Some(target) = play_target {
-                    println!("  🎯 Algorithm clicked Play node '{}' ('{}') at ({}, {})", target.id, target.text, target.x, target.y);
+                    let target_name = if !target.text.is_empty() { &target.text } else { target.title.as_deref().unwrap_or("media") };
+                    println!("  🎯 Algorithm clicked Play node '{}' ('{}') at ({}, {})", target.id, target_name, target.x, target.y);
                     let _ = enigo.move_mouse(target.x as i32, target.y as i32, enigo::Coordinate::Abs);
                     let _ = enigo.button(enigo::Button::Left, Click);
-                    return Ok(format!("Triggered playback on '{}'", target.text));
+                    return Ok(format!("Triggered playback on '{}'", target_name));
                 }
 
                 // If no specific button found, trigger standard media/video toggle (Space / 'k' key for YouTube)

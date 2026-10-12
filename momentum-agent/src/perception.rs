@@ -106,19 +106,39 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
 pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Error + Send + Sync>> {
     let mut all_elements = Vec::new();
     
-    let timeout_duration = std::time::Duration::from_millis(1500);
+    let timeout_duration = if cfg!(target_os = "windows") {
+        std::time::Duration::from_millis(4000)
+    } else {
+        std::time::Duration::from_millis(1500)
+    };
+
     let output_res = if cfg!(target_os = "macos") {
-        let mac_ax_candidates = ["./scripts/mac_ax", "scripts/mac_ax", "momentum-agent/scripts/mac_ax"];
-        let script = mac_ax_candidates.iter().find(|p| std::path::Path::new(p).exists()).unwrap_or(&"./scripts/mac_ax");
+        let mac_ax_candidates = [
+            "./scripts/mac_ax",
+            "scripts/mac_ax",
+            "momentum-agent/scripts/mac_ax",
+            "../scripts/mac_ax",
+        ];
+        let script = mac_ax_candidates.iter()
+            .find(|p| std::path::Path::new(p).exists())
+            .map(|p| std::fs::canonicalize(p).unwrap_or_else(|_| std::path::PathBuf::from(p)))
+            .unwrap_or_else(|| std::path::PathBuf::from("./scripts/mac_ax"));
         tokio::time::timeout(
             timeout_duration,
             tokio::process::Command::new(script)
-                .current_dir(std::env::current_dir()?)
                 .output()
         ).await
     } else if cfg!(target_os = "windows") {
-        let win_ax_candidates = ["./scripts/win_ax.ps1", "scripts/win_ax.ps1", "momentum-agent/scripts/win_ax.ps1"];
-        let script = win_ax_candidates.iter().find(|p| std::path::Path::new(p).exists()).unwrap_or(&"./scripts/win_ax.ps1");
+        let win_ax_candidates = [
+            "./scripts/win_ax.ps1",
+            "scripts/win_ax.ps1",
+            "momentum-agent/scripts/win_ax.ps1",
+            "../scripts/win_ax.ps1",
+        ];
+        let script = win_ax_candidates.iter()
+            .find(|p| std::path::Path::new(p).exists())
+            .map(|p| std::fs::canonicalize(p).unwrap_or_else(|_| std::path::PathBuf::from(p)))
+            .unwrap_or_else(|| std::path::PathBuf::from("./scripts/win_ax.ps1"));
         tokio::time::timeout(
             timeout_duration,
             tokio::process::Command::new("powershell")
@@ -127,7 +147,6 @@ pub async fn perceive_native() -> Result<Vec<UIElement>, Box<dyn std::error::Err
                 .arg("Bypass")
                 .arg("-File")
                 .arg(script)
-                .current_dir(std::env::current_dir()?)
                 .output()
         ).await
     } else {

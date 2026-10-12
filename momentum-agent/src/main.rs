@@ -74,7 +74,7 @@ mod win_util {
     extern "system" {
         fn OpenProcess(dw_desired_access: u32, b_inherit_handle: i32, dw_process_id: u32) -> *mut c_void;
         fn CloseHandle(h_object: *mut c_void) -> i32;
-        fn K32GetModuleBaseNameA(h_process: *mut c_void, h_module: *mut c_void, lp_base_name: *mut u8, n_size: u32) -> u32;
+        fn QueryFullProcessImageNameA(h_process: *mut c_void, dw_flags: u32, lp_exe_name: *mut u8, lpdw_size: *mut u32) -> i32;
     }
 
     pub fn get_foreground_process_name() -> String {
@@ -92,12 +92,15 @@ mod win_util {
             if handle.is_null() {
                 return "Desktop".to_string();
             }
-            let mut buf = [0u8; 260];
-            let len = K32GetModuleBaseNameA(handle, std::ptr::null_mut(), buf.as_mut_ptr(), buf.len() as u32);
+            let mut buf = [0u8; 512];
+            let mut size: u32 = buf.len() as u32;
+            let success = QueryFullProcessImageNameA(handle, 0, buf.as_mut_ptr(), &mut size);
             CloseHandle(handle);
-            if len > 0 {
-                let name = String::from_utf8_lossy(&buf[..len as usize]).to_string();
-                return name.trim_end_matches(".exe").to_string();
+            if success != 0 && size > 0 {
+                let full_path = String::from_utf8_lossy(&buf[..size as usize]).to_string();
+                if let Some(file_name) = std::path::Path::new(&full_path).file_stem() {
+                    return file_name.to_string_lossy().to_string();
+                }
             }
             "Desktop".to_string()
         }
@@ -652,106 +655,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                 },
                                                 "OpenApp" => {
                                                     let target_app = input_val.unwrap_or("browser");
-                                                    if target_app.eq_ignore_ascii_case("browser") || target_app.eq_ignore_ascii_case("chrome") {
-                                                        let mut b_guard = b_mu_op.lock().await;
-                                                        let launch_res = b_guard.ensure_launched().await;
-                                                        drop(b_guard);
-                                                        if launch_res.is_ok() {
-                                                            milestone_outcome = "Browser launched and ready".to_string();
-                                                        } else {
-                                                            match driver_clone.open_app(target_app) {
-                                                                Ok(opened) => milestone_outcome = format!("Opened {}", opened),
-                                                                Err(e) => milestone_outcome = format!("Could not open {}: {}", target_app, e),
-                                                            }
+                                                    match driver_clone.open_app(target_app) {
+                                                        Ok(opened) => {
+                                                            milestone_outcome = format!("Opened {}", opened);
                                                         }
-                                                    } else {
-                                                        match driver_clone.open_app(target_app) {
-                                                            Ok(opened) => {
-                                                                milestone_outcome = format!("Opened {}", opened);
-                                                            }
-                                                            Err(e) => {
-                                                                println!("⚠️ App '{}' failed to open locally: {}. Checking web fallback...", target_app, e);
-                                                                let web_url = match target_app.to_lowercase().as_str() {
-                                                                    "spotify" => Some("https://open.spotify.com"),
-                                                                    "youtube" => Some("https://youtube.com"),
-                                                                    "whatsapp" => Some("https://web.whatsapp.com"),
-                                                                    "telegram" => Some("https://web.telegram.org"),
-                                                                    "slack" => Some("https://app.slack.com"),
-                                                                    "discord" => Some("https://discord.com/app"),
-                                                                    "twitter" | "x" => Some("https://x.com"),
-                                                                    "reddit" => Some("https://reddit.com"),
-                                                                    _ => None,
-                                                                };
-                                                                if let Some(url) = web_url {
-                                                                    driver_clone.open_url(url);
-                                                                    milestone_outcome = format!("'{}' not installed locally. Opened {} in browser.", target_app, url);
-                                                                } else {
-                                                                    milestone_outcome = format!("Could not open {}: {}", target_app, e);
-                                                                }
+                                                        Err(e) => {
+                                                            println!("⚠️ App '{}' failed to open locally: {}. Checking web fallback...", target_app, e);
+                                                            let web_url = match target_app.to_lowercase().as_str() {
+                                                                "spotify" => Some("https://open.spotify.com"),
+                                                                "youtube" => Some("https://youtube.com"),
+                                                                "whatsapp" => Some("https://web.whatsapp.com"),
+                                                                "telegram" => Some("https://web.telegram.org"),
+                                                                "slack" => Some("https://app.slack.com"),
+                                                                "discord" => Some("https://discord.com/app"),
+                                                                "twitter" | "x" => Some("https://x.com"),
+                                                                "reddit" => Some("https://reddit.com"),
+                                                                _ => None,
+                                                            };
+                                                            if let Some(url) = web_url {
+                                                                driver_clone.open_url(url);
+                                                                milestone_outcome = format!("'{}' opened in native browser ({})", target_app, url);
+                                                            } else {
+                                                                milestone_outcome = format!("Could not open {}: {}", target_app, e);
                                                             }
                                                         }
                                                     }
-                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                                                 },
                                                 "Navigate" => {
                                                     let target = input_val.unwrap_or(&refined_goal);
                                                     let resolved_url = driver_clone.resolve_target_url(target);
-                                                    println!("🧭 Navigating directly to: {}", resolved_url);
+                                                    println!("🧭 Navigating directly in native browser: {}", resolved_url);
 
-                                                    let mut navigated = false;
-                                                    let mut b_guard = b_mu_op.lock().await;
-                                                    if let Ok(_) = b_guard.ensure_launched().await {
-                                                        if let Some(page) = b_guard.page.as_ref() {
-                                                            if let Ok(_) = page.goto(&resolved_url).await {
-                                                                 let _ = page.wait_for_navigation().await;
-                                                                navigated = true;
-                                                            }
-                                                        }
-                                                    }
-                                                    drop(b_guard);
-
-                                                    if !navigated {
-                                                        driver_clone.open_url(&resolved_url);
-                                                    }
+                                                    // Use user's real browser in the foreground
+                                                    driver_clone.open_url(&resolved_url);
                                                     milestone_outcome = format!("Navigated to {}", resolved_url);
-                                                    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
                                                 },
                                                 "Scroll" => {
                                                     let direction = input_val.unwrap_or("down");
-                                                    let mut scrolled_browser = false;
-                                                    let b_guard = b_mu_op.lock().await;
-                                                    if let Some(page) = b_guard.page.as_ref() {
-                                                        let scroll_js = if direction.eq_ignore_ascii_case("up") { "window.scrollBy(0, -500)" } else { "window.scrollBy(0, 500)" };
-                                                        let _ = page.evaluate(scroll_js).await;
-                                                        scrolled_browser = true;
-                                                    }
-                                                    drop(b_guard);
-                                                    if !scrolled_browser {
-                                                        let _ = driver_clone.scroll(direction);
-                                                    }
-                                                    milestone_outcome = format!("Scrolled {} to reveal more surface content", direction);
-                                                    tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
+                                                    let _ = driver_clone.scroll(direction);
+                                                    milestone_outcome = format!("Scrolled {}", direction);
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
                                                 },
                                                 "UI_Intent" => {
-                                                    // Human UI Closed Loop: Perceive -> Act -> If Offscreen, Scroll to Discover -> Re-perceive -> Complete
+                                                    // Human UI Closed Loop: Perceive Live Native OS Screen -> Act -> Verify
                                                     let mut attempts = 0;
                                                     loop {
                                                         attempts += 1;
-                                                        let mut ui_list = Vec::new();
-                                                        let b_guard = b_mu_op.lock().await;
-                                                        if let Some(page) = b_guard.page.as_ref() {
-                                                            if let Ok(els) = crate::perception::perceive(page).await {
-                                                                ui_list = els;
-                                                            }
-                                                        }
-                                                        drop(b_guard);
-
-                                                        // Fallback to native OS accessibility tree if browser has no elements
-                                                        if ui_list.is_empty() {
-                                                            if let Ok(native_els) = crate::perception::perceive_native().await {
-                                                                ui_list = native_els;
-                                                            }
-                                                        }
+                                                        // Always perceive the real user screen via native accessibility APIs
+                                                        let ui_list = crate::perception::perceive_native().await.unwrap_or_default();
 
                                                         // Universal Algorithmic UI interaction
                                                         match driver_clone.execute_ui_intent(intent, input_val, &ui_list) {
@@ -771,13 +724,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                             }
                                                         }
                                                     }
-                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                                                 },
                                                 "Search" => {
                                                     let query = input_val.unwrap_or(&refined_goal);
-                                                    driver_clone.search_web(query);
-                                                    milestone_outcome = format!("Searched web for {}", query);
-                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                                                    let ui_list = crate::perception::perceive_native().await.unwrap_or_default();
+                                                    match driver_clone.execute_ui_intent("Search", Some(query), &ui_list) {
+                                                        Ok(detail) => {
+                                                            milestone_outcome = detail;
+                                                        }
+                                                        Err(_) => {
+                                                            driver_clone.search_web(query);
+                                                            milestone_outcome = format!("Searched web for {}", query);
+                                                        }
+                                                    }
+                                                    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
                                                 },
                                                 _ => {
                                                     println!("  ⚠️ Unknown action_type: {}", action_type);
@@ -786,30 +747,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                             }
 
                                             execution_log.push(milestone_outcome.clone());
-
-                                            // Non-blocking step reaction: runs in background so physical execution continues at full speed
-                                            let brain_react = brain_agent.clone();
-                                            let tx_react = tx_op_resp.clone();
-                                            let goal_react = refined_goal.clone();
-                                            let desc_react = milestone_desc.clone();
-                                            let out_react = milestone_outcome.clone();
-                                            tokio::spawn(async move {
-                                                if let Ok(reaction) = brain_react.step_reaction(&goal_react, &desc_react, &out_react).await {
-                                                    if let StepReaction::Speak { text } = reaction {
-                                                        println!("🗣️ Step reaction: {}", text);
-                                                        let _ = tx_react.send(WsResponse {
-                                                            msg_type: "action".into(),
-                                                            t: None,
-                                                            speech: Some(text.clone()),
-                                                            action: Some(Action::Talk { speech: text }),
-                                                            thought: None,
-                                                            agent_mode: Some(AgentMode::Operator),
-                                                            macro_state: Some(MacroState::ActOnSurface),
-                                                            tool_name: None,
-                                                        });
-                                                    }
-                                                }
-                                            });
                                 }
                             } else {
                                     let resolved = driver_clone.resolve_target_url(&refined_goal);
@@ -817,17 +754,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                     execution_log.push(format!("Navigated to {}", resolved));
                                 }
 
-                            // 4. Algorithm notifies LLM of outcome for final conversational narration
-                            let summary_str = execution_log.join(". ");
-                            let final_speech = match brain_agent.evaluate_and_narrate(&refined_goal, &summary_str).await {
-                                Ok(narration) if !narration.is_empty() => narration,
-                                _ => {
-                                    if !execution_log.is_empty() {
-                                        format!("All set! {}.", execution_log[0])
-                                    } else {
-                                        format!("All set! Completed: {}.", refined_goal)
-                                    }
+                            // 4. Algorithm reports verified outcome to user (No open-ended hallucination)
+                            let last_success = execution_log.iter().rev().find(|l| !l.is_empty()).cloned();
+                            let final_speech = match last_success {
+                                Some(detail) if detail.contains("Entered ") => {
+                                    format!("Done! {}.", detail)
                                 }
+                                Some(detail) if detail.contains("Triggered playback") => {
+                                    format!("Done! {}.", detail)
+                                }
+                                Some(detail) if detail.contains("Searched for") => {
+                                    format!("Done! {}.", detail)
+                                }
+                                Some(detail) if detail.contains("Navigated to") => {
+                                    format!("Done! {}.", detail)
+                                }
+                                Some(detail) => {
+                                    format!("Done! {}.", detail)
+                                }
+                                None => format!("Completed {}.", refined_goal)
                             };
 
                             println!("🗣️ Momentum Final Response: {}", final_speech);

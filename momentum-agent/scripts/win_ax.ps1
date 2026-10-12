@@ -2,24 +2,49 @@
 $ErrorActionPreference = "SilentlyContinue"
 
 try {
+    Add-Type @"
+        using System;
+        using System.Runtime.InteropServices;
+        public class Win32Ax {
+            [DllImport("user32.dll")]
+            public static extern IntPtr GetForegroundWindow();
+        }
+"@
+} catch {}
+
+try {
     [void][System.Reflection.Assembly]::LoadWithPartialName("UIAutomationClient")
     [void][System.Reflection.Assembly]::LoadWithPartialName("UIAutomationTypes")
 
-    $element = [System.Windows.Automation.AutomationElement]::FocusedElement
-    if ($null -eq $element) {
+    $root = $null
+    try {
+        $hwnd = [Win32Ax]::GetForegroundWindow()
+        if ($hwnd -ne [IntPtr]::Zero) {
+            $root = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
+        }
+    } catch {}
+
+    if ($null -eq $root) {
+        $root = [System.Windows.Automation.AutomationElement]::FocusedElement
+    }
+
+    if ($null -eq $root) {
         Write-Output "[]"
         exit 0
     }
 
-    # Focus on the top-level parent window or the focused element itself
+    # If focused element is deep inside, climb to root window if needed
     $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
-    $root = $element
+    $candidate = $root
     while ($true) {
-        $parent = $walker.GetParent($root)
+        $parent = $walker.GetParent($candidate)
         if ($null -eq $parent -or $parent -eq [System.Windows.Automation.AutomationElement]::RootElement) {
             break
         }
-        $root = $parent
+        $candidate = $parent
+    }
+    if ($null -ne $candidate) {
+        $root = $candidate
     }
 
     # Query interactive controls: Button, Edit, Hyperlink, ListItem, MenuItem, TabItem
