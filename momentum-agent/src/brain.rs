@@ -1353,11 +1353,12 @@ Search query:<|im_end|>\n\
     }
 
     pub async fn extract_sequence_args(
-        &self, 
-        user_command: &str, 
+        &self,
+        user_command: &str,
         _history: &str,
         focused_app: &str,
-        available_apps: &[String]
+        available_apps: &[String],
+        kg_context: &str,
     ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
         if let Some(fast_plan) = Self::plan_fast_sequence(user_command, focused_app, available_apps) {
             return Ok(fast_plan);
@@ -1369,12 +1370,20 @@ Search query:<|im_end|>\n\
             available_apps.iter().take(8).cloned().collect::<Vec<_>>().join(", ")
         };
 
+        // Knowledge graph context — injected only when non-empty (sub-ms lookup)
+        let kg_section = if kg_context.is_empty() {
+            String::new()
+        } else {
+            format!("\n{}\n", kg_context)
+        };
+
         let prompt = format!(
             "<|im_start|>system
 You are Momentum's Fast Cognitive Planner. Break the goal into milestones.
-Apps: [{}]. Focused: {}.
+Apps: [{}]. Focused: {}.{kg_section}
 Output ONLY a JSON array.
 Milestone action_types: 'InspectEnvironment', 'OpenApp', 'Navigate', 'UI_Intent', 'Scroll', 'GenerateAsset'.
+Use graph context above to choose the RIGHT platform/app for the goal — do not guess.
 
 Example: \"Find me clients on LinkedIn\"
 Output:
@@ -1402,13 +1411,14 @@ Output:
                 }
             }
         }
-        
+
         // Fast fallback
         Ok(serde_json::json!([
             {"action_type": "OpenApp", "input": "browser"},
             {"action_type": "Navigate", "input": format!("https://duckduckgo.com/?q={}", user_command.replace(' ', "+"))}
         ]))
     }
+
 
     pub async fn evaluate_and_narrate(&self, goal: &str, outcome_summary: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let prompt = format!(

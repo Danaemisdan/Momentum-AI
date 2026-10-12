@@ -545,16 +545,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             println!("🎯 Proceeding with goal: {}", refined_goal);
                             let active_app = get_frontmost_app();
 
+                            // Fetch graph context for this goal — pure in-memory HashMap lookup, ~0ms
+                            let kg_context_for_llm = {
+                                let kg_lock = kg_operator.lock().await;
+                                kg_lock.inject_context_for(&refined_goal)
+                            };
+                            if !kg_context_for_llm.is_empty() {
+                                println!("🧠 [Graph] Injecting {} chars of context into planner", kg_context_for_llm.len());
+                            }
+
                             // 1.5. Fast-Path Local Planning: Check deterministic OS/App sequences FIRST (0ms, no network delay)
                             let local_sequence = match brain_agent.extract_sequence_args(
-                                &refined_goal, 
-                                &history_str_agent, 
-                                &active_app, 
-                                &driver_clone.get_installed_app_names()
+                                &refined_goal,
+                                &history_str_agent,
+                                &active_app,
+                                &driver_clone.get_installed_app_names(),
+                                &kg_context_for_llm,
                             ).await {
                                 Ok(val) => val.as_array().cloned().unwrap_or_default(),
                                 Err(_) => Vec::new(),
                             };
+
 
                             let steps: Vec<serde_json::Value> = if !local_sequence.is_empty() {
                                 println!("⚡ [0ms Fast Plan] Local cognitive sequence selected ({} steps)", local_sequence.len());
