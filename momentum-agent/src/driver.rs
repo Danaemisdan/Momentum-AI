@@ -430,6 +430,23 @@ impl ActionDriver {
         self.installed_apps.iter().map(|a| a.name.clone()).collect()
     }
 
+    /// Forcefully brings an application window to the foreground and focuses it
+    pub fn activate_app(&self, app_name: &str) {
+        if self.current_os == "macos" {
+            let script = format!("tell application \"{}\" to activate", app_name);
+            let _ = std::process::Command::new("osascript").args(&["-e", &script]).output();
+            let _ = std::process::Command::new("open").arg("-a").arg(app_name).spawn();
+            std::thread::sleep(std::time::Duration::from_millis(150));
+        } else if self.current_os == "windows" {
+            let ps_cmd = format!(
+                "$proc = Get-Process -Name '{}' -ErrorAction SilentlyContinue | Where-Object {{ $_.MainWindowHandle -ne 0 }} | Select-Object -First 1; if ($proc) {{ (New-Object -ComObject WScript.Shell).AppActivate($proc.Id) }}",
+                app_name
+            );
+            let _ = std::process::Command::new("powershell").args(&["-NoProfile", "-Command", &ps_cmd]).output();
+            std::thread::sleep(std::time::Duration::from_millis(150));
+        }
+    }
+
     /// Smart URL and Platform Resolver: maps platforms and query targets to exact URLs without falling back to raw searches
     pub fn resolve_target_url(&self, input: &str) -> String {
         let trimmed = input.trim();
@@ -649,21 +666,87 @@ impl ActionDriver {
 
                     println!("🧮 ActionDriver: Calculating '{}' on Calculator", clean);
                     // Ensure Calculator is active and window is focused
-                    let _ = self.open_app("calculator");
-                    thread::sleep(Duration::from_millis(800));
+                    self.activate_app("Calculator");
+                    thread::sleep(Duration::from_millis(400));
 
                     // Press Escape first to clear any stale display or memory keys
                     let _ = enigo.key(Key::Escape, Click);
                     thread::sleep(Duration::from_millis(200));
 
-                    // Type calculation string with discrete keypresses
+                    // Helper to locate physical calculator buttons in the live UI list
+                    let find_calc_button = |target_ch: char| -> Option<&crate::types::UIElement> {
+                        ui_list.iter().find(|el| {
+                            let role = el.role.to_lowercase();
+                            if !role.contains("button") { return false; }
+                            let txt = el.text.trim().to_lowercase();
+                            let desc = el.title.as_deref().unwrap_or("").trim().to_lowercase();
+                            match target_ch {
+                                '0'..='9' => txt == target_ch.to_string() || desc == target_ch.to_string(),
+                                '+' => txt == "add" || desc == "add" || txt == "+",
+                                '-' => txt == "subtract" || desc == "subtract" || txt == "-",
+                                '*' => txt == "multiply" || desc == "multiply" || txt == "*" || txt == "x",
+                                '/' => txt == "divide" || desc == "divide" || txt == "/" || txt == "÷",
+                                '=' => txt == "equals" || desc == "equals" || txt == "=",
+                                '.' => txt == "point" || desc == "point" || txt == ".",
+                                _ => false,
+                            }
+                        })
+                    };
+
                     for ch in clean.chars() {
-                        let _ = enigo.key(Key::Unicode(ch), Click);
-                        thread::sleep(Duration::from_millis(60));
+                        if let Some(btn) = find_calc_button(ch) {
+                            println!("  🎯 Clicking Calculator button '{}' at ({}, {})", ch, btn.x, btn.y);
+                            let _ = enigo.move_mouse(btn.x as i32, btn.y as i32, enigo::Coordinate::Abs);
+                            let _ = enigo.button(enigo::Button::Left, Click);
+                            thread::sleep(Duration::from_millis(80));
+                        } else {
+                            // Fallback to keyboard event with modifiers (e.g. Shift for '+' or '*')
+                            match ch {
+                                '+' => {
+                                    #[cfg(target_os = "macos")]
+                                    {
+                                        let _ = enigo.key(Key::Shift, enigo::Direction::Press);
+                                        let _ = enigo.key(Key::Unicode('='), Click);
+                                        let _ = enigo.key(Key::Shift, enigo::Direction::Release);
+                                    }
+                                    #[cfg(not(target_os = "macos"))]
+                                    {
+                                        let _ = enigo.key(Key::Unicode('+'), Click);
+                                    }
+                                }
+                                '*' => {
+                                    #[cfg(target_os = "macos")]
+                                    {
+                                        let _ = enigo.key(Key::Shift, enigo::Direction::Press);
+                                        let _ = enigo.key(Key::Unicode('8'), Click);
+                                        let _ = enigo.key(Key::Shift, enigo::Direction::Release);
+                                    }
+                                    #[cfg(not(target_os = "macos"))]
+                                    {
+                                        let _ = enigo.key(Key::Unicode('*'), Click);
+                                    }
+                                }
+                                other => {
+                                    let _ = enigo.key(Key::Unicode(other), Click);
+                                }
+                            }
+                            thread::sleep(Duration::from_millis(60));
+                        }
                     }
-                    thread::sleep(Duration::from_millis(150));
-                    let _ = enigo.key(Key::Return, Click);
-                    return Ok(format!("Entered {} into Calculator", clean));
+
+                    // Click Equals if not already ending with '='
+                    if !clean.ends_with('=') {
+                        if let Some(eq_btn) = find_calc_button('=') {
+                            println!("  🎯 Clicking Calculator button '=' at ({}, {})", eq_btn.x, eq_btn.y);
+                            let _ = enigo.move_mouse(eq_btn.x as i32, eq_btn.y as i32, enigo::Coordinate::Abs);
+                            let _ = enigo.button(enigo::Button::Left, Click);
+                        } else {
+                            let _ = enigo.key(Key::Return, Click);
+                        }
+                    }
+                    thread::sleep(Duration::from_millis(200));
+
+                    return Ok(format!("Calculated {} on Calculator", clean));
                 }
                 Ok("Calculator opened".into())
             },
@@ -871,6 +954,8 @@ impl ActionDriver {
             "SearchContact" => {
                 let contact = input_val.unwrap_or("");
                 println!("💬 ActionDriver: Searching contact '{}' on messaging platform", contact);
+                self.activate_app("WhatsApp");
+                thread::sleep(Duration::from_millis(250));
 
                 // Check 1: Is this contact ALREADY visible in the chat list?
                 let contact_clean = contact.to_lowercase().trim().to_string();
@@ -963,6 +1048,8 @@ impl ActionDriver {
             "SendMessage" => {
                 let msg = input_val.unwrap_or("");
                 println!("💬 ActionDriver: Sending message '{}' to active conversation", msg);
+                self.activate_app("WhatsApp");
+                thread::sleep(Duration::from_millis(250));
 
                 // Look for compose input: AXTextArea, "Compose message", "Type a message"
                 let compose_target = ui_list.iter().find(|el| {

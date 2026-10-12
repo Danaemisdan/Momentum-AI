@@ -1118,6 +1118,44 @@ HISTORY: {history}<|im_end|>
         (cleaned, None)
     }
 
+    /// Intelligent search query optimizer: Uses local LLM for conversational or complex queries, falling back to clean_intent_query
+    pub async fn refine_search_query(&self, raw_input: &str, platform: &str) -> String {
+        let trimmed = raw_input.trim();
+        let words: Vec<&str> = trimmed.split_whitespace().collect();
+        // For concise direct queries (1-2 words), bypass LLM for 0ms speed
+        if words.len() <= 2 {
+            return Self::clean_intent_query(trimmed, &[platform]);
+        }
+
+        let prompt = format!(
+            "<|im_start|>system\n\
+You are an intelligent search query optimizer for {}. Convert the user request into the concise, highly effective search query keywords for the search input. Output ONLY the query keywords.\n\
+Examples:\n\
+- \"find me clients on linkedin\" -> \"clients\"\n\
+- \"find freelance graphic design clients on linkedin\" -> \"freelance graphic design clients\"\n\
+- \"play some upbeat 90s rock ballads on youtube\" -> \"90s rock ballads\"\n\
+<|im_end|>\n\
+<|im_start|>user\n\
+User request: {}\n\
+Search query:<|im_end|>\n\
+<|im_start|>assistant\n",
+            platform, trimmed
+        );
+
+        match self.generate_with_limit(&prompt, 20, None).await {
+            Ok(output) => {
+                let cleaned = output.trim().trim_matches('"').trim_matches('\'').trim();
+                let first_line = cleaned.lines().next().unwrap_or("").trim();
+                if first_line.is_empty() {
+                    Self::clean_intent_query(trimmed, &[platform])
+                } else {
+                    first_line.to_string()
+                }
+            }
+            Err(_) => Self::clean_intent_query(trimmed, &[platform])
+        }
+    }
+
     pub fn plan_fast_sequence(
         user_command: &str,
         _focused_app: &str,

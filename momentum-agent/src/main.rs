@@ -701,6 +701,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                     tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
                                                 },
                                                 "UI_Intent" => {
+                                                    // Ensure target app window is strictly frontmost and focused
+                                                    if let Some(ref target) = current_target_app {
+                                                        driver_clone.activate_app(target);
+                                                    }
+
+                                                    // If this is a search/play intent with conversational query, refine it with LLM
+                                                    let refined_input_storage;
+                                                    let active_input_val = if (intent == "Search" || intent == "Play") && input_val.map_or(false, |s| s.split_whitespace().count() > 2) {
+                                                        let raw_q = input_val.unwrap();
+                                                        let platform_name = current_target_app.as_deref().unwrap_or("web");
+                                                        refined_input_storage = brain_agent.refine_search_query(raw_q, platform_name).await;
+                                                        println!("🧠 LLM Search Optimizer: Refined '{}' -> '{}'", raw_q, refined_input_storage);
+                                                        Some(refined_input_storage.as_str())
+                                                    } else {
+                                                        input_val
+                                                    };
+
                                                     // Human UI Closed Loop: Perceive Live Native OS Screen -> Act -> Verify
                                                     let mut attempts = 0;
                                                     loop {
@@ -709,7 +726,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                         let ui_list = crate::perception::perceive_native_target(current_target_app.as_deref()).await.unwrap_or_default();
 
                                                         // Universal Algorithmic UI interaction
-                                                        match driver_clone.execute_ui_intent(intent, input_val, &ui_list) {
+                                                        match driver_clone.execute_ui_intent(intent, active_input_val, &ui_list) {
                                                             Ok(detail) => {
                                                                 milestone_outcome = detail.clone();
                                                                 // Human Scroll-to-Discover: if element was offscreen and we scrolled down, re-perceive!
@@ -729,15 +746,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                                     tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                                                 },
                                                 "Search" => {
-                                                    let query = input_val.unwrap_or(&refined_goal);
+                                                    if let Some(ref target) = current_target_app {
+                                                        driver_clone.activate_app(target);
+                                                    }
+                                                    let raw_query = input_val.unwrap_or(&refined_goal);
+                                                    let platform_name = current_target_app.as_deref().unwrap_or("web");
+                                                    let query_to_use = if raw_query.split_whitespace().count() > 2 {
+                                                        let opt = brain_agent.refine_search_query(raw_query, platform_name).await;
+                                                        println!("🧠 LLM Search Optimizer: Refined '{}' -> '{}'", raw_query, opt);
+                                                        opt
+                                                    } else {
+                                                        raw_query.to_string()
+                                                    };
                                                     let ui_list = crate::perception::perceive_native_target(current_target_app.as_deref()).await.unwrap_or_default();
-                                                    match driver_clone.execute_ui_intent("Search", Some(query), &ui_list) {
+                                                    match driver_clone.execute_ui_intent("Search", Some(&query_to_use), &ui_list) {
                                                         Ok(detail) => {
                                                             milestone_outcome = detail;
                                                         }
                                                         Err(_) => {
-                                                            driver_clone.search_web(query);
-                                                            milestone_outcome = format!("Searched web for {}", query);
+                                                            driver_clone.search_web(&query_to_use);
+                                                            milestone_outcome = format!("Searched web for {}", query_to_use);
                                                         }
                                                     }
                                                     tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
