@@ -714,6 +714,60 @@ USER GOAL: {goal}<|im_end|>
         Ok(ClarificationResult::Proceed { refined_goal: goal.to_string() })
     }
 
+    /// Phase 1.5: Graph-aware slot checker.
+    /// Detects missing required info BEFORE executing — no LLM, no latency.
+    /// Returns ONE punchy question if something critical is missing, else None.
+    pub fn check_required_slots(goal: &str, kg_context: &str) -> Option<String> {
+        let goal_lower = goal.to_lowercase();
+
+        // Messaging: has contact but no message body
+        let msg_verbs = ["message", "text", "whatsapp", "tell", "send", "dm", "ping", "slack"];
+        let is_messaging = msg_verbs.iter().any(|v| goal_lower.contains(v));
+        if is_messaging {
+            let has_body = goal_lower.contains(" that ") || goal_lower.contains(" saying ")
+                || goal_lower.contains(" about ") || goal_lower.contains('"')
+                || goal_lower.contains(':') || goal_lower.len() > 65;
+            let has_contact = goal_lower.split_whitespace().count() >= 3;
+            if has_contact && !has_body {
+                let contact = goal_lower.split_whitespace()
+                    .skip_while(|w| msg_verbs.contains(w))
+                    .next().unwrap_or("them");
+                return Some(format!("What should I tell {}?", contact));
+            }
+        }
+
+        // Outreach/lead gen: no target audience
+        let outreach = ["find clients", "find leads", "outreach", "prospect", "cold email", "cold outreach"];
+        if outreach.iter().any(|v| goal_lower.contains(v)) {
+            let has_target = ["in ", "for ", "from ", "who ", "at "].iter().any(|t| goal_lower.contains(t));
+            if !has_target {
+                return Some("Who are you targeting? (e.g. CTOs in SaaS, indie devs, design agencies)".to_string());
+            }
+            let has_channel = ["linkedin", "email", "twitter", "discord", "cold", "warm", "instagram"]
+                .iter().any(|c| goal_lower.contains(c));
+            if !has_channel && kg_context.contains("platform:") {
+                return Some("Platform preference? LinkedIn, email, Discord — or want me to pick?".to_string());
+            }
+        }
+
+        // Research: too vague (under 4 words)
+        let is_research = ["research", "find out", "look into", "investigate"].iter().any(|v| goal_lower.contains(v));
+        if is_research && goal_lower.split_whitespace().count() <= 4 {
+            return Some("What specifically — market size, competitors, latest news, or something else?".to_string());
+        }
+
+        // Scheduling without a time
+        let is_scheduling = ["book", "schedule", "set up a meeting", "arrange a call"].iter().any(|v| goal_lower.contains(v));
+        let has_time = ["tomorrow", "today", "monday", "tuesday", "wednesday", "thursday", "friday",
+                        "saturday", "sunday", "am", "pm", "morning", "afternoon", "evening", "night"]
+            .iter().any(|t| goal_lower.contains(t));
+        if is_scheduling && !has_time {
+            return Some("When? Give me a date and time.".to_string());
+        }
+
+        None
+    }
+
     /// Phase 2: Generate a concrete, numbered step plan for the given goal.
     /// Returns a Vec of step strings like ["1. Go to LinkedIn", "2. Search for X", ...]
     pub async fn plan_steps(&self, goal: &str, history: &str) -> Result<AgentPlan, Box<dyn std::error::Error + Send + Sync>> {

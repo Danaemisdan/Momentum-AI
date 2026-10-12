@@ -545,7 +545,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             println!("🎯 Proceeding with goal: {}", refined_goal);
                             let active_app = get_frontmost_app();
 
-                            // Fetch graph context for this goal — pure in-memory HashMap lookup, ~0ms
+                            // Fetch graph context — pure in-memory HashMap, ~0ms
                             let kg_context_for_llm = {
                                 let kg_lock = kg_operator.lock().await;
                                 kg_lock.inject_context_for(&refined_goal)
@@ -554,7 +554,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                 println!("🧠 [Graph] Injecting {} chars of context into planner", kg_context_for_llm.len());
                             }
 
-                            // 1.5. Fast-Path Local Planning: Check deterministic OS/App sequences FIRST (0ms, no network delay)
+                            // Slot-filling: if required info is missing, ask ONE question and stop
+                            let slot_question = crate::brain::MomentumBrain::check_required_slots(&refined_goal, &kg_context_for_llm);
+                            if let Some(ref question) = slot_question {
+                                println!("🔶 [Slots] Missing required info — asking: {}", question);
+                                let _ = tx_op_resp.send(WsResponse {
+                                    msg_type: "action".into(),
+                                    t: None,
+                                    speech: Some(question.clone()),
+                                    action: Some(Action::Talk { speech: question.clone() }),
+                                    thought: None,
+                                    agent_mode: Some(AgentMode::Operator),
+                                    macro_state: Some(MacroState::Planning),
+                                    tool_name: None,
+                                });
+                            }
+                            if slot_question.is_none() {
+                            // 1.5. Fast-Path Local Planning: Check deterministic OS/App sequences FIRST (0ms)
                             let local_sequence = match brain_agent.extract_sequence_args(
                                 &refined_goal,
                                 &history_str_agent,
@@ -833,7 +849,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                 macro_state: Some(MacroState::Done),
                                 tool_name: None,
                             });
+                            } // end slot_question.is_none()
                         });
+
                         *active_guard = Some(handle);
                     }
                 }
