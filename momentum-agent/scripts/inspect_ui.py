@@ -46,6 +46,8 @@ def clean_role(role: str, text: str = "", placeholder: str = "") -> str:
         "image": "image",
         "axslider": "slider",
         "slider": "slider",
+        "axheading": "heading",
+        "heading": "heading",
         "axstatictext": "text",
         "statictext": "text",
         "axgroup": "control",

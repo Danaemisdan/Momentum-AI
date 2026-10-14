@@ -86,11 +86,14 @@ func traverse(
     
     var nextContainer = currentContainer
     let role = (getAttribute(element, kAXRoleAttribute as String) as? String) ?? ""
-    let title = (getAttribute(element, kAXTitleAttribute as String) as? String) ?? ""
+    let rawTitle = (getAttribute(element, kAXTitleAttribute as String) as? String) ?? ""
     let desc = getAttribute(element, kAXDescriptionAttribute as String) as? String
     let placeholder = (getAttribute(element, "AXPlaceholderValue") as? String)
         ?? (getAttribute(element, kAXHelpAttribute as String) as? String)
     let val = getAttribute(element, kAXValueAttribute as String) as? String
+
+    // Pick the most descriptive text available for title
+    let effectiveTitle = (!rawTitle.isEmpty ? rawTitle : (val ?? (desc ?? ""))).trimmingCharacters(in: .whitespacesAndNewlines)
 
     // Dynamic container hierarchy
     if role == "AXWebArea" {
@@ -106,7 +109,7 @@ func traverse(
     } else if role == "AXScrollArea" && (currentContainer == "window" || currentContainer == "\(appName) window") {
         nextContainer = "\(appName) workspace"
     } else if role == "AXSplitGroup" || role == "AXGroup" {
-        let groupDesc = ((desc ?? "") + " " + title).lowercased()
+        let groupDesc = ((desc ?? "") + " " + rawTitle).lowercased()
         if groupDesc.contains("timeline") {
             nextContainer = "\(appName) timeline"
         } else if groupDesc.contains("sidebar") || groupDesc.contains("nav") {
@@ -116,25 +119,28 @@ func traverse(
         }
     }
 
-    // Filter out Apple Live Text OCR artifacts inside Preview image documents:
-    // When an image is opened in Preview, macOS Live Text runs OCR on the image and creates
-    // AXTextArea and Data Detector elements inside Preview workspace. Those are NOT desktop UI controls.
+    // 1. Ignore Apple Live Text OCR artifacts in Preview document workspace
     if appName == "Preview" && (nextContainer.contains("workspace") || role.contains("DataDetector")) {
         if role == "AXTextArea" || role.contains("DataDetector") || role == "AXStaticText" {
             return
         }
     }
 
+    // 2. Ignore non-interactive hover tooltips
+    if role == "AXGroup" && (effectiveTitle.lowercased() == "tooltip" || desc?.lowercased() == "tooltip") {
+        return
+    }
+
     if let bounds = getBounds(element) {
         let centerX = bounds.x + (bounds.w / 2)
         let centerY = bounds.y + (bounds.h / 2)
         
-        // 1. Filter out off-screen or invisible elements
+        // 3. Filter out off-screen or invisible elements
         if bounds.w > 4 && bounds.h > 4 &&
            bounds.x + bounds.w > 0 && bounds.y + bounds.h > 0 &&
            bounds.x < screenW && bounds.y < screenH {
             
-            // 2. Occlusion culling: If a window in front covers this element, it is invisible
+            // 4. Occlusion culling: If a window in front covers this element, it is invisible
             var isOccluded = false
             let point = CGPoint(x: centerX, y: centerY)
             for frontRect in frontWindowRects {
@@ -144,11 +150,11 @@ func traverse(
                 }
             }
 
-            // 3. Skip root window/application background bounds to prevent full-screen covering boxes
-            let isFullScreenRoot = bounds.w >= (screenW * 0.98) && bounds.h >= (screenH * 0.98) && (role == "AXWindow" || role == "AXApplication")
+            // 5. Skip giant root/viewport containers to prevent full-screen covering boxes
+            let isFullScreenRoot = bounds.w >= (screenW * 0.95) && bounds.h >= (screenH * 0.95) && (role == "AXWindow" || role == "AXApplication")
+            let isGiantGroup = role == "AXGroup" && bounds.w >= (screenW * 0.7) && bounds.h >= (screenH * 0.45)
             
-            if !isOccluded && !isFullScreenRoot {
-                let text = (!title.isEmpty ? title : (desc ?? (val ?? ""))).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !isOccluded && !isFullScreenRoot && !isGiantGroup {
                 var shouldInclude = false
                 
                 switch role {
@@ -156,22 +162,27 @@ func traverse(
                     shouldInclude = true
                 case "AXLink":
                     shouldInclude = true
+                case "AXHeading":
+                    // Headings (h1, h2, h3 in web pages) are crucial content landmarks
+                    if !effectiveTitle.isEmpty {
+                        shouldInclude = true
+                    }
                 case "AXStaticText":
-                    // Only skip static text if its direct parent is an interactive button/link that already carries the exact same text
-                    if !text.isEmpty {
+                    // Include static text if meaningful and not duplicate of immediate interactive parent
+                    if !effectiveTitle.isEmpty {
                         let isParentInteractive = (parentRole == "AXButton" || parentRole == "AXLink")
-                        let isExactParentDuplicate = isParentInteractive && (parentTitle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == text.lowercased())
+                        let isExactParentDuplicate = isParentInteractive && (parentTitle.lowercased() == effectiveTitle.lowercased())
                         if !isExactParentDuplicate {
                             shouldInclude = true
                         }
                     }
                 case "AXImage":
-                    if (desc != nil && !desc!.isEmpty) || !title.isEmpty {
+                    if (desc != nil && !desc!.isEmpty) || !rawTitle.isEmpty {
                         shouldInclude = true
                     }
                 case "AXGroup":
                     let actions = getActionNames(element)
-                    if (actions.contains("AXPress") || actions.contains("AXConfirm")) && ((desc != nil && !desc!.isEmpty) || !title.isEmpty) {
+                    if (actions.contains("AXPress") || actions.contains("AXConfirm")) && !effectiveTitle.isEmpty {
                         shouldInclude = true
                     }
                 default:
@@ -184,7 +195,7 @@ func traverse(
                         id: "el_\(nodeCounter)",
                         app: appName,
                         role: role,
-                        title: title,
+                        title: effectiveTitle,
                         description: desc,
                         placeholder: placeholder,
                         value: val,
@@ -207,7 +218,7 @@ func traverse(
                 depth: depth + 1,
                 currentContainer: nextContainer,
                 parentRole: role,
-                parentTitle: title,
+                parentTitle: effectiveTitle,
                 frontWindowRects: frontWindowRects
             )
         }
@@ -274,7 +285,6 @@ if targets.isEmpty {
         let rect = CGRect(x: x, y: y, width: w, height: h)
 
         if layer == 0 && w > 120 && h > 120 && !ignoredAppNames.contains(owner.lowercased()) {
-            // Check if this window is 100% occluded by windows in front of it
             var isCovered = false
             for frontRect in coveredRects {
                 if frontRect.contains(rect) {
@@ -290,7 +300,6 @@ if targets.isEmpty {
                     AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
                     AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
                     
-                    // Always target the main/focused window to prevent traversing hidden duplicate windows
                     var targetEl: AXUIElement = axApp
                     var mainWinVal: CFTypeRef?
                     if AXUIElementCopyAttributeValue(axApp, kAXMainWindowAttribute as CFString, &mainWinVal) == .success,
@@ -306,7 +315,7 @@ if targets.isEmpty {
     }
 }
 
-// Fallback: If no visible windows found via CGWindowList, inspect the frontmost application
+// Fallback: If no visible windows found, inspect frontmost app
 if targets.isEmpty {
     if let front = NSWorkspace.shared.frontmostApplication, front.activationPolicy == .regular {
         let name = front.localizedName ?? "App"
@@ -326,7 +335,7 @@ if targets.isEmpty {
     }
 }
 
-// Traverse target windows, tracking windows in front of each target
+// Traverse target windows
 var frontRectsAccumulator: [CGRect] = []
 
 for target in targets {
@@ -342,7 +351,7 @@ for target in targets {
     frontRectsAccumulator.append(target.bounds)
 }
 
-// Spatial deduplication: merge overlapping duplicate nodes (e.g. nested link inside link, button inside button)
+// Spatial deduplication: merge overlapping duplicate nodes
 var finalNodes: [Node] = []
 
 for node in rawNodes {
@@ -359,8 +368,8 @@ for node in rawNodes {
         // Only deduplicate if centers are extremely close AND text is identical or one is empty
         if dx < 6 && dy < 6 && dw < 12 && dh < 12 && (nodeText == existingText || nodeText.isEmpty || existingText.isEmpty) {
             isDuplicate = true
-            let nodeIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton"].contains(node.role)
-            let existingIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton"].contains(existing.role)
+            let nodeIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton", "AXHeading"].contains(node.role)
+            let existingIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton", "AXHeading"].contains(existing.role)
             
             if nodeIsInteractive && !existingIsInteractive {
                 finalNodes[idx] = node

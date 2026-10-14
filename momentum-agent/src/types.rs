@@ -78,11 +78,19 @@ impl UIElement {
             "axtextfield" | "axtextarea" | "edit" | "input" => "input field",
             "axsearchfield" | "searchbox" => "search field",
             "axlink" | "link" | "hyperlink" => "link",
-            "axcombobox" | "combobox" | "axpopupbutton" => "dropdown",
+            "axcombobox" | "combobox" => {
+                if text.to_lowercase().contains("search") || placeholder.map(|p| p.to_lowercase().contains("search")).unwrap_or(false) {
+                    "search field"
+                } else {
+                    "input field"
+                }
+            },
+            "axpopupbutton" => "dropdown",
             "axcheckbox" | "checkbox" => "checkbox",
             "axradiobutton" | "radiobutton" => "radio button",
             "axmenuitem" | "menuitem" => "menu item",
             "axtabitem" | "tabitem" => "tab",
+            "axheading" | "heading" => "heading",
             "aximage" | "image" => "image",
             other => other.strip_prefix("ax").unwrap_or(other),
         };
