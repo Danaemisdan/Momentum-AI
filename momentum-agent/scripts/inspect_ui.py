@@ -125,7 +125,7 @@ def main():
     # Close previous debug screenshot in Preview so it doesn't occlude the active screen
     try:
         subprocess.run(
-            ["osascript", "-e", 'tell application "Preview" to close (every window whose name contains "momentum_ui_debug")'],
+            ["osascript", "-e", 'tell application "Preview" to close windows'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         time.sleep(0.15)
@@ -176,7 +176,14 @@ def main():
     print(f"{'#':<4} | {'APP':<14} | {'ROLE':<13} | {'CONTAINER':<18} | {'LABEL':<22} | {'PURPOSE':<28} | {'DESTINATION':<24} | {'HUMAN INTENT'}")
     print("="*175)
 
+    interactive_roles = {
+        "button", "link", "input field", "search field", "dropdown", "radio button",
+        "checkbox", "slider", "menu item", "tab", "dockitem", "menubaritem"
+    }
+
+    occupied_badge_rects = []
     annotated_count = 0
+
     for idx, node in enumerate(nodes, start=1):
         x = node.get("x", 0)
         y = node.get("y", 0)
@@ -197,7 +204,8 @@ def main():
         semantic_label = compute_semantic_label(role, title or val, title, placeholder, desc, container)
 
         app_str = trunc(app, 14)
-        role_str = trunc(clean_role(role, title or val, placeholder), 13)
+        clean_r = clean_role(role, title or val, placeholder)
+        role_str = trunc(clean_r, 13)
         container_str = trunc(container, 18)
         label_str = trunc(semantic_label, 22)
         purpose_str = trunc(purpose, 28)
@@ -218,25 +226,42 @@ def main():
 
         draw.rectangle([left, top, right, bottom], outline=box_color, width=max(2, int(2 * scale)))
 
-        badge_role = clean_role(role, title or val, placeholder)
-        short_label = (title or desc or val or "").strip()
-        if not short_label and purpose:
-            short_label = purpose.strip()
-        if len(short_label) > 16:
-            short_label = short_label[:14] + ".."
+        is_interactive = clean_r in interactive_roles or "dock" in role.lower() or "menu" in role.lower()
         
-        if short_label:
-            badge_text = f"[{idx}] {badge_role}: {short_label}"
-        else:
-            badge_text = f"[{idx}] {badge_role}"
+        if is_interactive:
+            short_label = (title or desc or val or "").strip()
+            if not short_label and purpose:
+                short_label = purpose.strip()
+            if len(short_label) > 16:
+                short_label = short_label[:14] + ".."
             
-        badge_w = len(badge_text) * int(7 * scale)
-        badge_h = int(16 * scale)
-        badge_top = max(0, top - badge_h)
+            if short_label:
+                badge_text = f"[{idx}] {clean_r}: {short_label}"
+            else:
+                badge_text = f"[{idx}] {clean_r}"
+                
+            badge_w = len(badge_text) * int(7 * scale)
+            badge_h = int(16 * scale)
+            badge_top = max(0, top - badge_h)
 
-        draw.rectangle([left, badge_top, left + badge_w, badge_top + badge_h], fill=box_color)
-        draw.text((left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
-        annotated_count += 1
+            # Anti-collision: shift if colliding with existing badge
+            for ox1, oy1, ox2, oy2 in occupied_badge_rects:
+                if not (left + badge_w < ox1 or left > ox2 or badge_top + badge_h < oy1 or badge_top > oy2):
+                    badge_top = max(oy2 + 2, top + (h * scale) + 2)
+                    
+            draw.rectangle([left, badge_top, left + badge_w, badge_top + badge_h], fill=box_color)
+            draw.text((left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
+            occupied_badge_rects.append((left, badge_top, left + badge_w, badge_top + badge_h))
+            annotated_count += 1
+        elif "heading" in clean_r:
+            badge_text = f"[{idx}] H"
+            badge_w = len(badge_text) * int(7 * scale)
+            badge_h = int(14 * scale)
+            badge_top = max(0, top - badge_h)
+            draw.rectangle([left, badge_top, left + badge_w, badge_top + badge_h], fill=box_color)
+            draw.text((left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
+            occupied_badge_rects.append((left, badge_top, left + badge_w, badge_top + badge_h))
+            annotated_count += 1
 
     print("="*175)
     print(f"\n📊 Total elements detected: {len(nodes)} (Annotated {annotated_count} UI boxes)")
