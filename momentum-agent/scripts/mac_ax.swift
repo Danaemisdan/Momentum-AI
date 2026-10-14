@@ -53,6 +53,7 @@ struct Node: Codable {
     var description: String?
     var placeholder: String?
     var value: String?
+    var container: String?
     var x: Double
     var y: Double
     var w: Double
@@ -62,9 +63,11 @@ struct Node: Codable {
 var allNodes: [Node] = []
 var nodeCounter = 0
 
-func traverse(element: AXUIElement, depth: Int = 0) {
-    if depth > 10 { return } // prevent infinite loops
+func traverse(element: AXUIElement, depth: Int = 0, currentContainer: String = "window") {
+    if depth > 12 { return } // prevent infinite loops
     
+    var nextContainer = currentContainer
+
     if let bounds = getBounds(element) {
         if bounds.w > 0 && bounds.h > 0 { // Ignore invisible elements
             let role = (getAttribute(element, kAXRoleAttribute as String) as? String) ?? ""
@@ -74,6 +77,30 @@ func traverse(element: AXUIElement, depth: Int = 0) {
                 ?? (getAttribute(element, kAXHelpAttribute as String) as? String)
             let val = getAttribute(element, kAXValueAttribute as String) as? String
             
+            // Track dynamic container transitions in the UI hierarchy
+            if role == "AXWebArea" {
+                nextContainer = "web document"
+            } else if role == "AXTabGroup" {
+                nextContainer = "tabs"
+            } else if role == "AXToolbar" {
+                nextContainer = "toolbar"
+            } else if role == "AXMenuBar" || role == "AXMenu" {
+                nextContainer = "menu"
+            } else if role == "AXSheet" || role == "AXDialog" {
+                nextContainer = "dialog"
+            } else if role == "AXScrollArea" && currentContainer == "window" {
+                nextContainer = "workspace"
+            } else if role == "AXSplitGroup" || role == "AXGroup" {
+                let groupDesc = (desc ?? title).lowercased()
+                if groupDesc.contains("timeline") {
+                    nextContainer = "timeline"
+                } else if groupDesc.contains("sidebar") || groupDesc.contains("nav") {
+                    nextContainer = "sidebar"
+                } else if groupDesc.contains("canvas") || groupDesc.contains("viewport") {
+                    nextContainer = "viewport"
+                }
+            }
+
             // We only care about interactive or text elements
             let isInteractive = ["AXButton", "AXTextField", "AXTextArea", "AXSearchField", "AXLink", "AXMenuItem", "AXStaticText", "AXImage", "AXGroup", "AXComboBox", "AXPopUpButton", "AXCheckBox", "AXRadioButton"].contains(role)
             
@@ -86,6 +113,7 @@ func traverse(element: AXUIElement, depth: Int = 0) {
                     description: desc,
                     placeholder: placeholder,
                     value: val,
+                    container: nextContainer,
                     x: bounds.x + (bounds.w / 2),
                     y: bounds.y + (bounds.h / 2),
                     w: bounds.w,
@@ -98,7 +126,7 @@ func traverse(element: AXUIElement, depth: Int = 0) {
     
     if let children = getChildren(of: element) {
         for child in children {
-            traverse(element: child, depth: depth + 1)
+            traverse(element: child, depth: depth + 1, currentContainer: nextContainer)
         }
     }
 }

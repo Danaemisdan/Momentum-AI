@@ -1587,6 +1587,8 @@ mod tests {
             placeholder: Some("Search".into()),
             is_clickable: true,
             is_input_like: true,
+            container: Some("web document".into()),
+            semantic_label: "Search input field in web document".into(),
             frame_id: None,
             semantic_intent: Some("Search".into()),
             spatial_zone: Some("Main Content".into()),

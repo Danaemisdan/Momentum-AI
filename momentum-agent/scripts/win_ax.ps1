@@ -79,6 +79,7 @@ try {
                             x = [math]::Round($rect.X + ($rect.Width / 2))
                             y = [math]::Round($rect.Y + ($rect.Height / 2))
                             description = if ($child.Current.HelpText) { $child.Current.HelpText } else { "" }
+                            container = "window"
                         }
                         $idx++
                     }

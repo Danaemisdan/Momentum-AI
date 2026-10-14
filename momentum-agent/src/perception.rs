@@ -73,6 +73,17 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
             let aria_label = v["aria_label"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
             let semantic_intent = crate::intent::infer_intent(&role, &text, title.as_deref(), aria_label.as_deref());
 
+            let placeholder = v["placeholder"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let container = Some("web document".to_string());
+            let semantic_label = UIElement::compute_semantic_label(
+                &role,
+                &text,
+                title.as_deref(),
+                aria_label.as_deref(),
+                placeholder.as_deref(),
+                container.as_deref(),
+            );
+
             all_elements.push(UIElement {
                 id: full_id,
                 role,
@@ -84,9 +95,11 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
                 title,
                 tag: v["tag"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
                 aria_label,
-                placeholder: v["placeholder"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                placeholder,
                 is_clickable: v["is_clickable"].as_bool().unwrap_or(false),
                 is_input_like: v["is_input_like"].as_bool().unwrap_or(false),
+                container,
+                semantic_label,
                 frame_id: None,
                 semantic_intent,
                 spatial_zone: None,
@@ -199,6 +212,16 @@ pub async fn perceive_native_target(target_app: Option<&str>) -> Result<Vec<UIEl
 
             let semantic_intent = crate::intent::infer_intent(&role, &text, title_desc.as_deref(), None);
 
+            let container = v["container"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let semantic_label = UIElement::compute_semantic_label(
+                &role,
+                &text,
+                title_desc.as_deref(),
+                None,
+                placeholder.as_deref(),
+                container.as_deref(),
+            );
+
             all_elements.push(UIElement {
                 id: full_id.clone(),
                 role,
@@ -213,6 +236,8 @@ pub async fn perceive_native_target(target_app: Option<&str>) -> Result<Vec<UIEl
                 placeholder,
                 is_clickable: true,
                 is_input_like,
+                container,
+                semantic_label,
                 frame_id: None,
                 semantic_intent,
                 spatial_zone: None,

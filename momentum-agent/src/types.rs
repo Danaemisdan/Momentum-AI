@@ -55,9 +55,74 @@ pub struct UIElement {
     pub placeholder: Option<String>,
     pub is_clickable: bool,
     pub is_input_like: bool,
+    pub container: Option<String>,       // UI hierarchy container (e.g. "web document", "tabs", "toolbar", "timeline")
+    pub semantic_label: String,          // Unified rich label: role + title + placeholder + description + container
     pub frame_id: Option<String>, // Which frame this belongs to
     pub semantic_intent: Option<String>, // Heuristic mapping (e.g. 'Navigate', 'Search')
     pub spatial_zone: Option<String>, // Dynamic geometric clustering zone (e.g. 'Left Sidebar')
+}
+
+impl UIElement {
+    /// Computes a unified, rich semantic label describing the element, what it does, and where it lives.
+    pub fn compute_semantic_label(
+        role: &str,
+        text: &str,
+        title: Option<&str>,
+        aria_label: Option<&str>,
+        placeholder: Option<&str>,
+        container: Option<&str>,
+    ) -> String {
+        let role_lower = role.to_lowercase();
+        let clean_role = match role_lower.as_str() {
+            "axbutton" | "button" => "button",
+            "axtextfield" | "axtextarea" | "edit" | "input" => "input field",
+            "axsearchfield" | "searchbox" => "search field",
+            "axlink" | "link" | "hyperlink" => "link",
+            "axcombobox" | "combobox" | "axpopupbutton" => "dropdown",
+            "axcheckbox" | "checkbox" => "checkbox",
+            "axradiobutton" | "radiobutton" => "radio button",
+            "axmenuitem" | "menuitem" => "menu item",
+            "axtabitem" | "tabitem" => "tab",
+            "aximage" | "image" => "image",
+            other => other.strip_prefix("ax").unwrap_or(other),
+        };
+
+        let mut parts: Vec<String> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+
+        let candidates = [
+            Some(text),
+            title,
+            placeholder,
+            aria_label,
+        ];
+
+        for cand_opt in candidates {
+            if let Some(cand) = cand_opt {
+                let trimmed = cand.trim();
+                let lower = trimmed.to_lowercase();
+                if !trimmed.is_empty() && !seen.contains(&lower) {
+                    seen.insert(lower);
+                    parts.push(trimmed.to_string());
+                }
+            }
+        }
+
+        let main_desc = if parts.is_empty() {
+            clean_role.to_string()
+        } else {
+            format!("{} {}", parts.join(" "), clean_role)
+        };
+
+        if let Some(c) = container {
+            let c_trimmed = c.trim();
+            if !c_trimmed.is_empty() && c_trimmed != "window" {
+                return format!("{} in {}", main_desc, c_trimmed);
+            }
+        }
+
+        main_desc
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -316,4 +381,48 @@ pub struct RoleSkill {
     pub platform_knowledge: Option<PlatformKnowledge>,
     #[serde(default)]
     pub capability: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UIElement;
+
+    #[test]
+    fn test_compute_semantic_label_tab_search() {
+        let label = UIElement::compute_semantic_label(
+            "AXButton",
+            "Tab search",
+            Some("Search your open tabs"),
+            None,
+            None,
+            Some("tabs"),
+        );
+        assert_eq!(label, "Tab search Search your open tabs button in tabs");
+    }
+
+    #[test]
+    fn test_compute_semantic_label_web_search() {
+        let label = UIElement::compute_semantic_label(
+            "AXSearchField",
+            "Search",
+            Some("Search by title, skill, or company"),
+            None,
+            Some("Search"),
+            Some("web document"),
+        );
+        assert_eq!(label, "Search Search by title, skill, or company search field in web document");
+    }
+
+    #[test]
+    fn test_compute_semantic_label_creative_tool() {
+        let label = UIElement::compute_semantic_label(
+            "AXButton",
+            "Razor Blade",
+            Some("Split clip at playhead"),
+            None,
+            None,
+            Some("timeline"),
+        );
+        assert_eq!(label, "Razor Blade Split clip at playhead button in timeline");
+    }
 }
