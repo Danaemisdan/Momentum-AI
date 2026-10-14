@@ -75,12 +75,12 @@ func traverse(
     appName: String,
     depth: Int = 0,
     currentContainer: String = "window",
-    ancestorRoles: [String] = [],
-    ancestorTexts: [String] = [],
+    parentRole: String = "",
+    parentTitle: String = "",
     frontWindowRects: [CGRect] = []
 ) {
     let isWeb = currentContainer.contains("web document")
-    // Deep traversal for web content (YouTube/Chromium DOMs are 15-30 levels deep)
+    // Deep traversal for web content (YouTube/Chromium DOMs are 15-35 levels deep)
     let maxDepth = isWeb ? 36 : 16
     if depth > maxDepth { return }
     
@@ -116,6 +116,15 @@ func traverse(
         }
     }
 
+    // Filter out Apple Live Text OCR artifacts inside Preview image documents:
+    // When an image is opened in Preview, macOS Live Text runs OCR on the image and creates
+    // AXTextArea and Data Detector elements inside Preview workspace. Those are NOT desktop UI controls.
+    if appName == "Preview" && (nextContainer.contains("workspace") || role.contains("DataDetector")) {
+        if role == "AXTextArea" || role.contains("DataDetector") || role == "AXStaticText" {
+            return
+        }
+    }
+
     if let bounds = getBounds(element) {
         let centerX = bounds.x + (bounds.w / 2)
         let centerY = bounds.y + (bounds.h / 2)
@@ -148,11 +157,11 @@ func traverse(
                 case "AXLink":
                     shouldInclude = true
                 case "AXStaticText":
-                    // If an ancestor button or link already contains this text, skip duplicate static text
+                    // Only skip static text if its direct parent is an interactive button/link that already carries the exact same text
                     if !text.isEmpty {
-                        let alreadyInAncestor = ancestorTexts.contains { $0.localizedCaseInsensitiveContains(text) || text.localizedCaseInsensitiveContains($0) }
-                        let hasInteractiveAncestor = ancestorRoles.contains("AXButton") || ancestorRoles.contains("AXLink")
-                        if !(hasInteractiveAncestor && alreadyInAncestor) {
+                        let isParentInteractive = (parentRole == "AXButton" || parentRole == "AXLink")
+                        let isExactParentDuplicate = isParentInteractive && (parentTitle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == text.lowercased())
+                        if !isExactParentDuplicate {
                             shouldInclude = true
                         }
                     }
@@ -190,15 +199,6 @@ func traverse(
         }
     }
 
-    // Propagate ancestor information for semantic deduplication
-    var nextRoles = ancestorRoles
-    nextRoles.append(role)
-    var nextTexts = ancestorTexts
-    let curText = (!title.isEmpty ? title : (desc ?? "")).trimmingCharacters(in: .whitespacesAndNewlines)
-    if !curText.isEmpty {
-        nextTexts.append(curText)
-    }
-
     if let children = getChildren(of: element) {
         for child in children {
             traverse(
@@ -206,8 +206,8 @@ func traverse(
                 appName: appName,
                 depth: depth + 1,
                 currentContainer: nextContainer,
-                ancestorRoles: nextRoles,
-                ancestorTexts: nextTexts,
+                parentRole: role,
+                parentTitle: title,
                 frontWindowRects: frontWindowRects
             )
         }
@@ -335,8 +335,8 @@ for target in targets {
         appName: target.name,
         depth: 0,
         currentContainer: "\(target.name) window",
-        ancestorRoles: [],
-        ancestorTexts: [],
+        parentRole: "",
+        parentTitle: "",
         frontWindowRects: frontRectsAccumulator
     )
     frontRectsAccumulator.append(target.bounds)
@@ -347,14 +347,17 @@ var finalNodes: [Node] = []
 
 for node in rawNodes {
     var isDuplicate = false
+    let nodeText = (!node.title.isEmpty ? node.title : (node.description ?? (node.value ?? ""))).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    
     for (idx, existing) in finalNodes.enumerated() {
         let dx = abs(node.x - existing.x)
         let dy = abs(node.y - existing.y)
         let dw = abs(node.w - existing.w)
         let dh = abs(node.h - existing.h)
+        let existingText = (!existing.title.isEmpty ? existing.title : (existing.description ?? (existing.value ?? ""))).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         
-        // Nearly identical bounds (within 10px center and 20px size)
-        if dx < 10 && dy < 10 && dw < 20 && dh < 20 {
+        // Only deduplicate if centers are extremely close AND text is identical or one is empty
+        if dx < 6 && dy < 6 && dw < 12 && dh < 12 && (nodeText == existingText || nodeText.isEmpty || existingText.isEmpty) {
             isDuplicate = true
             let nodeIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton"].contains(node.role)
             let existingIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton"].contains(existing.role)

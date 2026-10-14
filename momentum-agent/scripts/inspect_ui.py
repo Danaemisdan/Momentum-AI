@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Momentum UI Visual Inspector & Semantic Label Debugger
-Captures the screen, parses live Accessibility tree via mac_ax across all visible windows,
+Captures the screen, parses live Accessibility tree via mac_ax across visible windows,
 draws bounding boxes and badges on screen, and prints a rich semantic label table.
 """
 
@@ -9,10 +9,18 @@ import subprocess
 import json
 import os
 import sys
+import time
 from PIL import Image, ImageDraw, ImageFont
 
-def clean_role(role: str) -> str:
+def clean_role(role: str, text: str = "", placeholder: str = "") -> str:
     r = role.lower()
+    combined = (text + " " + placeholder).lower()
+    
+    if "combobox" in r:
+        if "search" in combined:
+            return "search field"
+        return "input field"
+
     mapping = {
         "axbutton": "button",
         "button": "button",
@@ -25,8 +33,6 @@ def clean_role(role: str) -> str:
         "axlink": "link",
         "link": "link",
         "hyperlink": "link",
-        "axcombobox": "dropdown",
-        "combobox": "dropdown",
         "axpopupbutton": "dropdown",
         "axcheckbox": "checkbox",
         "checkbox": "checkbox",
@@ -40,15 +46,18 @@ def clean_role(role: str) -> str:
         "image": "image",
         "axslider": "slider",
         "slider": "slider",
+        "axstatictext": "text",
+        "statictext": "text",
+        "axgroup": "control",
+        "group": "control",
     }
     return mapping.get(r, r.replace("ax", ""))
 
 def compute_semantic_label(role: str, text: str, title: str, placeholder: str, desc: str, container: str) -> str:
-    r = clean_role(role)
+    r = clean_role(role, text or title, placeholder)
     parts = []
     seen = set()
 
-    # Prioritize primary text identifiers
     for cand in [text, title, desc]:
         if cand:
             trimmed = cand.strip()
@@ -57,7 +66,7 @@ def compute_semantic_label(role: str, text: str, title: str, placeholder: str, d
                 seen.add(lower)
                 parts.append(trimmed)
 
-    # Fallback to placeholder/help text only if no primary name exists
+    # Fallback to placeholder only if no primary label was found
     if not parts and placeholder:
         trimmed = placeholder.strip()
         lower = trimmed.lower()
@@ -98,6 +107,16 @@ def get_color(container: str):
 
 def main():
     target_app = sys.argv[1] if len(sys.argv) > 1 else None
+
+    # Close previous debug screenshot in Preview so it doesn't occlude the active screen
+    try:
+        subprocess.run(
+            ["osascript", "-e", 'tell application "Preview" to close (every window whose name contains "momentum_ui_debug")'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        time.sleep(0.15)
+    except Exception:
+        pass
     
     # 1. Capture screen
     screen_path = "/tmp/momentum_screen_raw.png"
@@ -127,13 +146,11 @@ def main():
         sys.exit(0)
 
     # Calculate retina display scaling factor
-    # Screen coordinates in AX are in points, Image is in physical pixels
     max_ax_x = max(n.get("x", 0) + (n.get("w", 0) / 2) for n in nodes)
     scale = 2.0 if img_w > 2000 and max_ax_x <= 2000 else 1.0
 
     draw = ImageDraw.Draw(img)
     
-    # Use standard default or monospace font
     try:
         font = ImageFont.truetype("/System/Library/Fonts/SFNSMono.ttf", int(13 * scale))
         badge_font = ImageFont.truetype("/System/Library/Fonts/HelveticaNeue.ttc", int(11 * scale))
@@ -159,38 +176,32 @@ def main():
         val = node.get("value", "")
         container = node.get("container", "window")
 
-        semantic_label = compute_semantic_label(role, title, title, placeholder, desc, container)
+        semantic_label = compute_semantic_label(role, title or val, title, placeholder, desc, container)
 
-        # Print formatted row
         coords_str = f"({int(x)}, {int(y)}) {int(w)}x{int(h)}"
         print(f"[{idx:>2}] | {app:<14} | {role:<14} | {container:<24} | {coords_str:<16} | {semantic_label}")
 
-        # Draw on image
-        # Center coordinates to bounding box:
         left = (x - (w / 2)) * scale
         top = (y - (h / 2)) * scale
         right = (x + (w / 2)) * scale
         bottom = (y + (h / 2)) * scale
 
-        # Skip giant root window bounding box so it doesn't cover everything
         if w * scale >= img_w * 0.95 and h * scale >= img_h * 0.95:
             continue
 
         box_color = get_color(container)
 
-        # Draw bounding rectangle
         draw.rectangle([left, top, right, bottom], outline=box_color, width=max(2, int(2 * scale)))
 
-        # Draw index badge (top-left of box)
-        badge_role = clean_role(role)
-        short_label = (title or desc or "").strip()
-        if len(short_label) > 12:
-            short_label = short_label[:10] + ".."
+        badge_role = clean_role(role, title or val, placeholder)
+        short_label = (title or desc or val or "").strip()
+        if len(short_label) > 14:
+            short_label = short_label[:12] + ".."
         
         if short_label:
             badge_text = f"[{idx}] {badge_role}: {short_label}"
         else:
-            badge_text = f"[{idx}] {app[:7]}: {badge_role}"
+            badge_text = f"[{idx}] {badge_role}"
             
         badge_w = len(badge_text) * int(7 * scale)
         badge_h = int(16 * scale)
