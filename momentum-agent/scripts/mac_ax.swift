@@ -3,8 +3,6 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
-let startTime = CFAbsoluteTimeGetCurrent()
-
 let mainScreen = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 2560, height: 1600)
 let screenW = Double(mainScreen.width)
 let screenH = Double(mainScreen.height)
@@ -69,7 +67,7 @@ struct Node: Codable {
     var h: Double
 }
 
-var allNodes: [Node] = []
+var rawNodes: [Node] = []
 var nodeCounter = 0
 
 func traverse(
@@ -77,11 +75,12 @@ func traverse(
     appName: String,
     depth: Int = 0,
     currentContainer: String = "window",
-    parentRole: String = "",
-    parentTitle: String = ""
+    ancestorRoles: [String] = [],
+    ancestorTexts: [String] = [],
+    frontWindowRects: [CGRect] = []
 ) {
     let isWeb = currentContainer.contains("web document")
-    // Allow deep traversal for web areas (Chromium DOMs are 15-30 levels deep)
+    // Deep traversal for web content (YouTube/Chromium DOMs are 15-30 levels deep)
     let maxDepth = isWeb ? 36 : 16
     if depth > maxDepth { return }
     
@@ -93,7 +92,7 @@ func traverse(
         ?? (getAttribute(element, kAXHelpAttribute as String) as? String)
     let val = getAttribute(element, kAXValueAttribute as String) as? String
 
-    // Dynamic container hierarchy detection
+    // Dynamic container hierarchy
     if role == "AXWebArea" {
         nextContainer = "\(appName) web document"
     } else if role == "AXTabGroup" {
@@ -118,15 +117,29 @@ func traverse(
     }
 
     if let bounds = getBounds(element) {
-        // Filter out invisible, zero-sized, or entirely off-screen elements
+        let centerX = bounds.x + (bounds.w / 2)
+        let centerY = bounds.y + (bounds.h / 2)
+        
+        // 1. Filter out off-screen or invisible elements
         if bounds.w > 4 && bounds.h > 4 &&
            bounds.x + bounds.w > 0 && bounds.y + bounds.h > 0 &&
            bounds.x < screenW && bounds.y < screenH {
             
-            // Skip root window/application background bounds to prevent full-screen covering boxes
+            // 2. Occlusion culling: If a window in front covers this element, it is invisible
+            var isOccluded = false
+            let point = CGPoint(x: centerX, y: centerY)
+            for frontRect in frontWindowRects {
+                if frontRect.contains(point) {
+                    isOccluded = true
+                    break
+                }
+            }
+
+            // 3. Skip root window/application background bounds to prevent full-screen covering boxes
             let isFullScreenRoot = bounds.w >= (screenW * 0.98) && bounds.h >= (screenH * 0.98) && (role == "AXWindow" || role == "AXApplication")
             
-            if !isFullScreenRoot {
+            if !isOccluded && !isFullScreenRoot {
+                let text = (!title.isEmpty ? title : (desc ?? (val ?? ""))).trimmingCharacters(in: .whitespacesAndNewlines)
                 var shouldInclude = false
                 
                 switch role {
@@ -135,19 +148,19 @@ func traverse(
                 case "AXLink":
                     shouldInclude = true
                 case "AXStaticText":
-                    let textContent = !title.isEmpty ? title : (val ?? "")
-                    let clean = textContent.trimmingCharacters(in: .whitespacesAndNewlines)
-                    // Only include text if it's meaningful and not a duplicate child of an interactive button/link
-                    if !clean.isEmpty && clean != parentTitle && parentRole != "AXButton" && parentRole != "AXLink" {
-                        shouldInclude = true
+                    // If an ancestor button or link already contains this text, skip duplicate static text
+                    if !text.isEmpty {
+                        let alreadyInAncestor = ancestorTexts.contains { $0.localizedCaseInsensitiveContains(text) || text.localizedCaseInsensitiveContains($0) }
+                        let hasInteractiveAncestor = ancestorRoles.contains("AXButton") || ancestorRoles.contains("AXLink")
+                        if !(hasInteractiveAncestor && alreadyInAncestor) {
+                            shouldInclude = true
+                        }
                     }
                 case "AXImage":
-                    // Only include images with accessibility labels / descriptions
                     if (desc != nil && !desc!.isEmpty) || !title.isEmpty {
                         shouldInclude = true
                     }
                 case "AXGroup":
-                    // Include groups that serve as custom interactive controls
                     let actions = getActionNames(element)
                     if (actions.contains("AXPress") || actions.contains("AXConfirm")) && ((desc != nil && !desc!.isEmpty) || !title.isEmpty) {
                         shouldInclude = true
@@ -158,7 +171,7 @@ func traverse(
 
                 if shouldInclude {
                     nodeCounter += 1
-                    allNodes.append(Node(
+                    rawNodes.append(Node(
                         id: "el_\(nodeCounter)",
                         app: appName,
                         role: role,
@@ -167,14 +180,23 @@ func traverse(
                         placeholder: placeholder,
                         value: val,
                         container: nextContainer,
-                        x: bounds.x + (bounds.w / 2),
-                        y: bounds.y + (bounds.h / 2),
+                        x: centerX,
+                        y: centerY,
                         w: bounds.w,
                         h: bounds.h
                     ))
                 }
             }
         }
+    }
+
+    // Propagate ancestor information for semantic deduplication
+    var nextRoles = ancestorRoles
+    nextRoles.append(role)
+    var nextTexts = ancestorTexts
+    let curText = (!title.isEmpty ? title : (desc ?? "")).trimmingCharacters(in: .whitespacesAndNewlines)
+    if !curText.isEmpty {
+        nextTexts.append(curText)
     }
 
     if let children = getChildren(of: element) {
@@ -184,8 +206,9 @@ func traverse(
                 appName: appName,
                 depth: depth + 1,
                 currentContainer: nextContainer,
-                parentRole: role,
-                parentTitle: title
+                ancestorRoles: nextRoles,
+                ancestorTexts: nextTexts,
+                frontWindowRects: frontWindowRects
             )
         }
     }
@@ -195,9 +218,16 @@ let ignoredAppNames: Set<String> = [
     "momentum-hud", "momentum", "tauri", "terminal", "iterm", "iterm2", "alacritty", "warp", "kitty", "window server", "dock", "finder"
 ]
 
-var targetApps: [(NSRunningApplication, String)] = []
+struct WindowTarget {
+    let app: NSRunningApplication
+    let name: String
+    let bounds: CGRect
+    let element: AXUIElement
+}
 
-// 1. Explicit app target query from CLI argument:
+var targets: [WindowTarget] = []
+
+// Check CLI arguments for specific app target
 if CommandLine.arguments.count > 1 {
     let query = CommandLine.arguments[1].lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
     if !query.isEmpty && query != "--all" {
@@ -207,49 +237,148 @@ if CommandLine.arguments.count > 1 {
             let bundle = (a.bundleIdentifier ?? "").lowercased()
             return name.contains(query) || bundle.contains(query)
         }) {
-            targetApps.append((app, app.localizedName ?? "App"))
+            let axApp = getAXUIElement(pid: app.processIdentifier)
+            AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+            AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+            
+            var targetEl: AXUIElement = axApp
+            var mainWinVal: CFTypeRef?
+            if AXUIElementCopyAttributeValue(axApp, kAXMainWindowAttribute as CFString, &mainWinVal) == .success,
+               let mw = mainWinVal {
+                targetEl = mw as! AXUIElement
+            }
+            targets.append(WindowTarget(app: app, name: app.localizedName ?? "App", bounds: CGRect(x: 0, y: 0, width: screenW, height: screenH), element: targetEl))
         }
     }
 }
 
-// 2. Default: Inspect all visible regular GUI applications currently on-screen:
-if targetApps.isEmpty {
+// Default: Inspect visible on-screen windows in z-order (front to back)
+if targets.isEmpty {
     let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+    guard let infoList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+        exit(0)
+    }
+
+    var coveredRects: [CGRect] = []
     var seenPids = Set<pid_t>()
-    
-    if let infoList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] {
-        for info in infoList {
-            let layer = info[kCGWindowLayer as String] as? Int ?? -1
-            let pid = info[kCGWindowOwnerPID as String] as? pid_t ?? 0
-            let bounds = info[kCGWindowBounds as String] as? [String: CGFloat] ?? [:]
-            let w = bounds["Width"] ?? 0
-            let h = bounds["Height"] ?? 0
-            
-            // Standard GUI window layer 0 with realistic size
-            if layer == 0 && w > 120 && h > 120 && !seenPids.contains(pid) {
-                seenPids.insert(pid)
+
+    for info in infoList {
+        let layer = info[kCGWindowLayer as String] as? Int ?? -1
+        let owner = info[kCGWindowOwnerName as String] as? String ?? ""
+        let pid = info[kCGWindowOwnerPID as String] as? pid_t ?? 0
+        let boundsDict = info[kCGWindowBounds as String] as? [String: CGFloat] ?? [:]
+        let x = boundsDict["X"] ?? 0
+        let y = boundsDict["Y"] ?? 0
+        let w = boundsDict["Width"] ?? 0
+        let h = boundsDict["Height"] ?? 0
+        let rect = CGRect(x: x, y: y, width: w, height: h)
+
+        if layer == 0 && w > 120 && h > 120 && !ignoredAppNames.contains(owner.lowercased()) {
+            // Check if this window is 100% occluded by windows in front of it
+            var isCovered = false
+            for frontRect in coveredRects {
+                if frontRect.contains(rect) {
+                    isCovered = true
+                    break
+                }
+            }
+
+            if !isCovered && !seenPids.contains(pid) {
                 if let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular {
-                    let name = app.localizedName ?? ""
-                    if !name.isEmpty && !ignoredAppNames.contains(name.lowercased()) {
-                        targetApps.append((app, name))
+                    seenPids.insert(pid)
+                    let axApp = getAXUIElement(pid: pid)
+                    AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+                    AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+                    
+                    // Always target the main/focused window to prevent traversing hidden duplicate windows
+                    var targetEl: AXUIElement = axApp
+                    var mainWinVal: CFTypeRef?
+                    if AXUIElementCopyAttributeValue(axApp, kAXMainWindowAttribute as CFString, &mainWinVal) == .success,
+                       let mw = mainWinVal {
+                        targetEl = mw as! AXUIElement
                     }
+                    
+                    targets.append(WindowTarget(app: app, name: app.localizedName ?? owner, bounds: rect, element: targetEl))
+                    coveredRects.append(rect)
                 }
             }
         }
     }
 }
 
-for (app, name) in targetApps {
-    let axApp = getAXUIElement(pid: app.processIdentifier)
-    // Enable enhanced accessibility (essential for Chromium/Electron web areas)
-    AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
-    AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+// Fallback: If no visible windows found via CGWindowList, inspect the frontmost application
+if targets.isEmpty {
+    if let front = NSWorkspace.shared.frontmostApplication, front.activationPolicy == .regular {
+        let name = front.localizedName ?? "App"
+        if !ignoredAppNames.contains(name.lowercased()) {
+            let axApp = getAXUIElement(pid: front.processIdentifier)
+            AXUIElementSetAttributeValue(axApp, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
+            AXUIElementSetAttributeValue(axApp, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+            
+            var targetEl: AXUIElement = axApp
+            var mainWinVal: CFTypeRef?
+            if AXUIElementCopyAttributeValue(axApp, kAXMainWindowAttribute as CFString, &mainWinVal) == .success,
+               let mw = mainWinVal {
+                targetEl = mw as! AXUIElement
+            }
+            targets.append(WindowTarget(app: front, name: name, bounds: CGRect(x: 0, y: 0, width: screenW, height: screenH), element: targetEl))
+        }
+    }
+}
+
+// Traverse target windows, tracking windows in front of each target
+var frontRectsAccumulator: [CGRect] = []
+
+for target in targets {
+    traverse(
+        element: target.element,
+        appName: target.name,
+        depth: 0,
+        currentContainer: "\(target.name) window",
+        ancestorRoles: [],
+        ancestorTexts: [],
+        frontWindowRects: frontRectsAccumulator
+    )
+    frontRectsAccumulator.append(target.bounds)
+}
+
+// Spatial deduplication: merge overlapping duplicate nodes (e.g. nested link inside link, button inside button)
+var finalNodes: [Node] = []
+
+for node in rawNodes {
+    var isDuplicate = false
+    for (idx, existing) in finalNodes.enumerated() {
+        let dx = abs(node.x - existing.x)
+        let dy = abs(node.y - existing.y)
+        let dw = abs(node.w - existing.w)
+        let dh = abs(node.h - existing.h)
+        
+        // Nearly identical bounds (within 10px center and 20px size)
+        if dx < 10 && dy < 10 && dw < 20 && dh < 20 {
+            isDuplicate = true
+            let nodeIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton"].contains(node.role)
+            let existingIsInteractive = ["AXButton", "AXLink", "AXTextField", "AXSearchField", "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton"].contains(existing.role)
+            
+            if nodeIsInteractive && !existingIsInteractive {
+                finalNodes[idx] = node
+            } else if nodeIsInteractive && existingIsInteractive {
+                let nodeLen = node.title.count + (node.description?.count ?? 0)
+                let existLen = existing.title.count + (existing.description?.count ?? 0)
+                if nodeLen > existLen {
+                    finalNodes[idx] = node
+                }
+            }
+            break
+        }
+    }
     
-    traverse(element: axApp, appName: name, depth: 0, currentContainer: "\(name) window")
+    if !isDuplicate {
+        finalNodes.append(node)
+    }
 }
 
 let encoder = JSONEncoder()
-if let jsonData = try? encoder.encode(allNodes),
+if let jsonData = try? encoder.encode(finalNodes),
    let jsonString = String(data: jsonData, encoding: .utf8) {
     print(jsonString)
 } else {
