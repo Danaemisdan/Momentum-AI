@@ -270,6 +270,13 @@ def main():
     img.save(annotated_path)
     print(f"🖼️ Annotated screenshot saved to: {annotated_path}")
 
+    # Also save to conversation artifacts directory if available
+    artifact_dir = "/Users/sanjeevn/.gemini/antigravity/brain/56be5417-a621-4c45-b7b8-f74c1d6a395a"
+    if os.path.exists(artifact_dir):
+        artifact_img_path = os.path.join(artifact_dir, "momentum_ui_debug_v3.png")
+        img.save(artifact_img_path)
+        print(f"📁 Copied to conversation artifact: {artifact_img_path}")
+
     # Open image in Preview so user sees the live overlay
     subprocess.run(["open", annotated_path])
     print("🚀 Opened visual debug overlay in macOS Preview!\n")
