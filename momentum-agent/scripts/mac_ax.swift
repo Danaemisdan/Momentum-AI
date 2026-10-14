@@ -972,6 +972,24 @@ func inferCognitiveModel(
             human_intent: "Provide required parameter or text query"
         )
     }
+    if lowerRole.contains("slider") || lowerRole.contains("scrollbar") {
+        let subject = !displaySubject.isEmpty ? displaySubject : (lowerContainer.contains("timeline") ? "Playback Position" : "Level / Value")
+        return (
+            action: "slide / drag",
+            purpose: "Adjust \(subject) slider value",
+            destination: "Adjusted parameter value (\(subject))",
+            human_intent: "Drag slider thumb or click track to adjust \(subject) level"
+        )
+    }
+    if lowerRole.contains("splitter") || lowerRole.contains("paneresize") {
+        return (
+            action: "drag",
+            purpose: "Resize \(displaySubject) panel width / height",
+            destination: "Adjusted panel layout boundary",
+            human_intent: "Click and drag splitter divider to expand or contract adjacent panel"
+        )
+    }
+
     if lowerContainer.contains("sidebar") || lowerContainer.contains("nav") {
         return (
             action: "click",
@@ -1038,9 +1056,15 @@ func traverse(
 
     var effectiveTitle = !rawTitle.isEmpty ? rawTitle : (!desc.isEmpty ? desc : (!val.isEmpty ? val : placeholder))
 
+    if role == "AXSplitter" && effectiveTitle.isEmpty {
+        effectiveTitle = "\(appName) Pane Splitter"
+    } else if role == "AXSlider" && effectiveTitle.isEmpty {
+        effectiveTitle = !val.isEmpty ? "\(appName) Slider (\(val))" : "\(appName) Slider"
+    }
+
     let interactiveRoles: Set<String> = [
         "AXButton", "AXLink", "AXTextField", "AXTextArea", "AXSearchField",
-        "AXComboBox", "AXPopUpButton", "AXCheckBox", "AXRadioButton", "AXSlider", "AXMenuItem", "AXTabItem"
+        "AXComboBox", "AXPopUpButton", "AXCheckBox", "AXRadioButton", "AXSlider", "AXMenuItem", "AXTabItem", "AXSplitter"
     ]
     let isInteractive = interactiveRoles.contains(role)
     let isParentInteractive = interactiveRoles.contains(parentRole)
@@ -1098,10 +1122,12 @@ func traverse(
     if (role == "AXStaticText" || role == "AXImage") && isParentInteractive {
         // Child is consumed by parent interactive element; do not emit separately
     } else if let bounds = getBounds(element) {
+        let isSplitter = role == "AXSplitter"
+        let isValidDimension = (bounds.w > 4 && bounds.h > 4) || (isSplitter && ((bounds.w >= 1 && bounds.h >= 10) || (bounds.h >= 1 && bounds.w >= 10)))
         let centerX = bounds.x + (bounds.w / 2)
         let centerY = bounds.y + (bounds.h / 2)
         
-        if bounds.w > 4 && bounds.h > 4 &&
+        if isValidDimension &&
            bounds.x + bounds.w > 0 && bounds.y + bounds.h > 0 &&
            bounds.x < screenW && bounds.y < screenH {
             
@@ -1179,8 +1205,8 @@ func traverse(
                         human_intent: intent,
                         x: centerX,
                         y: centerY,
-                        w: bounds.w,
-                        h: bounds.h
+                        w: isSplitter ? max(8.0, bounds.w) : bounds.w,
+                        h: isSplitter ? max(8.0, bounds.h) : bounds.h
                     ))
                 }
             }
@@ -1248,19 +1274,33 @@ func addMenuBarNodes(for frontApp: NSRunningApplication) {
     }
 }
 
-// Extract Top-Right System Status Bar items (Clock, Control Center, Wi-Fi, Battery, Spotlight, etc.)
+// Extract Top-Right System Status Bar items (Clock, Control Center, Wi-Fi, Battery, Spotlight, Time Machine, etc.)
 func addSystemStatusBarNodes() {
-    let statusBundles = [
+    let coreStatusBundles = [
         "com.apple.controlcenter",
         "com.apple.systemuiserver",
         "com.apple.Spotlight",
         "com.apple.TextInputMenuAgent"
     ]
     
-    var seenCenters = Set<String>()
+    var targetApps: [NSRunningApplication] = []
+    var seenBundlePids = Set<pid_t>()
+    for bundleId in coreStatusBundles {
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first {
+            targetApps.append(app)
+            seenBundlePids.insert(app.processIdentifier)
+        }
+    }
+    // Also include any other running application that has status extras in the menu bar
+    for app in NSWorkspace.shared.runningApplications {
+        if !seenBundlePids.contains(app.processIdentifier) {
+            targetApps.append(app)
+        }
+    }
     
-    for bundleId in statusBundles {
-        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { continue }
+    var seenBounds: [(x: Double, y: Double, w: Double, h: Double)] = []
+    
+    for app in targetApps {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         
         var menuBars: [AXUIElement] = []
@@ -1284,22 +1324,60 @@ func addSystemStatusBarNodes() {
                     let rawTitle = ((getAttribute(item, kAXTitleAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                     let desc = ((getAttribute(item, kAXDescriptionAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                     let val = ((getAttribute(item, kAXValueAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let help = ((getAttribute(item, kAXHelpAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let subrole = ((getAttribute(item, kAXSubroleAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    let isCore = coreStatusBundles.contains(app.bundleIdentifier ?? "")
+                    if !isCore && subrole != "AXMenuExtra" && subrole != "AXStatusItem" {
+                        continue
+                    }
                     
                     if rawTitle == "Apple" || rawTitle == "File" || rawTitle == "Edit" || rawTitle == "Format" || rawTitle == "View" || rawTitle == "Window" || rawTitle == "Help" || rawTitle == "TextInputMenuAgent" {
                         continue
                     }
                     
-                    var effectiveLabel = !desc.isEmpty ? desc : (!rawTitle.isEmpty ? rawTitle : val)
+                    var effectiveLabel = !desc.isEmpty ? desc : (!rawTitle.isEmpty ? rawTitle : (!val.isEmpty ? val : help))
                     if desc.lowercased().contains("clock") && !val.isEmpty {
                         effectiveLabel = "Clock (\(val))"
                     } else if desc.lowercased().contains("battery") && !val.isEmpty {
                         effectiveLabel = "Battery \(val)"
+                    } else if effectiveLabel.isEmpty {
+                        // Check child AXMenu items (e.g. Time Machine)
+                        if let children = getChildren(of: item) {
+                            for c in children {
+                                if let menuItems = getChildren(of: c) {
+                                    for mi in menuItems {
+                                        let miTitle = ((getAttribute(mi, kAXTitleAttribute as String) as? String) ?? "").lowercased()
+                                        if miTitle.contains("time machine") || miTitle.contains("backup") {
+                                            effectiveLabel = "Time Machine"
+                                            break
+                                        }
+                                    }
+                                }
+                                if !effectiveLabel.isEmpty { break }
+                            }
+                        }
                     }
                     
-                    if let bounds = getBounds(item), !effectiveLabel.isEmpty && bounds.w > 4 && bounds.h > 4 && bounds.x > 200 && bounds.y < 50 {
-                        let centerKey = "\(Int(bounds.x + (bounds.w / 2)))_\(Int(bounds.y + (bounds.h / 2)))"
-                        if seenCenters.contains(centerKey) { continue }
-                        seenCenters.insert(centerKey)
+                    if effectiveLabel.isEmpty && (subrole == "AXMenuExtra" || subrole == "AXStatusItem" || app.bundleIdentifier == "com.apple.systemuiserver") {
+                        let appName = app.localizedName ?? "System"
+                        if appName != "SystemUIServer" {
+                            effectiveLabel = "\(appName) Status"
+                        } else {
+                            effectiveLabel = "System Status Extra"
+                        }
+                    }
+                    
+                    if let bounds = getBounds(item), !effectiveLabel.isEmpty && bounds.w > 4 && bounds.h > 4 && bounds.x > 300 && bounds.y < 50 {
+                        var isDuplicate = false
+                        for ex in seenBounds {
+                            if abs(bounds.x - ex.x) < 8 && abs(bounds.y - ex.y) < 8 {
+                                isDuplicate = true
+                                break
+                            }
+                        }
+                        if isDuplicate { continue }
+                        seenBounds.append((x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h))
                         
                         nodeCounter += 1
                         let (act, purp, dest, intent) = inferCognitiveModel(
@@ -1444,6 +1522,105 @@ func addWindowSpatialAffordances(target: WindowTarget) {
             y: bEdgeY + (bEdgeH / 2.0),
             w: bEdgeW,
             h: bEdgeH
+        ))
+    }
+}
+
+// Add explicit internal app pane resize handles (e.g. sidebar splitter, auxiliary pane splitter)
+func addInternalPaneResizeAffordances(target: WindowTarget) {
+    let b = target.bounds
+    guard b.width > 500 && b.height > 300 else { return }
+    let winX = Double(b.origin.x)
+    let winY = Double(b.origin.y)
+    let winW = Double(b.width)
+    let winH = Double(b.height)
+    
+    // 1. Sidebar Resize Divider (typically at 220-300pt from left window edge)
+    var sidebarRight: Double? = nil
+    var maxSidebarX: Double = 0.0
+    for node in rawNodes {
+        if node.app == target.name, let c = node.container, c.lowercased().contains("sidebar") {
+            let rightEdge = node.x + (node.w / 2.0)
+            if rightEdge > maxSidebarX {
+                maxSidebarX = rightEdge
+            }
+        }
+    }
+    
+    if maxSidebarX > winX + 150.0 && maxSidebarX < winX + (winW * 0.45) {
+        sidebarRight = maxSidebarX + 4.0
+    } else if target.name.lowercased().contains("antigravity") || target.name.lowercased().contains("code") {
+        sidebarRight = winX + 256.0
+    }
+    
+    if let splitX = sidebarRight {
+        let splitY = winY + 40.0
+        let splitH = max(100.0, winH - 80.0)
+        let splitW = 6.0
+        nodeCounter += 1
+        rawNodes.append(Node(
+            id: "el_\(nodeCounter)",
+            app: target.name,
+            role: "AXPaneResizeHandle",
+            title: "\(target.name) Sidebar Resize Divider",
+            description: "Vertical internal pane resize divider",
+            placeholder: nil,
+            value: nil,
+            container: "\(target.name) window",
+            action: "drag",
+            purpose: "Resize sidebar width horizontally",
+            destination: "Adjusted sidebar width",
+            human_intent: "Click and drag vertical divider to expand or collapse sidebar panel",
+            x: splitX,
+            y: splitY + (splitH / 2.0),
+            w: splitW,
+            h: splitH
+        ))
+    }
+    
+    // 2. Auxiliary Right Panel Resize Divider (typically at 300-500pt from right window edge)
+    var auxLeft: Double? = nil
+    var minAuxX: Double = 99999.0
+    for node in rawNodes {
+        if node.app == target.name, node.y > winY + 60.0, node.container != "macOS dock" {
+            let isAux = (node.container?.lowercased().contains("auxiliary") == true) || (node.x > winX + winW - 500.0)
+            if isAux {
+                let leftEdge = node.x - (node.w / 2.0)
+                if leftEdge > winX + (winW * 0.55) && leftEdge < winX + winW - 150.0 {
+                    if leftEdge < minAuxX {
+                        minAuxX = leftEdge
+                    }
+                }
+            }
+        }
+    }
+    
+    if minAuxX < 99000.0 {
+        auxLeft = minAuxX - 4.0
+    }
+    
+    if let splitX = auxLeft {
+        let splitY = winY + 40.0
+        let splitH = max(100.0, winH - 80.0)
+        let splitW = 6.0
+        nodeCounter += 1
+        rawNodes.append(Node(
+            id: "el_\(nodeCounter)",
+            app: target.name,
+            role: "AXPaneResizeHandle",
+            title: "\(target.name) Auxiliary Pane Resize Divider",
+            description: "Vertical internal pane resize divider",
+            placeholder: nil,
+            value: nil,
+            container: "\(target.name) window",
+            action: "drag",
+            purpose: "Resize auxiliary panel width horizontally",
+            destination: "Adjusted auxiliary panel width",
+            human_intent: "Click and drag vertical divider to expand or collapse auxiliary side panel",
+            x: splitX,
+            y: splitY + (splitH / 2.0),
+            w: splitW,
+            h: splitH
         ))
     }
 }
@@ -1654,6 +1831,9 @@ for target in targets {
         frontWindowRects: frontRectsAccumulator
     )
     frontRectsAccumulator.append(target.bounds)
+
+    // Add internal pane resize dividers (sidebar, auxiliary panels)
+    addInternalPaneResizeAffordances(target: target)
 }
 
 // 4. Add bottom macOS Dock items
@@ -1665,7 +1845,8 @@ let dedupeInteractiveRoles: Set<String> = [
     "AXButton", "AXLink", "AXTextField", "AXTextArea", "AXSearchField",
     "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton", "AXSlider",
     "AXHeading", "AXDockItem", "AXMenuBarItem", "AXTabItem", "AXMenuItem",
-    "AXWindowMoveHandle", "AXWindowResizeCorner", "AXWindowResizeBorder"
+    "AXWindowMoveHandle", "AXWindowResizeCorner", "AXWindowResizeBorder",
+    "AXSplitter", "AXPaneResizeHandle"
 ]
 
 for node in rawNodes {

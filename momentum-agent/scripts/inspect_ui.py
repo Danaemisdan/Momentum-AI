@@ -56,6 +56,11 @@ def clean_role(role: str, text: str = "", placeholder: str = "") -> str:
         "axwindowmovehandle": "move handle",
         "axwindowresizecorner": "resize corner",
         "axwindowresizeborder": "resize border",
+        "axpaneresizehandle": "pane resize",
+        "axsplitter": "pane splitter",
+        "splitter": "pane splitter",
+        "axscrollbar": "scrollbar",
+        "scrollbar": "scrollbar",
     }
     return mapping.get(r, r.replace("ax", ""))
 
@@ -106,8 +111,10 @@ def get_color(container: str, role: str = ""):
         return (255, 140, 0)       # Bright Amber / Orange (Top-Right System Status Bar)
     elif "menu bar" in c:
         return (255, 80, 220)      # Bright Magenta (System MenuBar)
-    elif "move handle" in r or "resize" in r:
-        return (255, 215, 0)       # Bright Gold (Window Spatial Affordances)
+    elif "splitter" in r or "pane resize" in r or "resize" in r or "move handle" in r:
+        return (255, 215, 0)       # Bright Gold (Window & Pane Spatial Affordances)
+    elif "slider" in r or "scrollbar" in r:
+        return (255, 130, 220)      # Bright Rose / Magenta (Sliders & Scrollbars)
     elif "web document" in c:
         return (0, 220, 255)       # Cyan (Web / YouTube)
     elif "tabs" in c:
@@ -188,7 +195,8 @@ def main():
     interactive_roles = {
         "button", "link", "input field", "search field", "dropdown", "radio button",
         "checkbox", "slider", "menu item", "tab", "dockitem", "menubaritem",
-        "move handle", "resize corner", "resize border"
+        "move handle", "resize corner", "resize border",
+        "pane resize", "pane splitter", "scrollbar"
     }
 
     occupied_badge_rects = []
@@ -267,6 +275,17 @@ def main():
                 badge_h = int(16 * scale)
                 badge_top = top + (h * scale) + int(2 * scale)
                 badge_left = max(2, min(left, img_w - badge_w - 2))
+                for ox1, oy1, ox2, oy2 in occupied_badge_rects:
+                    if not (badge_left + badge_w < ox1 or badge_left > ox2 or badge_top + badge_h < oy1 or badge_top > oy2):
+                        badge_top = max(oy2 + 2, badge_top)
+            elif clean_r == "pane resize":
+                if len(short_label) > 22:
+                    short_label = short_label[:20] + ".."
+                badge_text = f"[{idx}] {clean_r}: {short_label}"
+                badge_w = len(badge_text) * int(7 * scale)
+                badge_h = int(16 * scale)
+                badge_top = max(0, min(top + int(h * 0.35), img_h - badge_h - 2))
+                badge_left = max(2, min(left - (badge_w // 2), img_w - badge_w - 2))
                 for ox1, oy1, ox2, oy2 in occupied_badge_rects:
                     if not (badge_left + badge_w < ox1 or badge_left > ox2 or badge_top + badge_h < oy1 or badge_top > oy2):
                         badge_top = max(oy2 + 2, badge_top)
