@@ -85,9 +85,21 @@ def compute_semantic_label(role: str, text: str, title: str, placeholder: str, d
         return f"{main_desc} in {container.strip()}"
     return main_desc
 
+def trunc(text: str, max_len: int) -> str:
+    if not text:
+        return ""
+    text = text.strip().replace("\n", " ")
+    if len(text) > max_len:
+        return text[:max_len - 2] + ".."
+    return text
+
 def get_color(container: str):
     c = container.lower()
-    if "web document" in c:
+    if "dock" in c:
+        return (0, 255, 200)       # Bright Teal / Mint (macOS Dock)
+    elif "menu bar" in c:
+        return (255, 80, 220)      # Bright Magenta (System MenuBar)
+    elif "web document" in c:
         return (0, 220, 255)       # Cyan (Web / YouTube)
     elif "tabs" in c:
         return (255, 180, 0)       # Gold
@@ -160,9 +172,9 @@ def main():
         font = ImageFont.load_default()
         badge_font = font
 
-    print("\n" + "="*125)
-    print(f"{'#':<4} | {'APP':<14} | {'ROLE':<14} | {'CONTAINER':<24} | {'COORDINATES':<16} | {'RICH SEMANTIC LABEL'}")
-    print("="*125)
+    print("\n" + "="*175)
+    print(f"{'#':<4} | {'APP':<14} | {'ROLE':<13} | {'CONTAINER':<18} | {'LABEL':<22} | {'PURPOSE':<28} | {'DESTINATION':<24} | {'HUMAN INTENT'}")
+    print("="*175)
 
     annotated_count = 0
     for idx, node in enumerate(nodes, start=1):
@@ -177,11 +189,22 @@ def main():
         placeholder = node.get("placeholder", "")
         val = node.get("value", "")
         container = node.get("container", "window")
+        action = node.get("action", "click")
+        purpose = node.get("purpose", "")
+        destination = node.get("destination", "")
+        human_intent = node.get("human_intent", "")
 
         semantic_label = compute_semantic_label(role, title or val, title, placeholder, desc, container)
 
-        coords_str = f"({int(x)}, {int(y)}) {int(w)}x{int(h)}"
-        print(f"[{idx:>2}] | {app:<14} | {role:<14} | {container:<24} | {coords_str:<16} | {semantic_label}")
+        app_str = trunc(app, 14)
+        role_str = trunc(clean_role(role, title or val, placeholder), 13)
+        container_str = trunc(container, 18)
+        label_str = trunc(semantic_label, 22)
+        purpose_str = trunc(purpose, 28)
+        dest_str = trunc(destination, 24)
+        intent_str = trunc(human_intent, 40)
+
+        print(f"[{idx:>2}] | {app_str:<14} | {role_str:<13} | {container_str:<18} | {label_str:<22} | {purpose_str:<28} | {dest_str:<24} | {intent_str}")
 
         left = (x - (w / 2)) * scale
         top = (y - (h / 2)) * scale
@@ -197,8 +220,10 @@ def main():
 
         badge_role = clean_role(role, title or val, placeholder)
         short_label = (title or desc or val or "").strip()
-        if len(short_label) > 14:
-            short_label = short_label[:12] + ".."
+        if not short_label and purpose:
+            short_label = purpose.strip()
+        if len(short_label) > 16:
+            short_label = short_label[:14] + ".."
         
         if short_label:
             badge_text = f"[{idx}] {badge_role}: {short_label}"
@@ -213,7 +238,7 @@ def main():
         draw.text((left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
         annotated_count += 1
 
-    print("="*125)
+    print("="*175)
     print(f"\n📊 Total elements detected: {len(nodes)} (Annotated {annotated_count} UI boxes)")
     
     annotated_path = "/tmp/momentum_ui_debug.png"
@@ -225,4 +250,7 @@ def main():
     print("🚀 Opened visual debug overlay in macOS Preview!\n")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except BrokenPipeError:
+        pass

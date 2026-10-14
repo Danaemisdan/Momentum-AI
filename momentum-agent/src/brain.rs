@@ -1592,6 +1592,10 @@ mod tests {
             frame_id: None,
             semantic_intent: Some("Search".into()),
             spatial_zone: Some("Main Content".into()),
+            action: Some("type / submit".into()),
+            purpose: Some("Input search keywords".into()),
+            destination: Some("Search results view".into()),
+            human_intent: Some("Locate specific content matching a query".into()),
         }]
     }
 

@@ -103,6 +103,10 @@ pub async fn perceive(page: &Page) -> Result<Vec<UIElement>, Box<dyn std::error:
                 frame_id: None,
                 semantic_intent,
                 spatial_zone: None,
+                action: Some("click".to_string()),
+                purpose: None,
+                destination: None,
+                human_intent: None,
             });
         }
     }
@@ -222,6 +226,11 @@ pub async fn perceive_native_target(target_app: Option<&str>) -> Result<Vec<UIEl
                 container.as_deref(),
             );
 
+            let action = v["action"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let purpose = v["purpose"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let destination = v["destination"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+            let human_intent = v["human_intent"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string());
+
             all_elements.push(UIElement {
                 id: full_id.clone(),
                 role,
@@ -241,6 +250,10 @@ pub async fn perceive_native_target(target_app: Option<&str>) -> Result<Vec<UIEl
                 frame_id: None,
                 semantic_intent,
                 spatial_zone: None,
+                action,
+                purpose,
+                destination,
+                human_intent,
             });
         }
     }

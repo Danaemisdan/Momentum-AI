@@ -60,6 +60,14 @@ pub struct UIElement {
     pub frame_id: Option<String>, // Which frame this belongs to
     pub semantic_intent: Option<String>, // Heuristic mapping (e.g. 'Navigate', 'Search')
     pub spatial_zone: Option<String>, // Dynamic geometric clustering zone (e.g. 'Left Sidebar')
+    #[serde(default)]
+    pub action: Option<String>,          // Interaction verb (e.g. 'click', 'type', 'toggle')
+    #[serde(default)]
+    pub purpose: Option<String>,         // What the element accomplishes
+    #[serde(default)]
+    pub destination: Option<String>,     // Target state / surface / modal
+    #[serde(default)]
+    pub human_intent: Option<String>,    // Why a human would click it
 }
 
 impl UIElement {
