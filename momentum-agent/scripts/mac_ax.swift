@@ -95,6 +95,33 @@ func inferCognitiveModel(
     // Helper for clean display subject
     let displaySubject = rawText.isEmpty ? (desc ?? "control") : rawText
 
+    // Window Spatial Affordances (Titlebar Move & Window Resizing)
+    if role == "AXWindowMoveHandle" {
+        return (
+            action: "drag",
+            purpose: "Reposition active window across screen",
+            destination: "New desktop window coordinates (x, y)",
+            human_intent: "Click and drag window titlebar to move window to another display or screen location"
+        )
+    }
+    if role == "AXWindowResizeCorner" {
+        return (
+            action: "drag",
+            purpose: "Resize window width and height simultaneously",
+            destination: "Custom window dimensions (w, h)",
+            human_intent: "Click and drag bottom-right corner to freely adjust window dimensions"
+        )
+    }
+    if role == "AXWindowResizeBorder" {
+        let isVertical = bounds != nil && bounds!.w > bounds!.h
+        return (
+            action: "drag",
+            purpose: isVertical ? "Resize window height vertically" : "Resize window width horizontally",
+            destination: isVertical ? "Adjusted window height" : "Adjusted window width",
+            human_intent: isVertical ? "Click and drag bottom window border to adjust vertical height" : "Click and drag right window border to adjust horizontal layout width"
+        )
+    }
+
     // 1. macOS Window Traffic Lights (Close / Minimize / Zoom-Fullscreen)
     let isWindowTrafficLight = lowerRole == "axbutton" && (
         lowerSubrole.contains("close") || lowerSubrole.contains("min") || lowerSubrole.contains("zoom") || lowerSubrole.contains("fullscreen") ||
@@ -131,6 +158,30 @@ func inferCognitiveModel(
 
     // 2. macOS Dock items
     if lowerContainer.contains("dock") || lowerRole.contains("dockitem") {
+        if lowerSubrole == "axseparatordockitem" || lowerText.contains("separator") {
+            return (
+                action: "inspect",
+                purpose: "Dock section divider",
+                destination: "Dock boundary",
+                human_intent: "Visual landmark dividing running applications from persistent apps, folders, and trash"
+            )
+        }
+        if lowerSubrole == "axfolderdockitem" || lowerText.contains("downloads") {
+            return (
+                action: "click",
+                purpose: "Open Downloads folder stack from Dock",
+                destination: "Downloads stack popup",
+                human_intent: "Quickly browse recently downloaded files and documents from Dock"
+            )
+        }
+        if lowerSubrole == "axtrashdockitem" || lowerText == "bin" || lowerText == "trash" {
+            return (
+                action: "click",
+                purpose: "Open Bin / Trash folder in Finder",
+                destination: "Trash folder in Finder",
+                human_intent: "Inspect deleted files or empty Trash to free disk storage"
+            )
+        }
         return (
             action: "click",
             purpose: "Launch or bring '\(displaySubject)' into foreground",
@@ -139,7 +190,97 @@ func inferCognitiveModel(
         )
     }
 
-    // 3. System / App MenuBar items
+    // 3a. Top-Right System Status Bar Items (Menu Bar Extras)
+    if lowerContainer.contains("system status") || lowerSubrole == "axstatusitem" {
+        if lowerText.contains("clock") || lowerText.contains("am") || lowerText.contains("pm") {
+            return (
+                action: "click",
+                purpose: "View current date and time / open Notification Center",
+                destination: "macOS Notification Center & widgets",
+                human_intent: "Check time or open notifications and widgets panel"
+            )
+        }
+        if lowerText.contains("control centre") || lowerText.contains("control center") {
+            return (
+                action: "click",
+                purpose: "Open macOS Control Center",
+                destination: "Control Center settings panel",
+                human_intent: "Adjust display brightness, sound volume, Wi-Fi, Bluetooth, and AirDrop"
+            )
+        }
+        if lowerText.contains("wi‑fi") || lowerText.contains("wifi") || lowerText.contains("wi-fi") {
+            return (
+                action: "click",
+                purpose: "Inspect Wi-Fi connection and available networks",
+                destination: "Wi-Fi network selection dropdown",
+                human_intent: "Check wireless signal quality, IP settings, or switch Wi-Fi network"
+            )
+        }
+        if lowerText.contains("battery") {
+            return (
+                action: "click",
+                purpose: "Check battery charge level & power settings",
+                destination: "Battery status dropdown",
+                human_intent: "Monitor battery percentage, power source, and battery health"
+            )
+        }
+        if lowerText.contains("spotlight") || lowerText.contains("search") {
+            return (
+                action: "click / keypress (Cmd+Space)",
+                purpose: "Activate Spotlight search",
+                destination: "Spotlight search bar",
+                human_intent: "Search files, launch applications, or compute calculations instantly"
+            )
+        }
+        if lowerText.contains("siri") {
+            return (
+                action: "click",
+                purpose: "Activate Siri voice assistant",
+                destination: "Siri assistant listener",
+                human_intent: "Speak queries or issue voice commands to macOS"
+            )
+        }
+        if lowerText.contains("keyboard brightness") {
+            return (
+                action: "click",
+                purpose: "Adjust keyboard backlight brightness",
+                destination: "Keyboard brightness slider",
+                human_intent: "Tune keyboard illumination level for ambient lighting"
+            )
+        }
+        if lowerText.contains("airdrop") {
+            return (
+                action: "click",
+                purpose: "Configure AirDrop visibility",
+                destination: "AirDrop discovery settings",
+                human_intent: "Enable or disable AirDrop file receiving from contacts or everyone"
+            )
+        }
+        if lowerText.contains("now playing") {
+            return (
+                action: "click",
+                purpose: "Inspect active media playback",
+                destination: "Media controller widget",
+                human_intent: "Control currently playing audio or video track"
+            )
+        }
+        if lowerText.contains("abc") || lowerText.contains("extended") || lowerText.contains("input") {
+            return (
+                action: "click",
+                purpose: "Switch keyboard input source / language",
+                destination: "Input source selection menu",
+                human_intent: "Change keyboard language layout or open character palette"
+            )
+        }
+        return (
+            action: "click",
+            purpose: "Open \(displaySubject) system status menu",
+            destination: "\(displaySubject) dropdown",
+            human_intent: "Inspect or configure \(displaySubject) in macOS system menu"
+        )
+    }
+
+    // 3b. System / App MenuBar items
     if lowerContainer.contains("menu bar") || lowerRole.contains("menubaritem") {
         if tokens.contains("apple") || lowerText.contains("") {
             return (
@@ -683,6 +824,67 @@ func inferCognitiveModel(
         )
     }
 
+    // 15b. LinkedIn Platform Skill Affordances
+    let isLinkedIn = appName.lowercased().contains("linkedin") || lowerContainer.contains("linkedin") || lowerText.contains("linkedin")
+    if isLinkedIn {
+        if tokens.contains("search") || lowerRole.contains("searchfield") || lowerRole.contains("combobox") {
+            return (
+                action: "type / submit",
+                purpose: "Search LinkedIn (translates intent e.g. 'clients' -> target roles 'CEO', 'Founder')",
+                destination: "LinkedIn search results feed",
+                human_intent: "Target decision-makers by searching professional roles, industries, or company names rather than literal keyword 'clients'"
+            )
+        }
+        if lowerText == "people" || (tokens.contains("people") && lowerRole.contains("button")) {
+            return (
+                action: "click",
+                purpose: "Filter search results to People profiles",
+                destination: "People search results feed",
+                human_intent: "Narrow down search exclusively to individual decision-makers and prospect profiles"
+            )
+        }
+        if lowerText == "connections" || tokens.contains("connections") {
+            return (
+                action: "click",
+                purpose: "Filter by connection degree (2nd degree optimal for warm intro)",
+                destination: "Connection degree filter dropdown",
+                human_intent: "Target 2nd-degree connections sharing mutual contacts to maximize connection acceptance"
+            )
+        }
+        if lowerText == "locations" || tokens.contains("locations") {
+            return (
+                action: "click",
+                purpose: "Filter prospects by geographic market",
+                destination: "Location selection dropdown",
+                human_intent: "Specify metropolitan area or country for targeted regional client outreach"
+            )
+        }
+        if lowerText == "connect" || (tokens.contains("connect") && lowerRole.contains("button")) {
+            return (
+                action: "click",
+                purpose: "Send connection invitation (supports custom note <= 300 chars)",
+                destination: "Connection invitation modal",
+                human_intent: "Initiate professional connection request with customized value proposition"
+            )
+        }
+        if lowerText == "follow" || (tokens.contains("follow") && lowerRole.contains("button")) {
+            return (
+                action: "click",
+                purpose: "Follow member posts (check 'More' menu to Connect if preferred)",
+                destination: "Followed updates feed",
+                human_intent: "Follow public activity stream or access 'More' dropdown to locate Connect option"
+            )
+        }
+        if lowerText == "message" || (tokens.contains("message") && lowerRole.contains("button")) {
+            return (
+                action: "click",
+                purpose: "Open direct message / InMail thread",
+                destination: "LinkedIn messaging popup",
+                human_intent: "Initiate direct conversation with established 1st-degree connection or send InMail"
+            )
+        }
+    }
+
     // 16. Search Inputs and Search Submission
     if tokens.contains("search") || tokens.contains("find") || lowerRole.contains("searchfield") {
         if lowerRole.contains("button") {
@@ -1046,6 +1248,206 @@ func addMenuBarNodes(for frontApp: NSRunningApplication) {
     }
 }
 
+// Extract Top-Right System Status Bar items (Clock, Control Center, Wi-Fi, Battery, Spotlight, etc.)
+func addSystemStatusBarNodes() {
+    let statusBundles = [
+        "com.apple.controlcenter",
+        "com.apple.systemuiserver",
+        "com.apple.Spotlight",
+        "com.apple.TextInputMenuAgent"
+    ]
+    
+    var seenCenters = Set<String>()
+    
+    for bundleId in statusBundles {
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { continue }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        
+        var menuBars: [AXUIElement] = []
+        var mbVal: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axApp, kAXMenuBarAttribute as CFString, &mbVal) == .success, let mb = mbVal {
+            menuBars.append(mb as! AXUIElement)
+        }
+        
+        if let children = getChildren(of: axApp) {
+            for c in children {
+                let role = (getAttribute(c, kAXRoleAttribute as String) as? String) ?? ""
+                if role == "AXMenuBar" {
+                    menuBars.append(c)
+                }
+            }
+        }
+        
+        for mb in menuBars {
+            if let items = getChildren(of: mb) {
+                for item in items {
+                    let rawTitle = ((getAttribute(item, kAXTitleAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let desc = ((getAttribute(item, kAXDescriptionAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let val = ((getAttribute(item, kAXValueAttribute as String) as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    
+                    if rawTitle == "Apple" || rawTitle == "File" || rawTitle == "Edit" || rawTitle == "Format" || rawTitle == "View" || rawTitle == "Window" || rawTitle == "Help" || rawTitle == "TextInputMenuAgent" {
+                        continue
+                    }
+                    
+                    var effectiveLabel = !desc.isEmpty ? desc : (!rawTitle.isEmpty ? rawTitle : val)
+                    if desc.lowercased().contains("clock") && !val.isEmpty {
+                        effectiveLabel = "Clock (\(val))"
+                    } else if desc.lowercased().contains("battery") && !val.isEmpty {
+                        effectiveLabel = "Battery \(val)"
+                    }
+                    
+                    if let bounds = getBounds(item), !effectiveLabel.isEmpty && bounds.w > 4 && bounds.h > 4 && bounds.x > 200 && bounds.y < 50 {
+                        let centerKey = "\(Int(bounds.x + (bounds.w / 2)))_\(Int(bounds.y + (bounds.h / 2)))"
+                        if seenCenters.contains(centerKey) { continue }
+                        seenCenters.insert(centerKey)
+                        
+                        nodeCounter += 1
+                        let (act, purp, dest, intent) = inferCognitiveModel(
+                            role: "AXMenuBarItem",
+                            subrole: "AXStatusItem",
+                            title: effectiveLabel,
+                            desc: desc.isEmpty ? nil : desc,
+                            placeholder: nil,
+                            val: val.isEmpty ? nil : val,
+                            container: "system status bar",
+                            appName: "macOS System",
+                            bounds: (x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h)
+                        )
+                        rawNodes.append(Node(
+                            id: "el_\(nodeCounter)",
+                            app: "macOS System",
+                            role: "AXMenuBarItem",
+                            title: effectiveLabel,
+                            description: desc.isEmpty ? nil : desc,
+                            placeholder: nil,
+                            value: val.isEmpty ? nil : val,
+                            container: "system status bar",
+                            action: act,
+                            purpose: purp,
+                            destination: dest,
+                            human_intent: intent,
+                            x: bounds.x + (bounds.w / 2),
+                            y: bounds.y + (bounds.h / 2),
+                            w: bounds.w,
+                            h: bounds.h
+                        ))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Add explicit window movement and resize affordances for windows
+func addWindowSpatialAffordances(target: WindowTarget) {
+    let b = target.bounds
+    guard b.width > 200 && b.height > 150 else { return }
+    let isFullScreen = b.width >= (screenW * 0.95) && b.height >= (screenH * 0.95)
+    
+    // 1. Window Titlebar Move Region
+    let moveW = max(50.0, Double(b.width) - 220.0)
+    let moveX = Double(b.origin.x) + 85.0
+    let moveY = Double(b.origin.y) + 4.0
+    let moveH = 24.0
+    
+    nodeCounter += 1
+    rawNodes.append(Node(
+        id: "el_\(nodeCounter)",
+        app: target.name,
+        role: "AXWindowMoveHandle",
+        title: "\(target.name) Move Handle",
+        description: "Window titlebar draggable move area",
+        placeholder: nil,
+        value: nil,
+        container: "\(target.name) window",
+        action: "drag",
+        purpose: "Reposition active window across screen",
+        destination: "New desktop window coordinates (x, y)",
+        human_intent: "Click and drag window titlebar to move window to another display or screen location",
+        x: moveX + (moveW / 2.0),
+        y: moveY + (moveH / 2.0),
+        w: moveW,
+        h: moveH
+    ))
+    
+    // Window Resize Handles are only applicable for non-fullscreen windows
+    if !isFullScreen {
+        // 2. Bottom-Right Resize Corner
+        let cornerSize = 18.0
+        let cornerX = Double(b.origin.x + b.width) - cornerSize
+        let cornerY = Double(b.origin.y + b.height) - cornerSize
+        nodeCounter += 1
+        rawNodes.append(Node(
+            id: "el_\(nodeCounter)",
+            app: target.name,
+            role: "AXWindowResizeCorner",
+            title: "\(target.name) Resize Corner",
+            description: "Diagonal two-way window resize corner",
+            placeholder: nil,
+            value: nil,
+            container: "\(target.name) window",
+            action: "drag",
+            purpose: "Resize window width and height simultaneously",
+            destination: "Custom window dimensions (w, h)",
+            human_intent: "Click and drag bottom-right corner to freely adjust window dimensions",
+            x: cornerX + (cornerSize / 2.0),
+            y: cornerY + (cornerSize / 2.0),
+            w: cornerSize,
+            h: cornerSize
+        ))
+        
+        // 3. Right Edge Resize Handle
+        let rEdgeW = 6.0
+        let rEdgeH = max(40.0, Double(b.height) - 60.0)
+        let rEdgeX = Double(b.origin.x + b.width) - rEdgeW
+        let rEdgeY = Double(b.origin.y) + 35.0
+        nodeCounter += 1
+        rawNodes.append(Node(
+            id: "el_\(nodeCounter)",
+            app: target.name,
+            role: "AXWindowResizeBorder",
+            title: "\(target.name) Right Resize Border",
+            description: "Horizontal window resize edge",
+            placeholder: nil,
+            value: nil,
+            container: "\(target.name) window",
+            action: "drag",
+            purpose: "Resize window width horizontally",
+            destination: "Adjusted window width",
+            human_intent: "Click and drag right window border to adjust horizontal layout width",
+            x: rEdgeX + (rEdgeW / 2.0),
+            y: rEdgeY + (rEdgeH / 2.0),
+            w: rEdgeW,
+            h: rEdgeH
+        ))
+        
+        // 4. Bottom Edge Resize Handle
+        let bEdgeH = 6.0
+        let bEdgeW = max(50.0, Double(b.width) - 60.0)
+        let bEdgeX = Double(b.origin.x) + 30.0
+        let bEdgeY = Double(b.origin.y + b.height) - bEdgeH
+        nodeCounter += 1
+        rawNodes.append(Node(
+            id: "el_\(nodeCounter)",
+            app: target.name,
+            role: "AXWindowResizeBorder",
+            title: "\(target.name) Bottom Resize Border",
+            description: "Vertical window resize edge",
+            placeholder: nil,
+            value: nil,
+            container: "\(target.name) window",
+            action: "drag",
+            purpose: "Resize window height vertically",
+            destination: "Adjusted window height",
+            human_intent: "Click and drag bottom window border to adjust vertical height",
+            x: bEdgeX + (bEdgeW / 2.0),
+            y: bEdgeY + (bEdgeH / 2.0),
+            w: bEdgeW,
+            h: bEdgeH
+        ))
+    }
+}
+
 // Extract Dock items from macOS Dock
 func addDockNodes() {
     guard let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else { return }
@@ -1055,12 +1457,17 @@ func addDockNodes() {
             if let items = getChildren(of: child) {
                 for item in items {
                     let title = (getAttribute(item, kAXTitleAttribute as String) as? String) ?? ""
-                    if let bounds = getBounds(item), !title.isEmpty && bounds.w > 4 && bounds.h > 4 {
+                    let subrole = (getAttribute(item, kAXSubroleAttribute as String) as? String) ?? ""
+                    var effectiveTitle = title
+                    if effectiveTitle.isEmpty && subrole == "AXSeparatorDockItem" {
+                        effectiveTitle = "Dock Separator"
+                    }
+                    if let bounds = getBounds(item), !effectiveTitle.isEmpty && bounds.w > 4 && bounds.h > 4 {
                         let (act, purp, dest, intent) = inferCognitiveModel(
                             role: "AXDockItem",
-                            subrole: "",
-                            title: title,
-                            desc: nil,
+                            subrole: subrole,
+                            title: effectiveTitle,
+                            desc: subrole == "AXSeparatorDockItem" ? "Dock section divider" : nil,
                             placeholder: nil,
                             val: nil,
                             container: "macOS dock",
@@ -1072,8 +1479,8 @@ func addDockNodes() {
                             id: "el_\(nodeCounter)",
                             app: "macOS Dock",
                             role: "AXDockItem",
-                            title: title,
-                            description: "Dock application icon",
+                            title: effectiveTitle,
+                            description: subrole == "AXSeparatorDockItem" ? "Dock section divider" : "Dock application icon",
                             placeholder: nil,
                             value: nil,
                             container: "macOS dock",
@@ -1092,6 +1499,7 @@ func addDockNodes() {
         }
     }
 }
+
 
 let ignoredAppNames: Set<String> = [
     "momentum-hud", "momentum", "tauri", "terminal", "iterm", "iterm2", "alacritty", "warp", "kitty", "window server", "dock", "finder", "preview"
@@ -1226,10 +1634,16 @@ if let front = NSWorkspace.shared.frontmostApplication {
     addMenuBarNodes(for: front)
 }
 
-// 2. Traverse target windows
+// 2. Add top-right system status bar items (Clock, Battery, Wi-Fi, Control Center, Spotlight, etc.)
+addSystemStatusBarNodes()
+
+// 3. Traverse target windows and register window spatial affordances
 var frontRectsAccumulator: [CGRect] = []
 
 for target in targets {
+    // Add titlebar move handle and resize borders/corners
+    addWindowSpatialAffordances(target: target)
+    
     traverse(
         element: target.element,
         appName: target.name,
@@ -1242,7 +1656,7 @@ for target in targets {
     frontRectsAccumulator.append(target.bounds)
 }
 
-// 3. Add bottom macOS Dock items
+// 4. Add bottom macOS Dock items
 addDockNodes()
 
 // Spatial deduplication: merge overlapping duplicate nodes
@@ -1250,7 +1664,8 @@ var finalNodes: [Node] = []
 let dedupeInteractiveRoles: Set<String> = [
     "AXButton", "AXLink", "AXTextField", "AXTextArea", "AXSearchField",
     "AXCheckBox", "AXRadioButton", "AXComboBox", "AXPopUpButton", "AXSlider",
-    "AXHeading", "AXDockItem", "AXMenuBarItem", "AXTabItem", "AXMenuItem"
+    "AXHeading", "AXDockItem", "AXMenuBarItem", "AXTabItem", "AXMenuItem",
+    "AXWindowMoveHandle", "AXWindowResizeCorner", "AXWindowResizeBorder"
 ]
 
 for node in rawNodes {

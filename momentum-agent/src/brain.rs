@@ -1118,22 +1118,65 @@ HISTORY: {history}<|im_end|>
         (cleaned, None)
     }
 
-    /// Intelligent search query optimizer: Uses local LLM for conversational or complex queries, falling back to clean_intent_query
+    /// Algorithmic platform intelligence: Formulates optimal domain-specific search queries (e.g. LinkedIn client prospecting -> executive roles)
+    pub fn smart_platform_query(raw_input: &str, platform: &str) -> String {
+        let p = platform.to_lowercase();
+        let cleaned = Self::clean_intent_query(raw_input, &[platform]);
+        let cleaned_lower = cleaned.to_lowercase();
+
+        if p.contains("linkedin") {
+            // Intelligent decision-maker targeting: "clients" is not a job title; target executive buyers
+            if cleaned_lower.is_empty() 
+                || cleaned_lower == "clients" 
+                || cleaned_lower == "client" 
+                || cleaned_lower == "prospects" 
+                || cleaned_lower == "leads" 
+            {
+                return "Founder OR CEO OR Owner".to_string();
+            }
+            if cleaned_lower.contains("client") || cleaned_lower.contains("lead") || cleaned_lower.contains("prospect") {
+                let niche = cleaned_lower
+                    .replace("freelance", "")
+                    .replace("clients", "")
+                    .replace("client", "")
+                    .replace("leads", "")
+                    .replace("lead", "")
+                    .replace("prospects", "")
+                    .replace("prospect", "")
+                    .replace("for", "")
+                    .trim()
+                    .to_string();
+                if !niche.is_empty() {
+                    return format!("\"{}\" AND (Founder OR CEO OR Owner)", niche);
+                }
+                return "Founder OR CEO OR Owner".to_string();
+            }
+            if cleaned_lower.starts_with("hire ") || cleaned_lower.starts_with("find ") {
+                let role = cleaned_lower.trim_start_matches("hire ").trim_start_matches("find ").trim();
+                return role.to_string();
+            }
+        }
+
+        cleaned
+    }
+
+    /// Intelligent search query optimizer: Combines algorithmic platform heuristics with local LLM for conversational or complex queries
     pub async fn refine_search_query(&self, raw_input: &str, platform: &str) -> String {
         let trimmed = raw_input.trim();
+        let smart = Self::smart_platform_query(trimmed, platform);
         let words: Vec<&str> = trimmed.split_whitespace().collect();
-        // For concise direct queries (1-2 words), bypass LLM for 0ms speed
-        if words.len() <= 2 {
-            return Self::clean_intent_query(trimmed, &[platform]);
+        // If smart platform heuristic formulated a specific query or input is short, use it instantly (0ms)
+        if words.len() <= 2 || smart != trimmed {
+            return smart;
         }
 
         let prompt = format!(
             "<|im_start|>system\n\
-You are an intelligent search query optimizer for {}. Convert the user request into the concise, highly effective search query keywords for the search input. Output ONLY the query keywords.\n\
+You are an intelligent search query optimizer and domain expert for {}. Convert the user request into the most effective search query keywords for the search input. For LinkedIn prospecting, translate 'clients' or 'customers' into decision-maker roles (e.g. Founder, CEO, Owner, VP). Output ONLY the query keywords.\n\
 Examples:\n\
-- \"find me clients on linkedin\" -> \"clients\"\n\
-- \"find freelance graphic design clients on linkedin\" -> \"freelance graphic design clients\"\n\
-- \"play some upbeat 90s rock ballads on youtube\" -> \"90s rock ballads\"\n\
+- \"find me clients on linkedin\" -> \"Founder OR CEO OR Owner\"\n\
+- \"find freelance graphic design clients on linkedin\" -> \"\\\"graphic design\\\" AND (Founder OR CEO OR Owner)\"\n\
+- \"play some upbeat 90s rock ballads on youtube\" -> \"upbeat 90s rock ballads\"\n\
 <|im_end|>\n\
 <|im_start|>user\n\
 User request: {}\n\
@@ -1147,12 +1190,12 @@ Search query:<|im_end|>\n\
                 let cleaned = output.trim().trim_matches('"').trim_matches('\'').trim();
                 let first_line = cleaned.lines().next().unwrap_or("").trim();
                 if first_line.is_empty() {
-                    Self::clean_intent_query(trimmed, &[platform])
+                    Self::smart_platform_query(trimmed, platform)
                 } else {
                     first_line.to_string()
                 }
             }
-            Err(_) => Self::clean_intent_query(trimmed, &[platform])
+            Err(_) => Self::smart_platform_query(trimmed, platform)
         }
     }
 
@@ -1748,4 +1791,17 @@ mod tests {
         assert_eq!(c3, "jagadeesh");
         assert_eq!(m3, Some("meeting in 10 mins".to_string()));
     }
+
+    #[test]
+    fn test_smart_platform_query_linkedin_client_prospecting() {
+        let q1 = MomentumBrain::smart_platform_query("find me clients on linkedin", "linkedin");
+        assert_eq!(q1, "Founder OR CEO OR Owner");
+
+        let q2 = MomentumBrain::smart_platform_query("find freelance graphic design clients on linkedin", "linkedin");
+        assert_eq!(q2, "\"graphic design\" AND (Founder OR CEO OR Owner)");
+
+        let q3 = MomentumBrain::smart_platform_query("find real estate clients on linkedin", "linkedin");
+        assert_eq!(q3, "\"real estate\" AND (Founder OR CEO OR Owner)");
+    }
 }
+

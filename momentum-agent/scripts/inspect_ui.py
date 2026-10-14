@@ -52,6 +52,10 @@ def clean_role(role: str, text: str = "", placeholder: str = "") -> str:
         "statictext": "text",
         "axgroup": "control",
         "group": "control",
+        "axdockitem": "dockitem",
+        "axwindowmovehandle": "move handle",
+        "axwindowresizecorner": "resize corner",
+        "axwindowresizeborder": "resize border",
     }
     return mapping.get(r, r.replace("ax", ""))
 
@@ -93,12 +97,17 @@ def trunc(text: str, max_len: int) -> str:
         return text[:max_len - 2] + ".."
     return text
 
-def get_color(container: str):
+def get_color(container: str, role: str = ""):
     c = container.lower()
+    r = role.lower()
     if "dock" in c:
         return (0, 255, 200)       # Bright Teal / Mint (macOS Dock)
+    elif "status bar" in c:
+        return (255, 140, 0)       # Bright Amber / Orange (Top-Right System Status Bar)
     elif "menu bar" in c:
         return (255, 80, 220)      # Bright Magenta (System MenuBar)
+    elif "move handle" in r or "resize" in r:
+        return (255, 215, 0)       # Bright Gold (Window Spatial Affordances)
     elif "web document" in c:
         return (0, 220, 255)       # Cyan (Web / YouTube)
     elif "tabs" in c:
@@ -178,7 +187,8 @@ def main():
 
     interactive_roles = {
         "button", "link", "input field", "search field", "dropdown", "radio button",
-        "checkbox", "slider", "menu item", "tab", "dockitem", "menubaritem"
+        "checkbox", "slider", "menu item", "tab", "dockitem", "menubaritem",
+        "move handle", "resize corner", "resize border"
     }
 
     occupied_badge_rects = []
@@ -222,45 +232,84 @@ def main():
         if w * scale >= img_w * 0.95 and h * scale >= img_h * 0.95:
             continue
 
-        box_color = get_color(container)
+        box_color = get_color(container, clean_r)
 
         draw.rectangle([left, top, right, bottom], outline=box_color, width=max(2, int(2 * scale)))
 
         is_interactive = clean_r in interactive_roles or "dock" in role.lower() or "menu" in role.lower()
+        is_dock = "dock" in container.lower() or "dock" in role.lower()
+        is_status_bar = "status bar" in container.lower()
         
         if is_interactive:
             short_label = (title or desc or val or "").strip()
             if not short_label and purpose:
                 short_label = purpose.strip()
-            if len(short_label) > 16:
-                short_label = short_label[:14] + ".."
             
-            if short_label:
-                badge_text = f"[{idx}] {clean_r}: {short_label}"
+            if is_dock:
+                # Keep dock badges clean and compact so they never crowd each other
+                if len(short_label) > 13:
+                    short_label = short_label[:11] + ".."
+                badge_text = f"[{idx}] {short_label}" if short_label else f"[{idx}] dock"
+                badge_w = len(badge_text) * int(7 * scale)
+                badge_h = int(16 * scale)
+                # Two alternating tiers directly above the dock icons to prevent horizontal collisions
+                if idx % 2 == 0:
+                    badge_top = max(0, top - badge_h - int(4 * scale))
+                else:
+                    badge_top = max(0, top - (2 * badge_h) - int(8 * scale))
+                badge_left = max(2, min(left, img_w - badge_w - 2))
+            elif is_status_bar:
+                # Top-right status items: display concise title below menu bar
+                if len(short_label) > 18:
+                    short_label = short_label[:16] + ".."
+                badge_text = f"[{idx}] {short_label}" if short_label else f"[{idx}] status"
+                badge_w = len(badge_text) * int(7 * scale)
+                badge_h = int(16 * scale)
+                badge_top = top + (h * scale) + int(2 * scale)
+                badge_left = max(2, min(left, img_w - badge_w - 2))
+                for ox1, oy1, ox2, oy2 in occupied_badge_rects:
+                    if not (badge_left + badge_w < ox1 or badge_left > ox2 or badge_top + badge_h < oy1 or badge_top > oy2):
+                        badge_top = max(oy2 + 2, badge_top)
             else:
-                badge_text = f"[{idx}] {clean_r}"
+                if len(short_label) > 16:
+                    short_label = short_label[:14] + ".."
                 
-            badge_w = len(badge_text) * int(7 * scale)
-            badge_h = int(16 * scale)
-            badge_top = max(0, top - badge_h)
-
-            # Anti-collision: shift if colliding with existing badge
-            for ox1, oy1, ox2, oy2 in occupied_badge_rects:
-                if not (left + badge_w < ox1 or left > ox2 or badge_top + badge_h < oy1 or badge_top > oy2):
-                    badge_top = max(oy2 + 2, top + (h * scale) + 2)
+                if short_label:
+                    badge_text = f"[{idx}] {clean_r}: {short_label}"
+                else:
+                    badge_text = f"[{idx}] {clean_r}"
                     
-            draw.rectangle([left, badge_top, left + badge_w, badge_top + badge_h], fill=box_color)
-            draw.text((left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
-            occupied_badge_rects.append((left, badge_top, left + badge_w, badge_top + badge_h))
+                badge_w = len(badge_text) * int(7 * scale)
+                badge_h = int(16 * scale)
+                badge_top = max(0, top - badge_h)
+                badge_left = max(2, min(left, img_w - badge_w - 2))
+
+                # Anti-collision: shift if colliding with existing badge
+                for ox1, oy1, ox2, oy2 in occupied_badge_rects:
+                    if not (badge_left + badge_w < ox1 or badge_left > ox2 or badge_top + badge_h < oy1 or badge_top > oy2):
+                        # If shifting downwards would push badge off screen, shift upwards instead
+                        if top + (h * scale) + badge_h + 4 < img_h:
+                            badge_top = max(oy2 + 2, top + (h * scale) + 2)
+                        else:
+                            badge_top = max(0, oy1 - badge_h - 2)
+                        
+            # Ensure badge is strictly within visible canvas
+            badge_top = max(0, min(badge_top, img_h - badge_h - 2))
+            badge_left = max(2, min(badge_left, img_w - badge_w - 2))
+
+            draw.rectangle([badge_left, badge_top, badge_left + badge_w, badge_top + badge_h], fill=box_color)
+            draw.text((badge_left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
+            occupied_badge_rects.append((badge_left, badge_top, badge_left + badge_w, badge_top + badge_h))
             annotated_count += 1
         elif "heading" in clean_r:
             badge_text = f"[{idx}] H"
             badge_w = len(badge_text) * int(7 * scale)
             badge_h = int(14 * scale)
-            badge_top = max(0, top - badge_h)
-            draw.rectangle([left, badge_top, left + badge_w, badge_top + badge_h], fill=box_color)
-            draw.text((left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
-            occupied_badge_rects.append((left, badge_top, left + badge_w, badge_top + badge_h))
+            badge_top = max(0, min(top - badge_h, img_h - badge_h - 2))
+            badge_left = max(2, min(left, img_w - badge_w - 2))
+            draw.rectangle([badge_left, badge_top, badge_left + badge_w, badge_top + badge_h], fill=box_color)
+            draw.text((badge_left + 3, badge_top + 1), badge_text, fill=(0, 0, 0), font=badge_font)
+            occupied_badge_rects.append((badge_left, badge_top, badge_left + badge_w, badge_top + badge_h))
             annotated_count += 1
 
     print("="*175)
@@ -273,9 +322,10 @@ def main():
     # Also save to conversation artifacts directory if available
     artifact_dir = "/Users/sanjeevn/.gemini/antigravity/brain/56be5417-a621-4c45-b7b8-f74c1d6a395a"
     if os.path.exists(artifact_dir):
-        artifact_img_path = os.path.join(artifact_dir, "momentum_ui_debug_v3.png")
-        img.save(artifact_img_path)
-        print(f"📁 Copied to conversation artifact: {artifact_img_path}")
+        for fname in ["momentum_ui_debug_v4.png", "momentum_ui_debug_v3.png"]:
+            p = os.path.join(artifact_dir, fname)
+            img.save(p)
+            print(f"📁 Copied to conversation artifact: {p}")
 
     # Open image in Preview so user sees the live overlay
     subprocess.run(["open", annotated_path])
