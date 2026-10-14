@@ -90,15 +90,21 @@ impl UIElement {
         let mut parts: Vec<String> = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
-        let candidates = [
-            Some(text),
-            title,
-            placeholder,
-            aria_label,
-        ];
-
-        for cand_opt in candidates {
+        // Prioritize primary text, title, aria_label
+        for cand_opt in [Some(text), title, aria_label] {
             if let Some(cand) = cand_opt {
+                let trimmed = cand.trim();
+                let lower = trimmed.to_lowercase();
+                if !trimmed.is_empty() && !seen.contains(&lower) {
+                    seen.insert(lower);
+                    parts.push(trimmed.to_string());
+                }
+            }
+        }
+
+        // If no primary name was provided, fallback to placeholder / help text
+        if parts.is_empty() {
+            if let Some(cand) = placeholder {
                 let trimmed = cand.trim();
                 let lower = trimmed.to_lowercase();
                 if !trimmed.is_empty() && !seen.contains(&lower) {

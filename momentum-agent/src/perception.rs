@@ -245,9 +245,9 @@ pub async fn perceive_native_target(target_app: Option<&str>) -> Result<Vec<UIEl
         }
     }
     
-    // Sort top-to-bottom (reading order) and cap at 80
+    // Sort top-to-bottom (reading order) and cap at 250
     all_elements.sort_by(|a, b| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal));
-    all_elements.truncate(80);
+    all_elements.truncate(250);
     
     assign_spatial_zones(&mut all_elements);
     
