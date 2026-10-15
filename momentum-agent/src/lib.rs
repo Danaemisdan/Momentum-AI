@@ -14,3 +14,4 @@ pub mod driver;
 pub mod knowledge;
 pub mod researcher;
 pub mod authority;
+pub mod resolver;

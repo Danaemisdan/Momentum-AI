@@ -14,6 +14,7 @@ mod driver;
 mod knowledge;
 mod researcher;
 mod authority;
+mod resolver;
 
 use crate::browser::MomentumBrowser;
 use crate::brain::{MomentumBrain, StepReaction};
@@ -295,20 +296,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("⚠️ Failed to initialize Vision Stream (SHM). Agent will run blind.");
     }
 
-    // 4. Spawn Screencast Loop (Only if browser launched)
+    // 4. Spawn Screencast Loop (Browser or Native OS Desktop)
     let tx_sc = tx_screencast.clone();
     let b_mu_sc = browser_mu.clone();
     tokio::spawn(async move {
         loop {
-            let b = b_mu_sc.lock().await;
-            if b.page.is_some() {
-                if let Ok(frame) = b.capture_screenshot().await {
-                    let wrapped_frame = format!("{{\"type\": \"frame\", \"image\": \"{}\"}}", frame);
-                    let _ = tx_sc.send(wrapped_frame);
+            let mut captured = false;
+            {
+                let b = b_mu_sc.lock().await;
+                if b.page.is_some() {
+                    if let Ok(frame) = b.capture_screenshot().await {
+                        let wrapped_frame = format!("{{\"type\": \"frame\", \"image\": \"{}\"}}", frame);
+                        let _ = tx_sc.send(wrapped_frame);
+                        captured = true;
+                    }
                 }
             }
-            drop(b);
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+            if !captured {
+                #[cfg(target_os = "macos")]
+                {
+                    let tmp_path = "/tmp/momentum_hud_live.jpg";
+                    if let Ok(status) = std::process::Command::new("screencapture")
+                        .args(["-x", "-t", "jpg", tmp_path])
+                        .status()
+                    {
+                        if status.success() {
+                            if let Ok(bytes) = std::fs::read(tmp_path) {
+                                use base64::Engine;
+                                let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                                let wrapped_frame = format!("{{\"type\": \"frame\", \"image\": \"{}\"}}", b64);
+                                let _ = tx_sc.send(wrapped_frame);
+                            }
+                        }
+                    }
+                }
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
         }
     });
 
@@ -573,6 +598,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                 });
                             }
                             if slot_question.is_none() {
+                            // 1.4. Native 0ms Single Best Next Action Resolver
+                            let ui_list = crate::perception::perceive_native().await.unwrap_or_default();
+                            if let Some(decision) = crate::resolver::NextActionResolver::resolve(&refined_goal, &ui_list) {
+                                println!("🎯 [0ms Next-Action Resolver] Winner: {:?} on '{}' ({:.0}, {:.0}) [Score: {:.2}] - {}",
+                                    decision.action_type, decision.target_label, decision.x, decision.y, decision.confidence, decision.rationale);
+
+                                let announce = format!("Executing {}: {}", decision.target_label, decision.rationale);
+                                let action_wire = match decision.action_type {
+                                    crate::resolver::NextActionType::Type => Action::Type {
+                                        selector: decision.target_id.clone(),
+                                        text: decision.text_payload.clone().unwrap_or_default(),
+                                        frame_id: None,
+                                    },
+                                    _ => Action::Click {
+                                        selector: decision.target_id.clone(),
+                                        frame_id: None,
+                                    },
+                                };
+
+                                let _ = tx_op_resp.send(WsResponse {
+                                    msg_type: "action".into(),
+                                    t: None,
+                                    speech: Some(announce),
+                                    action: Some(action_wire),
+                                    thought: None,
+                                    agent_mode: Some(AgentMode::Operator),
+                                    macro_state: Some(MacroState::ActOnSurface),
+                                    tool_name: Some(ToolName::Click),
+                                });
+
+                                // Physical execution
+                                match driver_clone.execute_decision(&decision) {
+                                    Ok(outcome) => {
+                                        println!("✅ Executed Next Action: {}", outcome);
+                                        let final_msg = format!("Done! {}", outcome);
+                                        let _ = tx_op_resp.send(WsResponse {
+                                            msg_type: "action".into(),
+                                            t: None,
+                                            speech: Some(final_msg.clone()),
+                                            action: Some(Action::Talk { speech: final_msg }),
+                                            thought: None,
+                                            agent_mode: Some(AgentMode::Operator),
+                                            macro_state: Some(MacroState::Done),
+                                            tool_name: None,
+                                        });
+                                        return;
+                                    }
+                                    Err(e) => {
+                                        println!("⚠️ Next action execution error: {}", e);
+                                    }
+                                }
+                            }
+
                             // 1.5. Fast-Path Local Planning: Check deterministic OS/App sequences FIRST (0ms)
                             let local_sequence = match brain_agent.extract_sequence_args(
                                 &refined_goal,

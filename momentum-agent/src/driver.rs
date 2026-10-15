@@ -832,6 +832,89 @@ impl ActionDriver {
         Ok(format!("Typed '{}' with Return key", text))
     }
 
+    /// Smooth physical mouse drag from (start_x, start_y) to (end_x, end_y)
+    pub fn drag(&self, start_x: f64, start_y: f64, end_x: f64, end_y: f64) -> Result<String, String> {
+        use enigo::{Direction::{Press, Release}, Enigo, Mouse, Settings};
+        let mut enigo = Enigo::new(&Settings::default()).map_err(|e| format!("Enigo error: {:?}", e))?;
+        let _ = enigo.move_mouse(start_x as i32, start_y as i32, enigo::Coordinate::Abs);
+        thread::sleep(Duration::from_millis(80));
+        let _ = enigo.button(enigo::Button::Left, Press);
+        thread::sleep(Duration::from_millis(80));
+
+        let steps = 12;
+        for i in 1..=steps {
+            let t = i as f64 / steps as f64;
+            let cur_x = start_x + (end_x - start_x) * t;
+            let cur_y = start_y + (end_y - start_y) * t;
+            let _ = enigo.move_mouse(cur_x as i32, cur_y as i32, enigo::Coordinate::Abs);
+            thread::sleep(Duration::from_millis(15));
+        }
+
+        thread::sleep(Duration::from_millis(80));
+        let _ = enigo.button(enigo::Button::Left, Release);
+        Ok(format!("Dragged from ({:.0}, {:.0}) to ({:.0}, {:.0})", start_x, start_y, end_x, end_y))
+    }
+
+    /// Executes a resolved NextActionDecision directly via physical mouse & keyboard motor drivers
+    pub fn execute_decision(&self, decision: &crate::resolver::NextActionDecision) -> Result<String, String> {
+        match decision.action_type {
+            crate::resolver::NextActionType::Click => {
+                use enigo::{Direction::Click, Enigo, Mouse, Settings};
+                let mut enigo = Enigo::new(&Settings::default()).map_err(|e| format!("Enigo error: {:?}", e))?;
+                let _ = enigo.move_mouse(decision.x as i32, decision.y as i32, enigo::Coordinate::Abs);
+                thread::sleep(Duration::from_millis(60));
+                let _ = enigo.button(enigo::Button::Left, Click);
+                Ok(format!("Clicked '{}' at ({:.0}, {:.0})", decision.target_label, decision.x, decision.y))
+            },
+            crate::resolver::NextActionType::Drag => {
+                let end_x = decision.end_x.unwrap_or(decision.x + 80.0);
+                let end_y = decision.end_y.unwrap_or(decision.y);
+                self.drag(decision.x, decision.y, end_x, end_y)
+            },
+            crate::resolver::NextActionType::Slide => {
+                let end_x = decision.end_x.unwrap_or(decision.x + 40.0);
+                let end_y = decision.end_y.unwrap_or(decision.y);
+                self.drag(decision.x, decision.y, end_x, end_y)
+            },
+            crate::resolver::NextActionType::Type => {
+                use enigo::{Direction::Click, Enigo, Key, Keyboard, Mouse, Settings};
+                let mut enigo = Enigo::new(&Settings::default()).map_err(|e| format!("Enigo error: {:?}", e))?;
+                let _ = enigo.move_mouse(decision.x as i32, decision.y as i32, enigo::Coordinate::Abs);
+                thread::sleep(Duration::from_millis(60));
+                let _ = enigo.button(enigo::Button::Left, Click);
+                thread::sleep(Duration::from_millis(150));
+
+                if let Some(text) = &decision.text_payload {
+                    #[cfg(target_os = "macos")]
+                    {
+                        let _ = enigo.key(Key::Meta, enigo::Direction::Press);
+                        let _ = enigo.key(Key::Unicode('a'), Click);
+                        let _ = enigo.key(Key::Meta, enigo::Direction::Release);
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        let _ = enigo.key(Key::Control, enigo::Direction::Press);
+                        let _ = enigo.key(Key::Unicode('a'), Click);
+                        let _ = enigo.key(Key::Control, enigo::Direction::Release);
+                    }
+                    thread::sleep(Duration::from_millis(80));
+                    let _ = enigo.text(text);
+                    thread::sleep(Duration::from_millis(120));
+                    let _ = enigo.key(Key::Return, Click);
+                    Ok(format!("Typed '{}' into '{}' with Return key", text, decision.target_label))
+                } else {
+                    Ok(format!("Focused input field '{}'", decision.target_label))
+                }
+            },
+            crate::resolver::NextActionType::Scroll => {
+                self.scroll("down")
+            },
+            _ => {
+                Ok(format!("Completed step: {}", decision.rationale))
+            }
+        }
+    }
+
     pub fn get_all_states(&self) -> Vec<String> {
         self.graph.states.clone()
     }
